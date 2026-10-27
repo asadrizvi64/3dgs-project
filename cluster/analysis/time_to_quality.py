@@ -45,6 +45,8 @@ p.add_argument('--images', type=int, default=15000, help='image equivalents to t
 p.add_argument('--eval-every', type=int, default=1500, help='in image equivalents')
 p.add_argument('--seed', type=int, default=0)
 p.add_argument('--block', type=int, default=64)
+p.add_argument('--adam', choices=['dense', 'sparse'], default='dense',
+               help='sparse: update only Gaussian rows that received a nonzero gradient this step (lean-Adam kernel)')
 p.add_argument('--out', required=True)
 args = p.parse_args()
 run = Path(args.run)
@@ -60,6 +62,8 @@ with utils.DiscoverSourcePath():
         from fused_ssim import FusedSSIMMap
     except ImportError:
         from Thirdparty.FusedSSIM import FusedSSIMMap
+    from Methods.FasterGS import Renderer as _R
+_Rasterize = sys.modules[_R.diff_rasterize.__module__]._Rasterize
 
 # restore parameters and Adam state exactly as they were after step n
 st = torch.load(run / 'checkpoints' / args.state, weights_only=False)
@@ -69,6 +73,10 @@ for k, v in st['params'].items():
 g.training_setup(cfg.TRAINING, st['extent'])
 g.optimizer.load_state_dict(st['optimizer'])
 start_iter = st['iteration']
+if args.adam == 'sparse':  # lean FusedAdam path; the row mask is set by hand before every step (see training loop)
+    g.optimizer.sparse, g.optimizer.lean = True, True
+    _Rasterize.track_visibility = False
+params = [g._means, g._sh_coefficients_0, g._sh_coefficients_rest, g._opacities, g._scales, g._rotations]
 N = g._means.shape[0]
 print(f'state {args.state}: step {start_iter}, N={N}, active_sh_bases={g.active_sh_bases}, policy={args.policy} frac={frac}', flush=True)
 
@@ -124,16 +132,31 @@ def block_mask(err):
     return m.view(by, bx).repeat_interleave(B, 0).repeat_interleave(B, 1)[:H, :W]
 
 
-# projected ms per step on a sparse-aware rasterizer (results/tiles/README.md cost model, garden, step 20k, H100)
-PROJ_MS = 9.43 if args.policy == 'dense' else (3.2 if frac == 0.25 else float('nan'))  # calibrated at frac=0.25 only
+# Projected ms per step on a rasterizer that skips unselected pixels (results/tiles/README.md cost model; garden, step-20k
+# stage times on H100: fwd 1.67, blend bwd 3.11, per-Gaussian bwd 1.42, dense Adam 3.23, lean sparse Adam 1.21 ms when it
+# updated the 35.1% of rows touched by a full view). Inputs are measured every step with the actual training loss:
+#   pix = fraction of pixels that can receive a gradient (selected blocks + 5-px SSIM halo)
+#   a   = fraction of all Gaussian rows with a nonzero gradient
+# Forward stays full (the error map comes from it); per-Gaussian backward scales with a when pixels are sampled; the
+# optimizer term is dense Adam unless --adam sparse.
+TOUCHED = 0.351
+
+
+def proj_ms(pix, a):
+    sampled = args.policy != 'dense'
+    pre = 1.42 * (a / TOUCHED if sampled else 1.0)
+    opt = 1.21 * a / TOUCHED if args.adam == 'sparse' else 3.23
+    return 1.67 + 3.11 * pix + pre + opt
 
 rows = []
 steps_total = round(args.images / frac)
 eval_every_steps = round(args.eval_every / frac)
 train_s = 0.0
 psnr0 = evaluate()
-rows.append(dict(policy=args.policy, frac=frac, seed=args.seed, step=0, image_equiv=0, iteration_equiv=start_iter,
-                 train_s=0.0, proj_s=0.0, test_psnr=psnr0, n=N))
+rows.append(dict(policy=args.policy, adam=args.adam, frac=frac, seed=args.seed, step=0, image_equiv=0, iteration_equiv=start_iter,
+                 train_s=0.0, proj_s=0.0, test_psnr=psnr0, n=N, active_of_n='', pix_frac=''))
+proj_s = 0.0
+acc = torch.zeros(3, device='cuda')  # sums of active fraction and pixel fraction, step count (no per-step host sync)
 print(f'EVAL step=0 img_eq=0 train_s=0.0 psnr={psnr0:.3f}', flush=True)
 torch.cuda.synchronize()
 t0 = time.perf_counter()
@@ -152,6 +175,13 @@ for step in range(1, steps_total + 1):
         denom = m.sum() * 3
         loss = 0.8 * (l1 * m).sum() / denom + 0.2 * (1.0 - (ssim * m).sum() / denom)
     loss.backward()
+    act = torch.zeros(N, dtype=torch.bool, device='cuda')
+    for t in params:
+        act |= t.grad.reshape(N, -1).ne(0).any(1)
+    pix = torch.ones((), device='cuda') if m is None else torch.nn.functional.max_pool2d(m[None, None], 11, 1, 5).mean()
+    acc += torch.stack([act.float().mean(), pix.float(), torch.ones((), device='cuda')])
+    if args.adam == 'sparse':
+        _Rasterize.last_visibility = act.int()
     g.optimizer.step()
     g.optimizer.zero_grad()
     g.post_optimizer_step(inject_noise=False)
@@ -160,9 +190,12 @@ for step in range(1, steps_total + 1):
         train_s += time.perf_counter() - t0
         ps = evaluate()
         ie = step * frac
-        rows.append(dict(policy=args.policy, frac=frac, seed=args.seed, step=step, image_equiv=ie, iteration_equiv=start_iter + ie,
-                         train_s=round(train_s, 2), proj_s=round(step * PROJ_MS / 1e3, 2), test_psnr=ps, n=N))
-        print(f'EVAL step={step} img_eq={ie:.0f} train_s={train_s:.1f} proj_s={step * PROJ_MS / 1e3:.1f} psnr={ps:.3f}', flush=True)
+        a_m, pix_m, n_m = acc[0].item() / acc[2].item(), acc[1].item() / acc[2].item(), int(acc[2].item())
+        proj_s += n_m * proj_ms(pix_m, a_m) / 1e3
+        acc.zero_()
+        rows.append(dict(policy=args.policy, adam=args.adam, frac=frac, seed=args.seed, step=step, image_equiv=ie, iteration_equiv=start_iter + ie,
+                         train_s=round(train_s, 2), proj_s=round(proj_s, 2), test_psnr=ps, n=N, active_of_n=round(a_m, 4), pix_frac=round(pix_m, 4)))
+        print(f'EVAL step={step} img_eq={ie:.0f} train_s={train_s:.1f} proj_s={proj_s:.1f} psnr={ps:.3f} active={a_m:.4f} pix={pix_m:.3f}', flush=True)
         torch.cuda.synchronize()
         t0 = time.perf_counter()
 

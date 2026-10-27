@@ -34,7 +34,8 @@ The baseline matches the earlier Faster-GS runs (252.9 ± 1.0 s, 27.48 dB), so t
 
 ## Findings
 
-1. **bf16 SH-rest moments cost nothing in quality** and save 6.7%, which is close to the predicted saving in optimizer bytes.
-2. **Sparse Adam gives most of the speedup but loses about 0.1 dB.** It also leaves training with **17% fewer Gaussians**, so part of its 24% speedup comes from cheaper forward and backward passes, not only from the optimizer. At a fixed count, the optimizer itself drops from 3.23 ms to 1.21 ms per step at step 20k (−63%).
+1. **bf16 SH-rest moments showed no quality loss on one garden seed** and saved 6.7%, close to the predicted saving in optimizer bytes. This needs more seeds and scenes before it counts as quality-preserving.
+2. **Sparse Adam gives most of the speedup but loses about 0.1 dB** (−0.09 dB on one seed alone; −0.13 dB over three seeds together with bf16). It also leaves training with **17% fewer Gaussians**, so part of its speedup comes from cheaper forward and backward passes, not only from the optimizer. The optimizer stage drops from 3.23 ms to 1.21 ms per step at step 20k, but that comparison is at different Gaussian counts (4.17 M vs 3.44 M), so it is not a fixed-count measurement. Scaled to equal counts, the drop would be about 3.23 → 1.47 ms.
 3. **Why sparse Adam ends with fewer Gaussians is not yet known.** The prime suspect is how stock Adam's leftover momentum keeps moving Gaussians that are off-screen, which interacts with densification and opacity-based pruning. That's untested.
-4. **Net result:** 25.5% faster than Faster-GS on garden, at −0.13 dB PSNR (about 4.6× the seed sd) and +0.008 LPIPS. **This isn't yet a "same quality" win.** bf16 alone is one.
+4. **Net result:** 25.5% faster than Faster-GS on garden, at −0.13 dB PSNR (about 4.6× the seed sd) and +0.008 LPIPS. **This isn't yet a "same quality" win.** bf16 alone may be one, but it has only one seed so far.
+5. **Prior art:** Faster-GS's own paper reports a "skip invisible Gaussian updates" ablation with a similar PSNR cost (−0.13 dB on outdoor Mip-NeRF360). So sparse Adam here reproduces a known trade-off rather than adding a new one.

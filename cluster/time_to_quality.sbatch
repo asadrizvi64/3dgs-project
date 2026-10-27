@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Time-to-quality from the step-15k state: dense vs error-guided vs random 64-px block sampling (25% of blocks).
+# Time-to-quality from the step-15k state: dense vs error-guided vs random 64-px block sampling
+# (25% of blocks), each with dense Adam, plus error blocks and dense images with selective (gradient-row) Adam.
 #   1. patch Trainer.py with the FGS_SAVE_STATE hook (idempotent)
 #   2. for each seed: stock Faster-GS training that also saves state_0015000.pt (skipped if it exists)
 #   3. for each seed: continue from 15k with each policy for 15,000 image equivalents, test PSNR every 1,500
@@ -11,14 +12,14 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=14
 #SBATCH --mem=64G
-#SBATCH --time=03:00:00
+#SBATCH --time=04:00:00
 #SBATCH --exclude=c20
 #SBATCH --output=cluster/logs/%x-%j.out
 set -euo pipefail
 SCENE=${SCENE:-garden}
 SCALE=${SCALE:-0.25}
 SEEDS=${SEEDS:-"0 1 2"}
-POLICIES=${POLICIES:-"dense err_block rand_block"}
+ARMS=${ARMS:-"dense:dense err_block:dense rand_block:dense err_block:sparse dense:sparse"}  # policy:adam
 IMAGES=${IMAGES:-15000}
 HERE=${SLURM_SUBMIT_DIR:-$PWD}/cluster
 DATA=$(ws_find -F cat 3dgs-data) || { echo "cat workspace not visible on $(hostname)"; exit 1; }
@@ -38,9 +39,10 @@ for seed in $SEEDS; do
     RUN=$(ls -dt output/FasterGS/fastergs_${SCENE}_*_s${seed}tq_* | head -1)
   fi
   echo "run=$RUN stock-30k: $(tail -1 $RUN/test_*/metrics_8bit.txt 2>/dev/null)"
-  for pol in $POLICIES; do
-    echo "########## seed $seed policy $pol $(date +%T)"
-    python "$HERE/analysis/time_to_quality.py" --run "$RUN" --policy $pol --seed $seed --images $IMAGES \
+  for arm in $ARMS; do
+    pol=${arm%%:*}; adam=${arm#*:}
+    echo "########## seed $seed policy $pol adam $adam $(date +%T)"
+    python "$HERE/analysis/time_to_quality.py" --run "$RUN" --policy $pol --adam $adam --seed $seed --images $IMAGES \
       --out "$CSV" 2>&1 | grep -E "^(state|EVAL)|Traceback|Error" || true
   done
 done

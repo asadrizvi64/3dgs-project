@@ -37,7 +37,7 @@ The table shows Gaussians receiving a gradient, as a percentage of those active 
 | 75% | 87.0% | 79.4% | 86.7% | 83.5% | 88% / 86% |
 
 - **Gaussian sharing is modest.** At 25% of tiles, scattered tiles activate 41% of the Gaussians and contiguous blocks only about 30%. So spatially clustered selection keeps Gaussian work close to proportional to pixel work.
-- **Error is not concentrated.** The worst 25% of tiles hold only 40–43% of the L1 error, both mid-training and at the end. Error-guided selection can concentrate supervision by at most about 1.6× per pixel.
+- **Error is not concentrated.** The worst 25% of tiles hold only 40–43% of the L1 error, both mid-training and at the end. Error-guided selection concentrates L1 error about 1.6× per pixel. That is not a bound on learning progress, since error size is not the same as useful gradient.
 - **The pattern doesn't change over training.** The 5k, 15k and 30k curves are nearly identical.
 
 ## What this means for speed (estimate, not measured)
@@ -60,6 +60,10 @@ Under those assumptions, a step using 25% of tiles as top-error blocks costs abo
 
 That step supervises a quarter of an image, so it costs about **12.8 ms per image's worth of pixels, against 9.4 ms for dense training**. Even if the forward pass also ran on only the selected tiles, the cost would be at most about 20% below dense per pixel (7.6 ms).
 
-**Conclusion:** because Gaussian work tracks pixel work almost one-to-one, tile sampling doesn't make supervision cheaper per pixel. It only pays off if training needs fewer pixel visits to reach the same quality, and error-guided selection concentrates error by at most about 1.6×. That is the time-to-quality question TurboGS addresses, and it has to be tested by training, not by profiling.
+**Conclusion:** because Gaussian work tracks pixel work almost one-to-one, tile sampling doesn't make supervision cheaper per pixel. It pays off only if training needs fewer pixel visits to reach the same quality. In steps, a 3.2 ms sampled step can afford up to about 2.95× as many steps as dense 9.43 ms steps and still finish sooner. That is the time-to-quality question TurboGS addresses, and it has to be tested by training, not by profiling.
+
+**Caveats on these numbers:**
+- The 3.2 ms figure assumes selective (sparse) Adam. With dense Adam the sampled step is about 6.1 ms.
+- The activity counts above use an L1-only loss. The training loss also has an SSIM term, which spreads gradients about 5 px beyond each selected block. `cluster/analysis/time_to_quality.py` measures both effects every step with the real loss.
 
 Measured fact that does hold: using contiguous blocks instead of scattered tiles cuts the Gaussians each sparse step touches by about 25% at the same pixel budget.
