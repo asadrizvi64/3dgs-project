@@ -1,0 +1,78 @@
+{
+  "env": {
+    "gpu": "NVIDIA H100",
+    "cc": "9.0",
+    "driver": "580.159.04",
+    "cuda": "12.8",
+    "torch": "2.11.0+cu128",
+    "host": "c58"
+  },
+  "results": [
+    {
+      "size": 512,
+      "n": 10000,
+      "pairs": 44419,
+      "buckets": 1967,
+      "forward_ms": 0.07604799792170525,
+      "forward_save_buckets_ms": 0.08137600123882294,
+      "backward_pixel_ms": 0.3038560003042221,
+      "backward_splat_ms": 0.16710399836301804,
+      "splat_speedup": 1.8183646308936483
+    },
+    {
+      "size": 512,
+      "n": 50000,
+      "pairs": 112032,
+      "buckets": 3993,
+      "forward_ms": 0.0894559994339943,
+      "forward_save_buckets_ms": 0.09561599791049957,
+      "backward_pixel_ms": 0.24103999882936478,
+      "backward_splat_ms": 0.2572000026702881,
+      "splat_speedup": 0.9371695036036245
+    },
+    {
+      "size": 512,
+      "n": 200000,
+      "pairs": 337941,
+      "buckets": 11059,
+      "forward_ms": 0.19120000302791595,
+      "forward_save_buckets_ms": 0.22273600101470947,
+      "backward_pixel_ms": 0.2844480127096176,
+      "backward_splat_ms": 0.49689601361751556,
+      "splat_speedup": 0.5724497780506864
+    },
+    {
+      "size": 1024,
+      "n": 10000,
+      "pairs": 104609,
+      "buckets": 4501,
+      "forward_ms": 0.08664000034332275,
+      "forward_save_buckets_ms": 0.10071999952197075,
+      "backward_pixel_ms": 1.1087999939918518,
+      "backward_splat_ms": 0.3631359934806824,
+      "splat_speedup": 3.0534015187090957
+    },
+    {
+      "size": 1024,
+      "n": 50000,
+      "pairs": 199882,
+      "buckets": 8211,
+      "forward_ms": 0.12593600153923035,
+      "forward_save_buckets_ms": 0.1462559998035431,
+      "backward_pixel_ms": 0.866351991891861,
+      "backward_splat_ms": 0.4917919933795929,
+      "splat_speedup": 1.7616228071105693
+    },
+    {
+      "size": 1024,
+      "n": 200000,
+      "pairs": 455114,
+      "buckets": 16235,
+      "forward_ms": 0.22524799406528473,
+      "forward_save_buckets_ms": 0.2699839919805527,
+      "backward_pixel_ms": 0.7994880080223083,
+      "backward_splat_ms": 0.8257279992103577,
+      "splat_speedup": 0.9682219917295495
+    }
+  ]
+}

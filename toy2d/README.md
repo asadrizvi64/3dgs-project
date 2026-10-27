@@ -44,20 +44,41 @@ Results land in `results/` tagged with the commit hash.
 ## Gate G0
 
 - [x] CPU tests pass (reference gradcheck, emulator matches autograd to 1e-9). **Done 27 Oct 2026.**
-- [ ] CUDA builds and `tests/test_cuda.py` passes on the cluster
-- [ ] `gradcheck_report.py`: worst fp32 relative error < 1e-5, both backwards
-- [ ] `bench.py`: `backward_splat` faster than `backward_pixel` at 1024² with 50k+ Gaussians
-- [ ] Nsight Compute profile of both backwards saved
-- [ ] Three sentences on why the per-splat version wins (below)
+- [x] CUDA builds and `tests/test_cuda.py` passes on the cluster (25/25, H100, job 4473561, commit cfda5b4)
+- [x] `gradcheck_report.py`: worst fp32 relative error 7.4e-6 < 1e-5, both backwards ([table](results/gradcheck-cfda5b4-4473561.md))
+- [x] `bench.py`: `backward_splat` faster than `backward_pixel` at 1024² with 50k Gaussians (0.49 vs 0.87 ms, 1.76×)
+- [x] Nsight Compute profile of both backwards saved (`profiles/bwd-cfda5b4-4473561.ncu-rep` on the cluster)
+- [ ] Three sentences on why the per-splat version wins (draft below: check against the profile and rewrite in your words)
 
-### Why the per-splat backward wins
+### Results (H100, 27 Oct 2026)
 
-_Fill in from the Nsight Compute profile: compare atomic throughput / L2 traffic,
-warp stall reasons (look at `lg_throttle` and atomic stalls), and achieved occupancy._
+| Image | Gaussians | (tile, splat) pairs | bwd pixel (ms) | bwd splat (ms) | splat speedup |
+| --- | --- | --- | --- | --- | --- |
+| 512² | 10k | 44k | 0.304 | 0.167 | 1.82× |
+| 512² | 50k | 112k | 0.241 | 0.257 | 0.94× |
+| 512² | 200k | 338k | 0.284 | 0.497 | 0.57× |
+| 1024² | 10k | 105k | 1.109 | 0.363 | 3.05× |
+| 1024² | 50k | 200k | 0.866 | 0.492 | 1.76× |
+| 1024² | 200k | 455k | 0.799 | 0.826 | 0.97× |
 
-1.
-2.
-3.
+Nsight Compute, 1024² / 50k:
+
+| Kernel | Time | L2 throughput | SM throughput | Active warps | Active threads per warp instr. |
+| --- | --- | --- | --- | --- | --- |
+| backward_pixel | 909 µs | 78.8% | 36.8% | 56.4% | 23.2 / 32 |
+| backward_splat | 574 µs | 7.3% | 68.1% | 41.1% | 13.9 / 32 |
+
+Fit demo: 512² synthetic image, 20k Gaussians, 1000 iterations in 3.9 s, 45.6 dB PSNR.
+
+### Why the per-splat backward wins (draft)
+
+1. The per-pixel backward issues one atomicAdd for every (pixel, splat) pair, so it saturates the L2
+   atomic units (79% L2 throughput) while the SMs sit at 37%: it is bound by atomic traffic, not math.
+2. The per-splat backward keeps each splat's gradient in registers across the tile's 256 pixels and
+   commits once per bucket, cutting L2 throughput to 7% and turning the kernel compute-bound (68% SM).
+3. Its cost is fixed work per bucket (256 + 31 warp steps, only 14 of 32 lanes useful on average), so it
+   loses when Gaussians are tiny and cover few pixels (≤ 1× at 200k Gaussians) and wins by 1.8–3× when
+   footprints are large, which is the regime real 3DGS scenes are in.
 
 ## Rendering rules
 
