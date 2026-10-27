@@ -36,7 +36,7 @@ echo "method commit: $(git -C "$MDIR" log -1 --oneline)"
 echo "########## 1. build"
 git -C "$MDIR" log -1 --format=%s | grep -q "^Lean Adam" || { echo "lean adam patch not applied"; exit 1; }
 pip install -q --no-build-isolation --no-deps --force-reinstall "$MDIR/FasterGSCudaBackend"
-python -c "from FasterGSCudaBackend import _C; assert hasattr(_C, 'adam_step_sparse') and hasattr(_C, 'n_touched_tiles'); print('extension ok')"
+python -c "import torch; from FasterGSCudaBackend import _C; assert hasattr(_C, 'adam_step_sparse') and hasattr(_C, 'n_touched_tiles'); print('extension ok')"
 
 echo "########## 2. unit checks"
 python -I "$HERE/tests/test_lean_adam.py"
