@@ -22,7 +22,7 @@ SEED=${SEED:-0}
 TAG=${TAG:-}          # appended to the run name, e.g. TAG=prof for profiling runs
 LAUNCHER=${LAUNCHER:-}  # optional prefix, e.g. "nsys profile ..." or "ncu ..."
 SCALE=${SCALE:-0.25}   # 0.25 for outdoor scenes, 0.5 for indoor, as in 3DGS
-DATA=$(ws_find -F cat 3dgs-data)
+DATA=$(ws_find -F cat 3dgs-data) || { echo "cat workspace not visible on $(hostname); resubmit with --exclude=$(hostname)"; exit 1; }   # c20 lacks /data/cat (2026-10-27)
 NERFICG=$DATA/nerficg
 MDIR=$NERFICG/src/Methods/$METHOD
 LOW=$(echo "$METHOD" | tr 'A-Z' 'a-z')

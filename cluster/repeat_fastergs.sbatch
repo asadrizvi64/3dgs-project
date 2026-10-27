@@ -17,7 +17,7 @@ SCENE=${SCENE:-garden}
 SEEDS=${SEEDS:-"0 1 2"}
 METHODS=${METHODS:-"FasterGS FasterGSFused"}
 HERE=${SLURM_SUBMIT_DIR:-$PWD}/cluster
-DATA=$(ws_find -F cat 3dgs-data)
+DATA=$(ws_find -F cat 3dgs-data) || { echo "cat workspace not visible on $(hostname); resubmit with --exclude=$(hostname)"; exit 1; }   # c20 lacks /data/cat (2026-10-27)
 
 echo "node=$(hostname) job=${SLURM_JOB_ID:-local} gpu=$(nvidia-smi --query-gpu=name,driver_version,uuid --format=csv,noheader)"
 for seed in $SEEDS; do

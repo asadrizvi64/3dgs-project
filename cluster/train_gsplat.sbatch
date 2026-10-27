@@ -15,7 +15,7 @@ set -euo pipefail
 
 SCENE=${SCENE:-garden}
 FACTOR=${FACTOR:-4}   # 4 for outdoor scenes, 2 for indoor (bonsai, counter, kitchen, room), as in 3DGS
-DATA=$(ws_find -F cat 3dgs-data)
+DATA=$(ws_find -F cat 3dgs-data) || { echo "cat workspace not visible on $(hostname); resubmit with --exclude=$(hostname)"; exit 1; }   # c20 lacks /data/cat (2026-10-27)
 GSPLAT=$DATA/gsplat
 
 module load GCC/13.3.0 CUDA/12.8.0 Python/3.12.3 >/dev/null 2>&1

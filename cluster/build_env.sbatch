@@ -13,7 +13,7 @@
 #SBATCH --output=cluster/logs/%x-%j.out
 set -euo pipefail
 
-DATA=$(ws_find -F cat 3dgs-data)
+DATA=$(ws_find -F cat 3dgs-data) || { echo "cat workspace not visible on $(hostname); resubmit with --exclude=$(hostname)"; exit 1; }   # c20 lacks /data/cat (2026-10-27)
 VENV=$DATA/venv
 GSPLAT=$DATA/gsplat
 GSPLAT_COMMIT=512d366b67073d77ca099ede742683c165dfc23b

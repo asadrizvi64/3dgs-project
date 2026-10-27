@@ -21,7 +21,7 @@ SCENE=${SCENE:-garden}
 SCALE=${SCALE:-0.25}
 SEED=${SEED:-0}
 HERE=${SLURM_SUBMIT_DIR:-$PWD}/cluster
-DATA=$(ws_find -F cat 3dgs-data)
+DATA=$(ws_find -F cat 3dgs-data) || { echo "cat workspace not visible on $(hostname); resubmit with --exclude=$(hostname)"; exit 1; }   # c20 lacks /data/cat (2026-10-27)
 PROF=$DATA/prof; mkdir -p "$PROF"
 TAGBASE=${SCENE}_main_${SLURM_JOB_ID:-local}
 
