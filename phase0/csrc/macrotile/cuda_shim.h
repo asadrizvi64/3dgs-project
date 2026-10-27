@@ -58,6 +58,10 @@ inline double atomicAdd(double* address, double val) {
 }
 
 namespace splat2d_mock {
-// Host stand-in for the <<<grid, block, smem>>> configuration; see launch.h.
-inline void launch_config(dim3, dim3, size_t) {}
+// Host stand-in for the <<<grid, block, smem>>> configuration; see launch.h. Takes the
+// kernel as a function pointer and returns it, so the launch becomes a plain host call.
+template <typename Kernel>
+inline Kernel* launch_config(Kernel* kernel, dim3, dim3, size_t) {
+  return kernel;
+}
 }  // namespace splat2d_mock
