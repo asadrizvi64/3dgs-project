@@ -16,6 +16,10 @@ set -euo pipefail
 module load GCC/13.3.0 CUDA/12.8.0 Python/3.12.3 >/dev/null 2>&1
 source "${GS2D_ENV:-$(ws_find 3dgs)/venv}/bin/activate"
 
+# Extra packages installed with `pip install --target ~/py-extra pillow pytest`
+# (the venv lives on /data/horse, which was refusing writes on 27 Oct 2026).
+export PYTHONPATH="$HOME/py-extra${PYTHONPATH:+:$PYTHONPATH}"
+
 mkdir -p logs results profiles
 export TORCH_CUDA_ARCH_LIST="${TORCH_CUDA_ARCH_LIST:-9.0}"
 export TORCH_EXTENSIONS_DIR="${TORCH_EXTENSIONS_DIR:-$HOME/.cache/torch_extensions}"
