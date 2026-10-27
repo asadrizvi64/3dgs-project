@@ -1,4 +1,6 @@
-# Phase 1 plan: Phase 0 backward in Faster-GS (draft, waiting for OK)
+# Phase 1 plan: Phase 0 backward in Faster-GS (agreed 2026-10-27)
+
+First results: `results/phase1/macro_backward.md`. Training time on garden dropped 10.4% at equal PSNR. On real views, the scale/rotation gradients do not meet the 1e-5 parity target; the stock kernel misses it against itself too (see there).
 
 ## What Faster-GS already does (read from Faster-GS @1144604, `rasterization/`)
 
