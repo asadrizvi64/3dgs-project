@@ -9,7 +9,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=14
 #SBATCH --mem=64G
-#SBATCH --time=02:30:00
+#SBATCH --time=03:00:00
 #SBATCH --output=cluster/logs/%x-%j.out
 set -euo pipefail
 
@@ -36,6 +36,7 @@ for seed in $SEEDS; do
     met=$(tail -1 "$run"/test_*/metrics_8bit.txt | sed 's/PSNR://; s/SSIM://; s/LPIPS://')
     ng=$(grep -o 'N_Gaussians:[0-9]*' "$run/n_gaussians.txt" | cut -d: -f2)
     vr=$(awk '/allocated:/{print $2; exit}' "$run/vram_stats.txt")
-    echo "RESULT $m $seed $ms $(awk -v m="$ms" 'BEGIN{printf "%.1f", m*30}') $met $ng $vr $(basename "$run")"
+    clk=$(sed 's/^CLOCK //' "$run/gpu_clock_summary.txt" 2>/dev/null | cut -d' ' -f2-7)
+    echo "RESULT $m $seed $ms $(awk -v m="$ms" 'BEGIN{printf "%.1f", m*30}') $met $ng $vr $(basename "$run") $clk"
   done
 done
