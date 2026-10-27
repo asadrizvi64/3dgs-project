@@ -386,8 +386,8 @@ std::vector<torch::Tensor> rasterize_forward(torch::Tensor means, torch::Tensor 
     forward_kernel<<<grid, block, 0, at::cuda::getCurrentCUDAStream()>>>(
         reinterpret_cast<const int2*>(ranges.data_ptr<int>()), point_list.data_ptr<int>(),
         reinterpret_cast<const float2*>(means.data_ptr<float>()), conic.data_ptr<float>(), color.data_ptr<float>(),
-        opacity.data_ptr<float>(), (int)W, (int)H, tiles_x, out.data_ptr<float>(),
-        n_contrib.data_ptr<int>(), bucket_offsets.data_ptr<int>(),
+        opacity.data_ptr<float>(), to_float3(bg), (int)W, (int)H, tiles_x, out.data_ptr<float>(),
+        final_T.data_ptr<float>(), n_contrib.data_ptr<int>(), bucket_offsets.data_ptr<int>(),
         (save_buckets && num_buckets > 0) ? reinterpret_cast<float4*>(bucket_state.data_ptr<float>()) : nullptr);
     C10_CUDA_KERNEL_LAUNCH_CHECK();
     return {out, final_T, n_contrib, bucket_state};
