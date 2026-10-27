@@ -1,0 +1,4 @@
+* text=auto eol=lf
+*.cu text eol=lf
+*.sh text eol=lf
+*.sbatch text eol=lf

@@ -1,0 +1,7 @@
+__pycache__/
+.pytest_cache/
+outputs/
+logs/
+profiles/
+*.ncu-rep
+results/fit-*/

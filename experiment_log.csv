@@ -1,0 +1,1 @@
+date,commit,gpu,instance_type,driver,cuda,torch,scene,method,seed,train_time_s,peak_vram_gb,psnr,ssim,lpips,gaussian_count,notes
