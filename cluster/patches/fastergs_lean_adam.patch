@@ -1,0 +1,365 @@
+From d2f0436ad949d7a4fb319b0c25c234fd2f9127b7 Mon Sep 17 00:00:00 2001
+From: asadrizvi64 <noreply@users.noreply.github.com>
+Date: Tue, 27 Oct 2026 13:28:06 +0100
+Subject: [PATCH] Lean Adam: visibility-sparse update and bf16 SH-rest moments
+ (stochastic rounding)
+
+Adds adam_step_sparse (skips primitives with n_touched_tiles == 0 in the current view; optional
+bfloat16 exp_avg/exp_avg_sq with stochastic rounding) and an n_touched_tiles export from the forward
+pass. Enabled via TRAINING.OPTIMIZER.SPARSE_ADAM / SH_REST_BF16_MOMENTS; both default off, which keeps
+the original adam_step path.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../FasterGSCudaBackend/adam/include/adam.h   |  22 +++-
+ .../FasterGSCudaBackend/adam/src/adam.cu      | 119 +++++++++++++++++-
+ .../rasterization/include/rasterization_api.h |   3 +
+ .../rasterization/src/rasterization_api.cu    |  11 ++
+ .../torch_bindings/adam.py                    |  52 +++++++-
+ .../torch_bindings/bindings.cpp               |   2 +
+ .../torch_bindings/rasterization.py           |   7 ++
+ Model.py                                      |   6 +-
+ 8 files changed, 215 insertions(+), 7 deletions(-)
+
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/adam/include/adam.h b/FasterGSCudaBackend/FasterGSCudaBackend/adam/include/adam.h
+index 712cee2..87b18c2 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/adam/include/adam.h
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/adam/include/adam.h
+@@ -15,4 +15,24 @@ namespace faster_gs::adam {
+         const double beta2,
+         const double epsilon);
+ 
+-}
+\ No newline at end of file
++}
++namespace faster_gs::adam {
++
++    // Adam step that (optionally) skips primitives not visible in the current view and (optionally)
++    // keeps exp_avg / exp_avg_sq in bfloat16 with stochastic rounding.
++    //   visibility: int32 [n_primitives] (n_touched_tiles from the forward pass; > 0 means visible), or an empty
++    //               tensor to update every primitive. param must be [n_primitives, ...].
++    //   exp_avg / exp_avg_sq: float32 or bfloat16 (both the same dtype).
++    void adam_step_sparse_wrapper(
++        const torch::Tensor& param_grad,
++        torch::Tensor& param,
++        torch::Tensor& exp_avg,
++        torch::Tensor& exp_avg_sq,
++        const torch::Tensor& visibility,
++        const int step_count,
++        const double learning_rate,
++        const double beta1,
++        const double beta2,
++        const double epsilon);
++
++}
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/adam/src/adam.cu b/FasterGSCudaBackend/FasterGSCudaBackend/adam/src/adam.cu
+index 9be05e7..4eb3baf 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/adam/src/adam.cu
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/adam/src/adam.cu
+@@ -70,4 +70,121 @@ namespace faster_gs::adam {
+         CHECK_CUDA(config::debug, "adam_step")
+     }
+ 
+-}
+\ No newline at end of file
++}
++
++// ---------------------------------------------------------------------------------------------
++// lean Adam: visibility-sparse update + optional bfloat16 moments with stochastic rounding
++// ---------------------------------------------------------------------------------------------
++namespace faster_gs::adam {
++
++    __device__ __forceinline__ uint32_t hash_u32(uint32_t x) {
++        x ^= x >> 16; x *= 0x7feb352du; x ^= x >> 15; x *= 0x846ca68bu; x ^= x >> 16;
++        return x;
++    }
++
++    __device__ __forceinline__ float bf16_bits_to_float(const uint16_t b) {
++        return __uint_as_float(static_cast<uint32_t>(b) << 16);
++    }
++
++    // round-to-bfloat16 with stochastic rounding: add uniform noise to the 16 dropped bits, then truncate.
++    // unbiased in expectation, so slowly-decaying EMAs (beta2 = 0.999) do not stall at bf16 resolution.
++    __device__ __forceinline__ uint16_t float_to_bf16_bits_sr(const float f, const uint32_t rnd) {
++        const uint32_t u = __float_as_uint(f);
++        return static_cast<uint16_t>((u + (rnd & 0xFFFFu)) >> 16);
++    }
++
++    template <bool LOWP>
++    __global__ void adam_step_sparse_cu(
++        const float* __restrict__ param_grad,
++        float* __restrict__ param,
++        void* __restrict__ exp_avg_raw,
++        void* __restrict__ exp_avg_sq_raw,
++        const int* __restrict__ visibility,
++        const long long n_elements,
++        const int features_per_primitive,
++        const float step_size,
++        const float beta1,
++        const float beta2,
++        const float epsilon,
++        const float bias_correction2_sqrt_rcp,
++        const uint32_t seed)
++    {
++        const long long idx = static_cast<long long>(blockIdx.x) * blockDim.x + threadIdx.x;
++        if (idx >= n_elements) return;
++        if (visibility != nullptr && visibility[idx / features_per_primitive] == 0) return;
++        const float grad = param_grad[idx];
++        float exp, exp_sq;
++        if constexpr (LOWP) {
++            exp = bf16_bits_to_float(static_cast<const uint16_t*>(exp_avg_raw)[idx]);
++            exp_sq = bf16_bits_to_float(static_cast<const uint16_t*>(exp_avg_sq_raw)[idx]);
++        } else {
++            exp = static_cast<const float*>(exp_avg_raw)[idx];
++            exp_sq = static_cast<const float*>(exp_avg_sq_raw)[idx];
++        }
++        const float grad_sq = grad * grad;
++        const float moment1 = fmaf(beta1, exp - grad, grad);
++        const float moment2 = fmaf(beta2, exp_sq - grad_sq, grad_sq);
++        const float denom = sqrtf(moment2) * bias_correction2_sqrt_rcp + epsilon;
++        param[idx] -= step_size * moment1 / denom;
++        if constexpr (LOWP) {
++            const uint32_t r1 = hash_u32(static_cast<uint32_t>(idx) ^ seed);
++            const uint32_t r2 = hash_u32(r1);
++            static_cast<uint16_t*>(exp_avg_raw)[idx] = float_to_bf16_bits_sr(moment1, r1);
++            static_cast<uint16_t*>(exp_avg_sq_raw)[idx] = float_to_bf16_bits_sr(moment2, r2);
++        } else {
++            static_cast<float*>(exp_avg_raw)[idx] = moment1;
++            static_cast<float*>(exp_avg_sq_raw)[idx] = moment2;
++        }
++    }
++
++    void adam_step_sparse_wrapper(
++        const torch::Tensor& param_grad,
++        torch::Tensor& param,
++        torch::Tensor& exp_avg,
++        torch::Tensor& exp_avg_sq,
++        const torch::Tensor& visibility,
++        const int step_count,
++        const double learning_rate,
++        const double beta1,
++        const double beta2,
++        const double epsilon)
++    {
++        TORCH_CHECK(param.is_cuda() && param.is_contiguous() && param.scalar_type() == torch::kFloat, "param must be contiguous float32 CUDA");
++        TORCH_CHECK(param_grad.is_contiguous() && param_grad.scalar_type() == torch::kFloat && param_grad.numel() == param.numel(), "bad grad");
++        TORCH_CHECK(exp_avg.scalar_type() == exp_avg_sq.scalar_type(), "exp_avg and exp_avg_sq must share a dtype");
++        TORCH_CHECK(exp_avg.is_contiguous() && exp_avg_sq.is_contiguous() && exp_avg.numel() == param.numel() && exp_avg_sq.numel() == param.numel(), "bad moments");
++        const bool lowp = exp_avg.scalar_type() == torch::kBFloat16;
++        TORCH_CHECK(lowp || exp_avg.scalar_type() == torch::kFloat, "moments must be float32 or bfloat16");
++
++        const long long n_elements = param.numel();
++        if (n_elements == 0) return;
++        const int n_primitives = param.size(0);
++        const int features_per_primitive = static_cast<int>(n_elements / n_primitives);
++        const int* vis = nullptr;
++        if (visibility.numel() > 0) {
++            TORCH_CHECK(visibility.is_cuda() && visibility.is_contiguous() && visibility.scalar_type() == torch::kInt && visibility.numel() == n_primitives,
++                        "visibility must be int32 [n_primitives] on CUDA");
++            vis = visibility.data_ptr<int>();
++        }
++
++        const double bias_correction1_rcp = 1.0 / (1.0 - std::pow(beta1, step_count));
++        const double bias_correction2_sqrt_rcp = 1.0 / std::sqrt(1.0 - std::pow(beta2, step_count));
++        const double step_size = learning_rate * bias_correction1_rcp;
++        const uint32_t seed = 0x9E3779B9u * static_cast<uint32_t>(step_count) + 0x85EBCA6Bu;
++
++        const int blocks = static_cast<int>((n_elements + config::block_size_adam_step - 1) / config::block_size_adam_step);
++        if (lowp) {
++            adam_step_sparse_cu<true><<<blocks, config::block_size_adam_step>>>(
++                param_grad.data_ptr<float>(), param.data_ptr<float>(), exp_avg.data_ptr(), exp_avg_sq.data_ptr(), vis,
++                n_elements, features_per_primitive, static_cast<float>(step_size), static_cast<float>(beta1), static_cast<float>(beta2),
++                static_cast<float>(epsilon), static_cast<float>(bias_correction2_sqrt_rcp), seed);
++        } else {
++            adam_step_sparse_cu<false><<<blocks, config::block_size_adam_step>>>(
++                param_grad.data_ptr<float>(), param.data_ptr<float>(), exp_avg.data_ptr(), exp_avg_sq.data_ptr(), vis,
++                n_elements, features_per_primitive, static_cast<float>(step_size), static_cast<float>(beta1), static_cast<float>(beta2),
++                static_cast<float>(epsilon), static_cast<float>(bias_correction2_sqrt_rcp), seed);
++        }
++        CHECK_CUDA(config::debug, "adam_step_sparse")
++    }
++
++}
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/rasterization_api.h b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/rasterization_api.h
+index fd701d4..025f278 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/rasterization_api.h
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/rasterization_api.h
+@@ -105,4 +105,7 @@ namespace faster_gs::rasterization {
+         const float far_plane,
+         const bool proper_antialiasing);
+ 
++    // copy of the per-primitive n_touched_tiles from a forward pass's primitive buffers (int32 [n_primitives], > 0 = visible)
++    torch::Tensor n_touched_tiles_wrapper(const torch::Tensor& primitive_buffers, const int n_primitives);
++
+ }
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/rasterization_api.cu b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/rasterization_api.cu
+index b3c8e0c..83abda1 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/rasterization_api.cu
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/rasterization_api.cu
+@@ -6,6 +6,7 @@
+ #include "torch_utils.h"
+ #include "rasterization_config.h"
+ #include "helper_math.h"
++#include "buffer_utils.h"
+ #include <stdexcept>
+ #include <functional>
+ #include <tuple>
+@@ -311,3 +312,13 @@ faster_gs::rasterization::pruning_scores_wrapper(
+         proper_antialiasing
+     );
+ }
++
++
++torch::Tensor faster_gs::rasterization::n_touched_tiles_wrapper(const torch::Tensor& primitive_buffers, const int n_primitives)
++{
++    const torch::TensorOptions int_options = torch::TensorOptions().dtype(torch::kInt).device(torch::kCUDA);
++    if (n_primitives == 0) return torch::empty({0}, int_options);
++    char* blob = reinterpret_cast<char*>(primitive_buffers.data_ptr());
++    PrimitiveBuffers buffers = PrimitiveBuffers::from_blob(blob, n_primitives);
++    return torch::from_blob(buffers.n_touched_tiles, {n_primitives}, int_options).clone();
++}
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/torch_bindings/adam.py b/FasterGSCudaBackend/FasterGSCudaBackend/torch_bindings/adam.py
+index 013f0e0..d55867f 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/torch_bindings/adam.py
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/torch_bindings/adam.py
+@@ -1,14 +1,30 @@
+ import torch
+ 
+ from FasterGSCudaBackend import _C
++from .rasterization import _Rasterize
+ 
+ 
+ class FusedAdam(torch.optim.Adam):
+-    def __init__(self, params, lr, eps) -> None:
++    """Fused Adam over single-tensor parameter groups.
++
++    sparse: only update primitives visible in the last differentiable forward pass (n_touched_tiles > 0);
++            invisible primitives keep their parameters and moments unchanged for that step.
++    lowp_moment_groups: names of parameter groups whose exp_avg / exp_avg_sq are kept in bfloat16
++            (stochastic rounding on write).
++    With both off, this is the original Faster-GS optimizer (same kernel).
++    """
++
++    def __init__(self, params, lr, eps, sparse: bool = False, lowp_moment_groups: tuple = ()) -> None:
+         super().__init__(params=params, lr=lr, eps=eps)
++        self.sparse = sparse
++        self.lowp_moment_groups = set(lowp_moment_groups)
++        self.lean = sparse or bool(self.lowp_moment_groups)
++        self.n_dense_fallbacks = 0
++        _Rasterize.track_visibility = sparse
+ 
+     @torch.no_grad()
+     def step(self) -> None:
++        visibility = _Rasterize.last_visibility if self.sparse else None
+         for group in self.param_groups:
+             assert len(group['params']) == 1, 'more than one tensor in group'
+             param = group['params'][0]
+@@ -16,19 +32,47 @@ class FusedAdam(torch.optim.Adam):
+             if param.grad is None or param.numel() == 0:
+                 continue
+ 
++            lowp = group.get('name') in self.lowp_moment_groups
++            moment_dtype = torch.bfloat16 if lowp else param.dtype
+             state = self.state[param]
+             if len(state) == 0:
+                 state['step'] = 0
+-                state['exp_avg'] = torch.zeros_like(param)
+-                state['exp_avg_sq'] = torch.zeros_like(param)
++                state['exp_avg'] = torch.zeros_like(param, dtype=moment_dtype)
++                state['exp_avg_sq'] = torch.zeros_like(param, dtype=moment_dtype)
++            elif lowp and state['exp_avg'].dtype != moment_dtype:
++                # densification utilities concatenate float32 zeros, which promotes the moments; convert back
++                state['exp_avg'] = state['exp_avg'].to(moment_dtype)
++                state['exp_avg_sq'] = state['exp_avg_sq'].to(moment_dtype)
+ 
+             state['step'] += 1
+ 
+-            _C.adam_step(
++            if not self.lean:
++                _C.adam_step(
++                    param.grad,
++                    param,
++                    state['exp_avg'],
++                    state['exp_avg_sq'],
++                    state['step'],
++                    group['lr'],
++                    *group['betas'],
++                    group['eps'],
++                )
++                continue
++
++            vis = visibility
++            if vis is not None and group.get('name') == 'means' and state['step'] % 1000 == 0:
++                # occasional (host-syncing) log of the visible fraction; every 1000 steps only
++                print(f'VISFRAC step={state["step"]} visible={int(vis.count_nonzero())} total={vis.numel()} '
++                      f'frac={int(vis.count_nonzero()) / max(vis.numel(), 1):.3f}', flush=True)
++            if vis is not None and vis.numel() != param.shape[0]:
++                vis = None  # stale mask (should not happen inside training_iteration); fall back to dense
++                self.n_dense_fallbacks += 1
++            _C.adam_step_sparse(
+                 param.grad,
+                 param,
+                 state['exp_avg'],
+                 state['exp_avg_sq'],
++                vis if vis is not None else torch.empty(0, dtype=torch.int32, device=param.device),
+                 state['step'],
+                 group['lr'],
+                 *group['betas'],
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/torch_bindings/bindings.cpp b/FasterGSCudaBackend/FasterGSCudaBackend/torch_bindings/bindings.cpp
+index bd92123..02db99d 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/torch_bindings/bindings.cpp
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/torch_bindings/bindings.cpp
+@@ -15,6 +15,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
+     m.def("inference", &rasterization_api::inference_wrapper);
+     m.def("pruning_scores", &rasterization_api::pruning_scores_wrapper);
+     m.def("adam_step", &adam_api::adam_step_wrapper);
++    m.def("adam_step_sparse", &adam_api::adam_step_sparse_wrapper);
++    m.def("n_touched_tiles", &rasterization_api::n_touched_tiles_wrapper);
+     m.def("update_3d_filter", &filter3d_api::update_3d_filter_wrapper);
+     m.def("relocation_adjustment", &densification_api::relocation_wrapper);
+     m.def("add_noise", &densification_api::add_noise_wrapper);
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/torch_bindings/rasterization.py b/FasterGSCudaBackend/FasterGSCudaBackend/torch_bindings/rasterization.py
+index 6d26f18..8e8214f 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/torch_bindings/rasterization.py
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/torch_bindings/rasterization.py
+@@ -39,6 +39,11 @@ class RasterizerSettings(NamedTuple):
+ 
+ 
+ class _Rasterize(torch.autograd.Function):
++    # visibility hand-off for the sparse optimizer: when track_visibility is set, each differentiable forward
++    # stores the per-primitive n_touched_tiles (int32, > 0 = visible in that view) in last_visibility
++    track_visibility: bool = False
++    last_visibility: 'torch.Tensor | None' = None
++
+     @staticmethod
+     def forward(
+         ctx: Any,
+@@ -64,6 +69,8 @@ class _Rasterize(torch.autograd.Function):
+             sh_coefficients_rest,
+             *rasterizer_settings.as_tuple(),
+         )
++        if _Rasterize.track_visibility:
++            _Rasterize.last_visibility = _C.n_touched_tiles(primitive_buffers, means.shape[0])
+         ctx.rasterizer_settings = rasterizer_settings
+         ctx.buffer_state = (n_instances, n_buckets, instance_primitive_indices_selector)
+         ctx.save_for_backward(
+diff --git a/Model.py b/Model.py
+index 16bef0a..241a12c 100644
+--- a/Model.py
++++ b/Model.py
+@@ -245,7 +245,11 @@ class Gaussians(torch.nn.Module):
+             {'params': [self._rotations], 'lr': training_wrapper.OPTIMIZER.LEARNING_RATE_ROTATIONS, 'name': 'rotations'}
+         ]
+ 
+-        self.optimizer = FusedAdam(param_groups, lr=0.0, eps=1e-15)
++        # lean optimizer options (both off by default = original Faster-GS behaviour)
++        optimizer_config = training_wrapper.OPTIMIZER
++        sparse_adam = bool(getattr(optimizer_config, 'SPARSE_ADAM', False))
++        lowp_groups = ('sh_coefficients_rest',) if getattr(optimizer_config, 'SH_REST_BF16_MOMENTS', False) else ()
++        self.optimizer = FusedAdam(param_groups, lr=0.0, eps=1e-15, sparse=sparse_adam, lowp_moment_groups=lowp_groups)
+ 
+         self.lr_means_scheduler = LRDecayPolicy(
+             lr_init=training_wrapper.OPTIMIZER.LEARNING_RATE_MEANS_INIT * self.training_cameras_extent,
+-- 
+2.43.0.windows.1
+
