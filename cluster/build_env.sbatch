@@ -35,7 +35,7 @@ cat /tmp/gs-req-$$.txt
 pip install -q --no-build-isolation -r /tmp/gs-req-$$.txt
 
 echo "== gsplat $GSPLAT_COMMIT"
-cd "$GSPLAT" && git checkout -q "$GSPLAT_COMMIT"
+cd "$GSPLAT" && git checkout -q "$GSPLAT_COMMIT" && git submodule update --init --recursive -q  # glm headers
 pip install -q --no-build-isolation -e "$GSPLAT"
 
 echo "== check"
