@@ -7,7 +7,7 @@
 #SBATCH --account=p_scads_mlhpc
 #SBATCH --partition=capella
 #SBATCH --gres=gpu:1
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=14
 #SBATCH --mem=64G
 #SBATCH --time=02:00:00
 #SBATCH --output=cluster/logs/%x-%j.out
@@ -20,7 +20,7 @@ GSPLAT_COMMIT=512d366b67073d77ca099ede742683c165dfc23b
 
 module load GCC/13.3.0 CUDA/12.8.0 Python/3.12.3 >/dev/null 2>&1
 export PIP_CACHE_DIR=$DATA/.pipcache
-export TORCH_CUDA_ARCH_LIST="8.0;9.0" MAX_JOBS=16
+export TORCH_CUDA_ARCH_LIST="8.0;9.0" MAX_JOBS=14
 
 [ -d "$VENV" ] || python -m venv "$VENV"
 source "$VENV/bin/activate"
