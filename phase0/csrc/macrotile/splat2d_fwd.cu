@@ -1,5 +1,7 @@
 // splat2d_fwd.cu - forward rasterizer, one thread per pixel, one 16x16 block per tile.
 //
+// The block walks its tile list in batches of 256 splats: each thread stages one splat's
+// parameters in shared memory, then every thread composites the batch for its pixel.
 // Saves what both backward passes need: the image, T_final, n_contrib, last_contrib, and
 // a (C, T) checkpoint at the start of every 32-splat bucket (used by backward B).
 #include "launch.h"
@@ -9,6 +11,8 @@ namespace splat2d {
 
 template <typename S>
 __global__ void forward_kernel(SceneView<S> v, FwdOut<S> out) {
+  __shared__ SplatParams<S> s_splat[kTilePixels];
+
   const int tile = static_cast<int>(blockIdx.x);
   const int lane = static_cast<int>(threadIdx.x);
   const PixelCoord p = pixel_of(tile, lane, v.tiles_x, v.height, v.width);
@@ -22,18 +26,23 @@ __global__ void forward_kernel(SceneView<S> v, FwdOut<S> out) {
   const int begin = v.tile_off[tile];
   const int end = v.tile_off[tile + 1];
   const int bucket0 = v.bucket_off[tile];
-  for (int k = begin; k < end; ++k) {
-    const int local = k - begin;
-    if (local % kBucket == 0) {
-      store_checkpoint(out.ckpt, bucket0 + local / kBucket, lane, C, T);
+  for (int batch = begin; batch < end; batch += kTilePixels) {
+    __syncthreads();  // the previous batch is no longer in use
+    if (batch + lane < end) s_splat[lane] = load_splat(v, v.tile_ids[batch + lane]);
+    __syncthreads();
+    const int nb = end - batch < kTilePixels ? end - batch : kTilePixels;
+    for (int j = 0; j < nb; ++j) {
+      const int local = batch - begin + j;
+      if (local % kBucket == 0) {
+        store_checkpoint(out.ckpt, bucket0 + local / kBucket, lane, C, T);
+      }
+      if (!p.inside || T < S(kTStop)) continue;
+      const SplatEval<S> e = eval_splat(s_splat[j], px, py);
+      if (e.alpha < S(kAlphaMin)) continue;
+      composite_step(C, T, s_splat[j].color, e.alpha);
+      ++count;
+      last = local + 1;
     }
-    if (!p.inside || T < S(kTStop)) continue;
-    const int id = v.tile_ids[k];
-    const SplatEval<S> e = eval_splat(v, id, px, py);
-    if (e.alpha < S(kAlphaMin)) continue;
-    composite_step(C, T, v.colors + 3 * id, e.alpha);
-    ++count;
-    last = local + 1;
   }
   if (p.inside) {
     const int pix = p.y * v.width + p.x;

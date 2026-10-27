@@ -164,8 +164,9 @@ std::vector<Tensor> forward(const Tensor& means, const Tensor& chol, const Tenso
   Tensor t_final = torch::ones({height, width}, opts);
   Tensor n_contrib = torch::zeros({height, width}, opts.dtype(torch::kInt32));
   Tensor last_contrib = torch::zeros({height, width}, opts.dtype(torch::kInt32));
+  // No zero-fill: the forward writes every checkpoint slot (all 256 lanes of every bucket).
   Tensor ckpt =
-      torch::zeros({s.bucket_tile.numel(), splat2d::kTilePixels, splat2d::kCkptStride}, opts);
+      torch::empty({s.bucket_tile.numel(), splat2d::kTilePixels, splat2d::kCkptStride}, opts);
   AT_DISPATCH_FLOATING_TYPES(s.means.scalar_type(), "splat2d_forward", [&] {
     const splat2d::FwdOut<scalar_t> out{image.data_ptr<scalar_t>(), t_final.data_ptr<scalar_t>(),
                                         n_contrib.data_ptr<int32_t>(),

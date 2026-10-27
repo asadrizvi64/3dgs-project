@@ -2,9 +2,11 @@
 //
 // Uses exactly the math in splat2d_common.h. The loops emulate the GPU thread mappings:
 // blocks run one after another, threads (lanes) of a block run in lane order, and backward
-// (B) keeps 32 lanes of registers, does the checkpoint replay, emulates the
-// __shfl_down_sync tree and the shared-memory accumulators. Every emulated atomicAdd and
-// every (splat, pixel) evaluation increments the op counters. No torch dependency.
+// (B) keeps 32 lanes x 8 pixels of register state, does the checkpoint replay, sums each
+// lane's 8 pixels in lane order and emulates the __shfl_down_sync tree. (Shared-memory
+// staging of splat parameters does not change the math and is not emulated.) Every
+// emulated atomicAdd and every (splat, pixel) evaluation increments the op counters.
+// No torch dependency.
 #include <stdint.h>
 
 #include "splat2d_common.h"
@@ -30,8 +32,8 @@ template <typename S>
 void forward_cpu(const SceneView<S>& v, const FwdOut<S>& out) {
   counters().checkpoint_bytes += static_cast<int64_t>(v.num_buckets) * kTilePixels *
                                  kCkptStride * static_cast<int64_t>(sizeof(S));
-  for (int tile = 0; tile < v.num_tiles; ++tile) {      // blockIdx.x
-    for (int lane = 0; lane < kTilePixels; ++lane) {     // threadIdx.x
+  for (int tile = 0; tile < v.num_tiles; ++tile) {   // blockIdx.x
+    for (int lane = 0; lane < kTilePixels; ++lane) {  // threadIdx.x
       const PixelCoord p = pixel_of(tile, lane, v.tiles_x, v.height, v.width);
       const S px = S(p.x) + S(0.5);
       const S py = S(p.y) + S(0.5);
@@ -48,11 +50,11 @@ void forward_cpu(const SceneView<S>& v, const FwdOut<S>& out) {
           store_checkpoint(out.ckpt, bucket0 + local / kBucket, lane, C, T);
         }
         if (!p.inside || T < S(kTStop)) continue;
-        const int id = v.tile_ids[k];
-        const SplatEval<S> e = eval_splat(v, id, px, py);
+        const SplatParams<S> sp = load_splat(v, v.tile_ids[k]);
+        const SplatEval<S> e = eval_splat(sp, px, py);
         ++counters().splat_pixel_evals;
         if (e.alpha < S(kAlphaMin)) continue;
-        composite_step(C, T, v.colors + 3 * id, e.alpha);
+        composite_step(C, T, sp.color, e.alpha);
         ++count;
         last = local + 1;
       }
@@ -72,8 +74,8 @@ void forward_cpu(const SceneView<S>& v, const FwdOut<S>& out) {
 template <typename S>
 void backward_pixel_cpu(const SceneView<S>& v, const S* grad_image, const S* t_final,
                         const int32_t* last_contrib, const Grads<S>& grads) {
-  for (int tile = 0; tile < v.num_tiles; ++tile) {      // blockIdx.x
-    for (int lane = 0; lane < kTilePixels; ++lane) {     // threadIdx.x
+  for (int tile = 0; tile < v.num_tiles; ++tile) {   // blockIdx.x
+    for (int lane = 0; lane < kTilePixels; ++lane) {  // threadIdx.x
       const PixelCoord p = pixel_of(tile, lane, v.tiles_x, v.height, v.width);
       if (!p.inside) continue;
       const int pix = p.y * v.width + p.x;
@@ -85,13 +87,14 @@ void backward_pixel_cpu(const SceneView<S>& v, const S* grad_image, const S* t_f
       const int begin = v.tile_off[tile];
       for (int local = last_contrib[pix] - 1; local >= 0; --local) {
         const int id = v.tile_ids[begin + local];
-        const SplatEval<S> e = eval_splat(v, id, px, py);
+        const SplatParams<S> sp = load_splat(v, id);
+        const SplatEval<S> e = eval_splat(sp, px, py);
         ++counters().splat_pixel_evals;
         if (e.alpha < S(kAlphaMin)) continue;
         S dL_dc[3];
-        const S dL_dalpha = backprop_pixel_step(e, v.colors + 3 * id, G, T_after, S_acc, dL_dc);
+        const S dL_dalpha = backprop_pixel_step(e, sp.color, G, T_after, S_acc, dL_dc);
         S g[kNumParams];
-        chain_rule(v, id, e, dL_dalpha, dL_dc, g);
+        chain_rule(sp, e, dL_dalpha, dL_dc, g);
         for (int k = 0; k < kNumParams; ++k) {
           emulated_atomic_add(grad_slot(grads, id, k), g[k]);
         }
@@ -103,88 +106,71 @@ void backward_pixel_cpu(const SceneView<S>& v, const S* grad_image, const S* t_f
 template <typename S>
 void backward_splat_cpu(const SceneView<S>& v, const S* grad_image, const S* image,
                         const S* ckpt, const Grads<S>& grads) {
-  constexpr int kRounds = kTilePixels / kBucket;
-  for (int bucket = 0; bucket < v.num_buckets; ++bucket) {  // blockIdx.x (one warp)
+  for (int bucket = 0; bucket < v.num_buckets; ++bucket) {  // one warp per bucket
     const int tile = v.bucket_tile[bucket];
     const int start = v.tile_off[tile] + (bucket - v.bucket_off[tile]) * kBucket;
     const int remaining = v.tile_off[tile + 1] - start;
     const int bsize = remaining < kBucket ? remaining : kBucket;
 
-    S s_acc[kBucket][kNumParams];  // __shared__
-    int s_touched[kBucket];        // __shared__
+    // Per-lane registers: lane owns pixels r * 32 + lane, r = 0..7.
+    S px[kBucket][kPixelsPerLane];
+    S py[kBucket][kPixelsPerLane];
+    bool inside[kBucket][kPixelsPerLane];
+    S C[kBucket][kPixelsPerLane][3];
+    S T[kBucket][kPixelsPerLane];
+    S G[kBucket][kPixelsPerLane][3];
+    S C_final[kBucket][kPixelsPerLane][3];
     for (int lane = 0; lane < kBucket; ++lane) {
-      for (int k = 0; k < kNumParams; ++k) s_acc[lane][k] = S(0);
-      s_touched[lane] = 0;
-    }
-
-    for (int round = 0; round < kRounds; ++round) {
-      // Per-lane registers.
-      PixelCoord p[kBucket];
-      S px[kBucket];
-      S py[kBucket];
-      S C[kBucket][3];
-      S T[kBucket];
-      S G[kBucket][3];
-      S C_final[kBucket][3];
-      for (int lane = 0; lane < kBucket; ++lane) {
-        const int pix_lane = round * kBucket + lane;
-        p[lane] = pixel_of(tile, pix_lane, v.tiles_x, v.height, v.width);
-        px[lane] = S(p[lane].x) + S(0.5);
-        py[lane] = S(p[lane].y) + S(0.5);
-        load_checkpoint(ckpt, bucket, pix_lane, C[lane], T[lane]);
+      for (int r = 0; r < kPixelsPerLane; ++r) {
+        const int pix_lane = r * kBucket + lane;
+        const PixelCoord p = pixel_of(tile, pix_lane, v.tiles_x, v.height, v.width);
+        px[lane][r] = S(p.x) + S(0.5);
+        py[lane][r] = S(p.y) + S(0.5);
+        inside[lane][r] = p.inside;
+        load_checkpoint(ckpt, bucket, pix_lane, C[lane][r], T[lane][r]);
+        const int pix = p.y * v.width + p.x;
         for (int ch = 0; ch < 3; ++ch) {
-          G[lane][ch] = S(0);
-          C_final[lane][ch] = S(0);
-        }
-        if (p[lane].inside) {
-          const int pix = p[lane].y * v.width + p[lane].x;
-          for (int ch = 0; ch < 3; ++ch) {
-            G[lane][ch] = grad_image[3 * pix + ch];
-            C_final[lane][ch] = image[3 * pix + ch];
-          }
+          G[lane][r][ch] = p.inside ? grad_image[3 * pix + ch] : S(0);
+          C_final[lane][r][ch] = p.inside ? image[3 * pix + ch] : S(0);
         }
       }
+    }
 
-      for (int jj = 0; jj < bsize; ++jj) {
-        const int id = v.tile_ids[start + jj];
-        S g[kBucket][kNumParams];
-        unsigned int ballot = 0u;
-        for (int lane = 0; lane < kBucket; ++lane) {
-          for (int k = 0; k < kNumParams; ++k) g[lane][k] = S(0);
-          if (!p[lane].inside || T[lane] < S(kTStop)) continue;
-          const SplatEval<S> e = eval_splat(v, id, px[lane], py[lane]);
+    for (int jj = 0; jj < bsize; ++jj) {
+      const int id = v.tile_ids[start + jj];
+      const SplatParams<S> sp = load_splat(v, id);  // shared memory on the GPU
+      S acc[kBucket][kNumParams];
+      bool any_used = false;
+      for (int lane = 0; lane < kBucket; ++lane) {
+        for (int k = 0; k < kNumParams; ++k) acc[lane][k] = S(0);
+        for (int r = 0; r < kPixelsPerLane; ++r) {
+          if (!inside[lane][r] || T[lane][r] < S(kTStop)) continue;
+          const SplatEval<S> e = eval_splat(sp, px[lane][r], py[lane][r]);
           ++counters().splat_pixel_evals;
           if (e.alpha < S(kAlphaMin)) continue;
-          ballot |= 1u << lane;
+          any_used = true;
           S dL_dc[3];
-          const S dL_dalpha = backprop_replay_step(e, v.colors + 3 * id, G[lane], C_final[lane],
-                                                   C[lane], T[lane], dL_dc);
-          chain_rule(v, id, e, dL_dalpha, dL_dc, g[lane]);
+          const S dL_dalpha = backprop_replay_step(e, sp.color, G[lane][r], C_final[lane][r],
+                                                   C[lane][r], T[lane][r], dL_dc);
+          S g[kNumParams];
+          chain_rule(sp, e, dL_dalpha, dL_dc, g);
+          for (int k = 0; k < kNumParams; ++k) acc[lane][k] += g[k];
         }
-        if (ballot == 0u) continue;
-        for (int k = 0; k < kNumParams; ++k) {
-          // __shfl_down_sync tree: lanes whose source is out of range keep their own value.
-          S val[kBucket];
-          for (int lane = 0; lane < kBucket; ++lane) val[lane] = g[lane][k];
-          for (int offset = kBucket / 2; offset > 0; offset /= 2) {
-            S next[kBucket];
-            for (int lane = 0; lane < kBucket; ++lane) {
-              const int src = lane + offset;
-              next[lane] = val[lane] + (src < kBucket ? val[src] : val[lane]);
-            }
-            for (int lane = 0; lane < kBucket; ++lane) val[lane] = next[lane];
-          }
-          s_acc[jj][k] += val[0];  // lane 0
-        }
-        s_touched[jj] = 1;
       }
-    }
-
-    for (int lane = 0; lane < bsize; ++lane) {
-      if (s_touched[lane] == 0) continue;
-      const int id = v.tile_ids[start + lane];
+      if (!any_used) continue;  // __ballot_sync == 0
       for (int k = 0; k < kNumParams; ++k) {
-        emulated_atomic_add(grad_slot(grads, id, k), s_acc[lane][k]);
+        // __shfl_down_sync tree: lanes whose source is out of range keep their own value.
+        S val[kBucket];
+        for (int lane = 0; lane < kBucket; ++lane) val[lane] = acc[lane][k];
+        for (int offset = kBucket / 2; offset > 0; offset /= 2) {
+          S next[kBucket];
+          for (int lane = 0; lane < kBucket; ++lane) {
+            const int src = lane + offset;
+            next[lane] = val[lane] + (src < kBucket ? val[src] : val[lane]);
+          }
+          for (int lane = 0; lane < kBucket; ++lane) val[lane] = next[lane];
+        }
+        emulated_atomic_add(grad_slot(grads, id, k), val[0]);  // lane 0
       }
     }
   }

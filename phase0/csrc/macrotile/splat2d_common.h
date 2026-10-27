@@ -32,6 +32,8 @@ constexpr int kCkptStride = 4;              // checkpoint = (C.r, C.g, C.b, T)
 constexpr double kAlphaMin = 1.0 / 255.0;
 constexpr double kAlphaMax = 0.99;
 constexpr double kTStop = 1e-4;
+constexpr int kPixelsPerLane = kTilePixels / kBucket;  // backward (B): 8 pixels per lane
+constexpr int kBucketWarpsPerBlock = 4;                // backward (B): buckets per block
 
 // Read-only scene description. Splats are pre-sorted by depth (in Python); tiles hold
 // CSR lists of splat ids in that order. Bucket b of tile t covers list entries
@@ -92,6 +94,29 @@ HD inline S sp_sigmoid(S z) {
   return S(1) / (S(1) + sp_exp(-z));
 }
 
+// One splat's parameters as the kernels use them (staged in shared memory). The opacity
+// is stored as o = sigmoid(z), computed once per load.
+template <typename S>
+struct SplatParams {
+  S mean[2];
+  S l[3];
+  S o;
+  S color[3];
+};
+
+template <typename S>
+HD inline SplatParams<S> load_splat(const SceneView<S>& v, int id) {
+  SplatParams<S> p;
+  p.mean[0] = v.means[2 * id];
+  p.mean[1] = v.means[2 * id + 1];
+  for (int i = 0; i < 3; ++i) {
+    p.l[i] = v.chol[3 * id + i];
+    p.color[i] = v.colors[3 * id + i];
+  }
+  p.o = sp_sigmoid(v.opacity_logit[id]);
+  return p;
+}
+
 template <typename S>
 struct SplatEval {
   S dx;
@@ -105,15 +130,15 @@ struct SplatEval {
 };
 
 template <typename S>
-HD inline SplatEval<S> eval_splat(const SceneView<S>& v, int id, S px, S py) {
+HD inline SplatEval<S> eval_splat(const SplatParams<S>& p, S px, S py) {
   SplatEval<S> e;
-  e.dx = px - v.means[2 * id];
-  e.dy = py - v.means[2 * id + 1];
-  e.a = v.chol[3 * id] * e.dx + v.chol[3 * id + 1] * e.dy;
-  e.b = v.chol[3 * id + 2] * e.dy;
+  e.dx = px - p.mean[0];
+  e.dy = py - p.mean[1];
+  e.a = p.l[0] * e.dx + p.l[1] * e.dy;
+  e.b = p.l[2] * e.dy;
   const S q = e.a * e.a + e.b * e.b;
   e.g = sp_exp(S(-0.5) * q);
-  e.o = sp_sigmoid(v.opacity_logit[id]);
+  e.o = p.o;
   const S raw = e.o * e.g;
   e.clamped = raw > S(kAlphaMax);
   e.alpha = e.clamped ? S(kAlphaMax) : raw;
@@ -188,14 +213,14 @@ HD inline S backprop_replay_step(const SplatEval<S>& e, const S* c, const S* G, 
 // Chain rule from (dL/dalpha, dL/dc) to the 9 parameters, in the order
 // mu_x, mu_y, l0, l1, l2, z, c_r, c_g, c_b.
 template <typename S>
-HD inline void chain_rule(const SceneView<S>& v, int id, const SplatEval<S>& e, S dL_dalpha,
+HD inline void chain_rule(const SplatParams<S>& p, const SplatEval<S>& e, S dL_dalpha,
                           const S* dL_dc, S* out) {
   const S d_alpha = e.clamped ? S(0) : dL_dalpha;
   const S d_z = d_alpha * e.g * e.o * (S(1) - e.o);
   const S d_q = S(-0.5) * e.g * e.o * d_alpha;
-  const S l0 = v.chol[3 * id];
-  const S l1 = v.chol[3 * id + 1];
-  const S l2 = v.chol[3 * id + 2];
+  const S l0 = p.l[0];
+  const S l1 = p.l[1];
+  const S l2 = p.l[2];
   const S two_a = S(2) * e.a;
   const S two_b = S(2) * e.b;
   out[0] = -d_q * two_a * l0;
