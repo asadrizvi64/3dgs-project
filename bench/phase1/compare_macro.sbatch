@@ -59,8 +59,8 @@ run() {  # method tag seed [extra env...]
   echo; echo "########## $method $tag seed=$seed start $(date +%T)"
   env "$@" SCENE=$SCENE SCALE=$SCALE SEED=$seed METHOD=$method TAG=$tag \
     bash "$REPO/cluster/train_fastergs.sbatch" 2>&1 | tr '\r' '\n' \
-    | sed -E 's/.*((GRADCHECK|BWDTIME|STAGE) )/\1/' \
-    | grep -E "^(GRADCHECK|BWDTIME|STAGE|CLOCK)|PSNR|Traceback|Error|== run dir|method=" | grep -v "it/s" || true
+    | sed -E 's/.*((GRADCHECK|GRADFLOOR|BWDTIME|STAGE) )/\1/' \
+    | grep -E "^(GRADCHECK|GRADFLOOR|BWDTIME|STAGE|CLOCK)|PSNR|Traceback|Error|== run dir|method=" | grep -v "it/s" || true
 }
 
 if has gradcheck; then

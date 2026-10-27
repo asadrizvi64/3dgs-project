@@ -310,7 +310,7 @@ index 83abda1..78f7374 100644
  
      return {grad_means, grad_scales, grad_rotations, grad_opacities, grad_sh_coefficients_0, grad_sh_coefficients_rest};
 diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/torch_bindings/rasterization.py b/FasterGSCudaBackend/FasterGSCudaBackend/torch_bindings/rasterization.py
-index 8e8214f..7216636 100644
+index 8e8214f..e128fe0 100644
 --- a/FasterGSCudaBackend/FasterGSCudaBackend/torch_bindings/rasterization.py
 +++ b/FasterGSCudaBackend/FasterGSCudaBackend/torch_bindings/rasterization.py
 @@ -1,4 +1,5 @@
@@ -319,7 +319,7 @@ index 8e8214f..7216636 100644
  import torch
  from torch.autograd.function import once_differentiable
  
-@@ -38,6 +39,63 @@ class RasterizerSettings(NamedTuple):
+@@ -38,6 +39,68 @@ class RasterizerSettings(NamedTuple):
          )
  
  
@@ -363,6 +363,11 @@ index 8e8214f..7216636 100644
 +            errs[f'densify{row}'] = rel_error(d_macro[row], d_taming[row])
 +    line = ' '.join(f'{k}={v:.3e}' for k, v in errs.items())
 +    print(f'GRADCHECK call={_n_backward_calls} n={args_head[2].shape[0]} max={max(errs.values()):.3e} {line}', flush=True)
++    # noise floor: a second stock run vs the first (only the order of the atomics differs)
++    taming_again = _backward_call(args_head, densification_info_before.clone(), args_tail, 0)
++    floor = {name: rel_error(a, t) for name, a, t in zip(_GRAD_NAMES, taming_again, taming)}
++    line = ' '.join(f'{k}={v:.3e}' for k, v in floor.items())
++    print(f'GRADFLOOR call={_n_backward_calls} n={args_head[2].shape[0]} max={max(floor.values()):.3e} {line}', flush=True)
 +    if _BWDTIME_REPS > 0:
 +        times = {}
 +        for name, m in BLEND_BACKWARD_MODES.items():
@@ -383,7 +388,7 @@ index 8e8214f..7216636 100644
  class _Rasterize(torch.autograd.Function):
      # visibility hand-off for the sparse optimizer: when track_visibility is set, each differentiable forward
      # stores the per-primitive n_touched_tiles (int32, > 0 = visible in that view) in last_visibility
-@@ -95,16 +153,19 @@ class _Rasterize(torch.autograd.Function):
+@@ -95,16 +158,19 @@ class _Rasterize(torch.autograd.Function):
          ctx: Any,
          grad_image: torch.Tensor,
      ) -> 'tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, None, None]':
