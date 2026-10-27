@@ -179,7 +179,7 @@ if args.calibrate:
     pairs = []  # (active fraction, sparse opt ms)
     a_full = []
     for rep in range(36):
-        vi = int(torch.randint(len(train_views), (1,), generator=vgen))
+        vi = int(torch.randint(len(train_views), (1,), generator=vgen, device='cpu'))
         policy = ['dense', 'err_block', 'rand_block'][rep % 3]
         e = [ev() for _ in range(5)]
         torch.cuda.synchronize()
@@ -273,7 +273,7 @@ torch.cuda.synchronize()
 t0 = time.perf_counter()
 for step in range(1, steps_total + 1):
     set_lr(int(start_iter + (step - 1) * frac) + 1)
-    vi = int(torch.randint(len(train_views), (1,), generator=vgen))
+    vi = int(torch.randint(len(train_views), (1,), generator=vgen, device='cpu'))
     img, loss = forward_loss(vi, args.policy, frac)
     loss.backward()
     act = active_rows()
