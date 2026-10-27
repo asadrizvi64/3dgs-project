@@ -18,6 +18,7 @@ set -euo pipefail
 
 SCENE=${SCENE:-garden}
 METHOD=${METHOD:-FasterGS}
+SEED=${SEED:-0}
 SCALE=${SCALE:-0.25}   # 0.25 for outdoor scenes, 0.5 for indoor, as in 3DGS
 DATA=$(ws_find -F cat 3dgs-data)
 NERFICG=$DATA/nerficg
@@ -54,24 +55,25 @@ NC=$(git -C "$NERFICG" rev-parse --short HEAD)
 FC=$(git -C "$MDIR" rev-parse --short HEAD)
 nvidia-smi --query-gpu=name,driver_version --format=csv,noheader
 python -c "import torch; print('torch', torch.__version__)"
-echo "method=$METHOD scene=$SCENE scale=$SCALE nerficg=$NC method_commit=$FC job=${SLURM_JOB_ID:-local}"
+echo "method=$METHOD seed=$SEED scene=$SCENE scale=$SCALE nerficg=$NC method_commit=$FC job=${SLURM_JOB_ID:-local}"
 
 # authors' garden config, pointed at our data, GUI off, scene/scale substituted
-CFG=$NERFICG/configs/${LOW}_${SCENE}_cluster.yaml
+CFG=$NERFICG/configs/${LOW}_${SCENE}_s${SEED}_cluster.yaml
 mkdir -p "$NERFICG/configs"
 sed -e "s|PATH: dataset/mipnerf360/garden|PATH: $DATA/data/360_v2/$SCENE|" \
-    -e "s|MODEL_NAME: ${LOW}_garden|MODEL_NAME: ${LOW}_${SCENE}_${FC}|" \
+    -e "s|MODEL_NAME: ${LOW}_garden|MODEL_NAME: ${LOW}_${SCENE}_${FC}_s${SEED}|" \
+    -e "s|RANDOM_SEED: 0|RANDOM_SEED: $SEED|" \
     -e "s|IMAGE_SCALE_FACTOR: 0.25|IMAGE_SCALE_FACTOR: $SCALE|" \
     -e "/^    GUI:/,/^    [A-Z]/ s|ACTIVATE: true|ACTIVATE: false|" \
     "$MDIR/${LOW}_garden.yaml" > "$CFG"
-grep -nE "METHOD_TYPE|PATH:|MODEL_NAME|IMAGE_SCALE|GUI:|ACTIVATE" "$CFG"
+grep -nE "RANDOM_SEED|METHOD_TYPE|PATH:|MODEL_NAME|IMAGE_SCALE|GUI:|ACTIVATE" "$CFG"
 
 cd "$NERFICG"
 TIMER=; [ -x /usr/bin/time ] && TIMER="/usr/bin/time -v"   # not installed on every node
 $TIMER python scripts/train.py -c "$CFG" 2>&1 \
   | grep -vE "^\s+(Page|Socket|Signals|Swaps|File system|Voluntary|Involuntary|Average|Major|Minor|Exit|Percent|System|User)"
 
-RUN=$(ls -dt output/$METHOD/${LOW}_${SCENE}_${FC}* | head -1)
+RUN=$(ls -dt output/$METHOD/${LOW}_${SCENE}_${FC}_s${SEED}_* | head -1)
 echo "== run dir $RUN"
 ls "$RUN"
 cat "$RUN/n_gaussians.txt" "$RUN/vram_stats.txt"; echo
