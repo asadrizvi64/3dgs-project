@@ -67,7 +67,8 @@ sed -e "s|PATH: dataset/mipnerf360/garden|PATH: $DATA/data/360_v2/$SCENE|" \
 grep -nE "METHOD_TYPE|PATH:|MODEL_NAME|IMAGE_SCALE|GUI:|ACTIVATE" "$CFG"
 
 cd "$NERFICG"
-/usr/bin/time -v python scripts/train.py -c "$CFG" 2>&1 \
+TIMER=; [ -x /usr/bin/time ] && TIMER="/usr/bin/time -v"   # not installed on every node
+$TIMER python scripts/train.py -c "$CFG" 2>&1 \
   | grep -vE "^\s+(Page|Socket|Signals|Swaps|File system|Voluntary|Involuntary|Average|Major|Minor|Exit|Percent|System|User)"
 
 RUN=$(ls -dt output/$METHOD/${LOW}_${SCENE}_${FC}* | head -1)

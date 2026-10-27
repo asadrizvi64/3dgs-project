@@ -30,7 +30,8 @@ python -c "import torch, gsplat; print('torch', torch.__version__, 'gsplat', gsp
 echo "scene=$SCENE factor=$FACTOR out=$OUT job=${SLURM_JOB_ID:-local}"
 
 cd "$GSPLAT/examples"
-/usr/bin/time -v python simple_trainer.py default \
+TIMER=; [ -x /usr/bin/time ] && TIMER="/usr/bin/time -v"   # not installed on every node
+$TIMER python simple_trainer.py default \
     --data_dir "$DATA/data/360_v2/$SCENE" --data_factor "$FACTOR" \
     --result_dir "$OUT" --disable_viewer 2>&1 | grep -vE "^\s+(Page|Socket|Signals|Swaps|File system|Voluntary|Involuntary|Average|Major|Minor|Exit|Percent|System|User)"
 
