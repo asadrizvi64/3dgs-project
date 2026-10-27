@@ -1,1 +1,2 @@
 date,commit,gpu,instance_type,driver,cuda,torch,scene,method,seed,train_time_s,peak_vram_gb,psnr,ssim,lpips,gaussian_count,notes
+2026-10-27,gsplat@512d366,NVIDIA H100 (94GB),ZIH Capella node (job 4473589),580.159.04,12.8,2.11.0+cu128,garden,gsplat simple_trainer default (factor 4),42,537.9,7.51,27.693,0.8716,0.0712,5060910,"30k steps; first baseline; wall clock incl. eval 11:20; val at 7k: 26.60 dB / 3.996M GS"
