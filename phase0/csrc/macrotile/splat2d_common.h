@@ -192,22 +192,33 @@ HD inline S backprop_pixel_step(const SplatEval<S>& e, const S* c, const S* G, S
   return T * dot;
 }
 
-// Backward (B) step, replaying front to back from a checkpoint. (C, T) is the state in
-// front of splat j on entry and behind it on exit; C_final is the rendered pixel.
-// Uses C_final - C_{<=j} = T_{j+1} * (colour behind j). Returns dL/dalpha_j.
+// Backward (B) setup for one pixel from its bucket checkpoint (C, T):
+// rho = G . (C_final - C), the upstream gradient dotted with the colour still to come.
 template <typename S>
-HD inline S backprop_replay_step(const SplatEval<S>& e, const S* c, const S* G, const S* C_final,
-                                 S* C, S& T, S* dL_dc) {
+HD inline S replay_rho(const S* G, const S* C_final, const S* C) {
+  S rho = S(0);
+  for (int ch = 0; ch < 3; ++ch) rho += G[ch] * (C_final[ch] - C[ch]);
+  return rho;
+}
+
+// Backward (B) step, replaying front to back from a checkpoint. T is the transmittance in
+// front of splat j on entry and behind it on exit, updated exactly as in composite_step,
+// so it is the forward's T_j bit for bit. rho is G . (C_final - C_{<j}) on entry and
+// G . (C_final - C_{<=j}) on exit, which is all dL/dalpha needs from the colour:
+// dL/dalpha_j = T_j (G . c_j) - G . (C_final - C_{<=j}) / (1 - alpha_j).
+template <typename S>
+HD inline S backprop_replay_step(const SplatEval<S>& e, const S* c, const S* G, S& rho, S& T,
+                                 S* dL_dc) {
   const S T_j = T;
-  composite_step(C, T, c, e.alpha);
+  const S w = e.alpha * T_j;
   S dot_c = S(0);
-  S dot_rest = S(0);
   for (int ch = 0; ch < 3; ++ch) {
-    dL_dc[ch] = G[ch] * e.alpha * T_j;
+    dL_dc[ch] = G[ch] * w;
     dot_c += G[ch] * c[ch];
-    dot_rest += G[ch] * (C_final[ch] - C[ch]);
   }
-  return T_j * dot_c - dot_rest / (S(1) - e.alpha);
+  rho -= dot_c * w;
+  T = T * (S(1) - e.alpha);
+  return T_j * dot_c - rho / (S(1) - e.alpha);
 }
 
 // Chain rule from (dL/dalpha, dL/dc) to the 9 parameters, in the order

@@ -2,7 +2,7 @@
 //
 // Uses exactly the math in splat2d_common.h. The loops emulate the GPU thread mappings:
 // blocks run one after another, threads (lanes) of a block run in lane order, and backward
-// (B) keeps 32 lanes x 8 pixels of register state, does the checkpoint replay, sums each
+// (B) keeps 32 lanes x 8 pixels of (T, rho) state, does the checkpoint replay, sums each
 // lane's 8 pixels in lane order and emulates the __shfl_down_sync tree. (Shared-memory
 // staging of splat parameters does not change the math and is not emulated.) Every
 // emulated atomicAdd and every (splat, pixel) evaluation increments the op counters.
@@ -112,26 +112,28 @@ void backward_splat_cpu(const SceneView<S>& v, const S* grad_image, const S* ima
     const int remaining = v.tile_off[tile + 1] - start;
     const int bsize = remaining < kBucket ? remaining : kBucket;
 
-    // Per-lane registers: lane owns pixels r * 32 + lane, r = 0..7.
-    S px[kBucket][kPixelsPerLane];
-    S py[kBucket][kPixelsPerLane];
-    bool inside[kBucket][kPixelsPerLane];
-    S C[kBucket][kPixelsPerLane][3];
+    // Per-lane registers: lane owns pixels r * 32 + lane, r = 0..7, and keeps only T and
+    // rho = G . (C_final - C) per pixel; G itself sits in shared memory on the GPU.
+    PixelCoord p[kBucket][kPixelsPerLane];
     S T[kBucket][kPixelsPerLane];
-    S G[kBucket][kPixelsPerLane][3];
-    S C_final[kBucket][kPixelsPerLane][3];
+    S rho[kBucket][kPixelsPerLane];
+    S G[kBucket][kPixelsPerLane][3];  // __shared__ s_grad
     for (int lane = 0; lane < kBucket; ++lane) {
       for (int r = 0; r < kPixelsPerLane; ++r) {
         const int pix_lane = r * kBucket + lane;
-        const PixelCoord p = pixel_of(tile, pix_lane, v.tiles_x, v.height, v.width);
-        px[lane][r] = S(p.x) + S(0.5);
-        py[lane][r] = S(p.y) + S(0.5);
-        inside[lane][r] = p.inside;
-        load_checkpoint(ckpt, bucket, pix_lane, C[lane][r], T[lane][r]);
-        const int pix = p.y * v.width + p.x;
-        for (int ch = 0; ch < 3; ++ch) {
-          G[lane][r][ch] = p.inside ? grad_image[3 * pix + ch] : S(0);
-          C_final[lane][r][ch] = p.inside ? image[3 * pix + ch] : S(0);
+        p[lane][r] = pixel_of(tile, pix_lane, v.tiles_x, v.height, v.width);
+        S C[3];
+        load_checkpoint(ckpt, bucket, pix_lane, C, T[lane][r]);
+        rho[lane][r] = S(0);
+        for (int ch = 0; ch < 3; ++ch) G[lane][r][ch] = S(0);
+        if (p[lane][r].inside) {
+          const int pix = p[lane][r].y * v.width + p[lane][r].x;
+          S C_final[3];
+          for (int ch = 0; ch < 3; ++ch) {
+            G[lane][r][ch] = grad_image[3 * pix + ch];
+            C_final[ch] = image[3 * pix + ch];
+          }
+          rho[lane][r] = replay_rho(G[lane][r], C_final, C);
         }
       }
     }
@@ -144,14 +146,16 @@ void backward_splat_cpu(const SceneView<S>& v, const S* grad_image, const S* ima
       for (int lane = 0; lane < kBucket; ++lane) {
         for (int k = 0; k < kNumParams; ++k) acc[lane][k] = S(0);
         for (int r = 0; r < kPixelsPerLane; ++r) {
-          if (!inside[lane][r] || T[lane][r] < S(kTStop)) continue;
-          const SplatEval<S> e = eval_splat(sp, px[lane][r], py[lane][r]);
+          if (!p[lane][r].inside || T[lane][r] < S(kTStop)) continue;
+          const S px = S(p[lane][r].x) + S(0.5);
+          const S py = S(p[lane][r].y) + S(0.5);
+          const SplatEval<S> e = eval_splat(sp, px, py);
           ++counters().splat_pixel_evals;
           if (e.alpha < S(kAlphaMin)) continue;
           any_used = true;
           S dL_dc[3];
-          const S dL_dalpha = backprop_replay_step(e, sp.color, G[lane][r], C_final[lane][r],
-                                                   C[lane][r], T[lane][r], dL_dc);
+          const S dL_dalpha =
+              backprop_replay_step(e, sp.color, G[lane][r], rho[lane][r], T[lane][r], dL_dc);
           S g[kNumParams];
           chain_rule(sp, e, dL_dalpha, dL_dc, g);
           for (int k = 0; k < kNumParams; ++k) acc[lane][k] += g[k];
