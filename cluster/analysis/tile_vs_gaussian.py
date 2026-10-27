@@ -60,7 +60,7 @@ def select(policy, frac, tile_err):
         return torch.ones_like(tile_err, dtype=torch.bool)
     if policy.endswith('_tile'):
         k = max(1, round(frac * n))
-        score = tile_err.flatten() if policy == 'err_tile' else torch.rand(n, generator=gen).to(tile_err.device)
+        score = tile_err.flatten() if policy == 'err_tile' else torch.rand(n, generator=gen, device='cpu').to(tile_err.device)
         idx = score.topk(k).indices
         m = torch.zeros(n, dtype=torch.bool, device=tile_err.device)
         m[idx] = True
@@ -69,7 +69,7 @@ def select(policy, frac, tile_err):
     pad = torch.zeros(by * BLOCK, bx * BLOCK, device=tile_err.device)
     pad[:ty, :tx] = tile_err
     berr = pad.view(by, BLOCK, bx, BLOCK).sum((1, 3)).flatten()
-    score = berr if policy == 'err_block' else torch.rand(by * bx, generator=gen).to(tile_err.device)
+    score = berr if policy == 'err_block' else torch.rand(by * bx, generator=gen, device='cpu').to(tile_err.device)
     order = score.argsort(descending=True)
     m = torch.zeros(by * BLOCK, bx * BLOCK, dtype=torch.bool, device=tile_err.device)
     target, have = round(frac * n), 0
