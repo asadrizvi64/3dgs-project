@@ -1,0 +1,412 @@
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/backward.h b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/backward.h
+index 5f7330a..9f1f56c 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/backward.h
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/backward.h
+@@ -42,6 +42,7 @@ namespace faster_gs::rasterization {
+         const float focal_y,
+         const float center_x,
+         const float center_y,
+-        const bool proper_antialiasing);
++        const bool proper_antialiasing,
++        const int blend_backward_mode); // 0: stock (Taming-3DGS), 1: macro (Phase 0 layout)
+ 
+ }
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh
+index fb3984a..15a0a45 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh
+@@ -487,4 +487,187 @@ namespace faster_gs::rasterization::kernels::backward {
+         }
+     }
+ 
++    // Phase 1 (3dgs-project): the Phase 0 "backward B" work layout for the same bucket data.
++    // One warp per (tile, 32-splat bucket), config::macro_warps_per_block warps per block. Each lane
++    // owns macro_pixels_per_lane = 6 pixels of the 16x12 tile (local = r * 32 + lane, i.e. column
++    // lane % 16, row 2r + lane / 16) and loops over the bucket's splats; per pixel it keeps only
++    //   T   - transmittance, from the bucket checkpoint, updated exactly like the forward,
++    //   rho - G . (image - C), image including the background, so that
++    //         dL/dalpha_j = T_j (G . c_j) - rho_after_j / (1 - alpha_j)
++    //         (this folds stock's grad_alpha_common = -T_final G . bg into rho),
++    //   lim - how many splats of this bucket the pixel used in the forward (n_processed - bucket start).
++    // Per splat the lanes sum their pixels' terms, the warp reduces, and lane 0 issues the same atomics
++    // as blend_backward_cu (one per (bucket, splat, value)); splats no pixel used are skipped by ballot.
++    template <bool compute_abs_grad>
++    __global__ void __launch_bounds__(32 * config::macro_warps_per_block) blend_backward_macro_cu(
++        const uint2* __restrict__ tile_instance_ranges,
++        const uint* __restrict__ tile_bucket_offsets,
++        const uint* __restrict__ instance_primitive_indices,
++        const float2* __restrict__ primitive_mean2d,
++        const float4* __restrict__ primitive_conic_opacity,
++        const float3* __restrict__ primitive_color,
++        const float3* __restrict__ bg_color,
++        const float* __restrict__ grad_image,
++        const float* __restrict__ image,
++        const uint* __restrict__ tile_max_n_processed,
++        const uint* __restrict__ tile_n_processed,
++        const uint* __restrict__ bucket_tile_index,
++        const float4* __restrict__ bucket_color_transmittance,
++        float2* __restrict__ grad_mean2d,
++        float* __restrict__ grad_conic,
++        float* __restrict__ grad_opacity,
++        float3* __restrict__ grad_sh_coefficients_0,
++        float2* __restrict__ grad_mean2d_abs,
++        const uint n_buckets,
++        const uint n_primitives,
++        const uint width,
++        const uint height,
++        const uint grid_width,
++        const bool proper_antialiasing)
++    {
++        constexpr int n_warps = config::macro_warps_per_block;
++        constexpr int n_px = config::macro_pixels_per_lane;
++        constexpr uint full_mask = 0xffffffffu;
++        static_assert(n_px * 32 == config::block_size_blend, "tile must hold 32 * n_px pixels");
++        static_assert(32 % config::tile_width == 0, "a lane must keep one column of the tile");
++        constexpr int rows_per_step = 32 / config::tile_width;
++
++        __shared__ float2 s_mean2d[n_warps][32];
++        __shared__ float4 s_conic_opacity[n_warps][32];
++        __shared__ float3 s_color[n_warps][32];
++        __shared__ uint s_primitive_idx[n_warps][32];
++        __shared__ uint s_color_mask[n_warps][32];
++        __shared__ float3 s_grad[n_warps][config::block_size_blend];
++
++        const uint warp_idx = threadIdx.x / 32;
++        const uint lane_idx = threadIdx.x % 32;
++        const uint bucket_idx = blockIdx.x * n_warps + warp_idx;
++        if (bucket_idx >= n_buckets) return; // whole warp; warps never sync with each other
++
++        const uint tile_idx = bucket_tile_index[bucket_idx];
++        const uint2 tile_range = tile_instance_ranges[tile_idx];
++        const uint tile_first_bucket = (tile_idx == 0) ? 0 : tile_bucket_offsets[tile_idx - 1];
++        const int bucket_start = static_cast<int>(bucket_idx - tile_first_bucket) * 32;
++        const int max_n_processed = static_cast<int>(tile_max_n_processed[tile_idx]);
++        if (bucket_start >= max_n_processed) return;
++        const int bucket_size = min(32, max_n_processed - bucket_start); // <= tile list length
++
++        // stage the bucket's splats
++        if (static_cast<int>(lane_idx) < bucket_size) {
++            const uint primitive_idx = instance_primitive_indices[tile_range.x + bucket_start + lane_idx];
++            s_primitive_idx[warp_idx][lane_idx] = primitive_idx;
++            s_mean2d[warp_idx][lane_idx] = primitive_mean2d[primitive_idx];
++            s_conic_opacity[warp_idx][lane_idx] = primitive_conic_opacity[primitive_idx];
++            const float3 color_unclamped = primitive_color[primitive_idx];
++            s_color[warp_idx][lane_idx] = fmaxf(color_unclamped, 0.0f);
++            s_color_mask[warp_idx][lane_idx] = (color_unclamped.x >= 0.0f ? 1u : 0u) |
++                (color_unclamped.y >= 0.0f ? 2u : 0u) | (color_unclamped.z >= 0.0f ? 4u : 0u);
++        }
++
++        // per-pixel state from the bucket checkpoint
++        const uint2 tile_coords = {tile_idx % grid_width, tile_idx / grid_width};
++        const uint pixel_x = tile_coords.x * config::tile_width + lane_idx % config::tile_width;
++        const uint pixel_y0 = tile_coords.y * config::tile_height + lane_idx / config::tile_width;
++        const float pixel_xf = __uint2float_rn(pixel_x) + 0.5f;
++        const uint n_pixels = width * height;
++        const float4* checkpoint = bucket_color_transmittance + static_cast<size_t>(bucket_idx) * config::block_size_blend;
++        float T[n_px];
++        float rho[n_px];
++        int lim[n_px];
++        #pragma unroll
++        for (int r = 0; r < n_px; ++r) {
++            const uint local_idx = r * 32 + lane_idx;
++            const uint pixel_y = pixel_y0 + r * rows_per_step;
++            float3 G = make_float3(0.0f);
++            T[r] = 0.0f;
++            rho[r] = 0.0f;
++            lim[r] = 0;
++            if (pixel_x < width && pixel_y < height) {
++                const uint pixel_idx = width * pixel_y + pixel_x;
++                const int n_used = static_cast<int>(tile_n_processed[pixel_idx]) - bucket_start;
++                if (n_used > 0) { // otherwise this pixel finished before the bucket: no checkpoint was written
++                    lim[r] = n_used;
++                    G = make_float3(grad_image[pixel_idx], grad_image[n_pixels + pixel_idx], grad_image[2 * n_pixels + pixel_idx]);
++                    const float3 color_final = make_float3(image[pixel_idx], image[n_pixels + pixel_idx], image[2 * n_pixels + pixel_idx]);
++                    const float4 color_transmittance = checkpoint[local_idx];
++                    T[r] = color_transmittance.w;
++                    rho[r] = dot(G, color_final - make_float3(color_transmittance));
++                }
++            }
++            s_grad[warp_idx][local_idx] = G;
++        }
++        __syncwarp();
++
++        constexpr int n_values = compute_abs_grad ? 11 : 9;
++        for (int j = 0; j < bucket_size; ++j) {
++            const float2 mean2d = s_mean2d[warp_idx][j];
++            const float4 conic_opacity = s_conic_opacity[warp_idx][j];
++            const float3 color = s_color[warp_idx][j];
++            const float opacity = conic_opacity.w;
++            // 0-1: mean2d, 2-4: conic, 5: opacity, 6-8: color, 9-10: |mean2d|
++            float acc[n_values];
++            #pragma unroll
++            for (int k = 0; k < n_values; ++k) acc[k] = 0.0f;
++            bool used = false;
++            #pragma unroll
++            for (int r = 0; r < n_px; ++r) {
++                if (j >= lim[r]) continue;
++                const float2 delta = make_float2(mean2d.x - pixel_xf, mean2d.y - (__uint2float_rn(pixel_y0 + r * rows_per_step) + 0.5f));
++                const float exponent = -0.5f * (conic_opacity.x * delta.x * delta.x + conic_opacity.z * delta.y * delta.y) - conic_opacity.y * delta.x * delta.y;
++                const float gaussian = expf(fminf(exponent, 0.0f));
++                if (!config::original_opacity_interpretation && gaussian < config::min_alpha_threshold) continue;
++                const float alpha = opacity * gaussian;
++                if (config::original_opacity_interpretation && alpha < config::min_alpha_threshold) continue;
++                used = true;
++                const float3 G = s_grad[warp_idx][r * 32 + lane_idx];
++                const float blending_weight = T[r] * alpha;
++                const float dot_color = dot(G, color);
++                acc[6] += blending_weight * G.x;
++                acc[7] += blending_weight * G.y;
++                acc[8] += blending_weight * G.z;
++                rho[r] -= blending_weight * dot_color;
++                const float one_minus_alpha = 1.0f - alpha;
++                const float one_minus_alpha_rcp = 1.0f / fmaxf(one_minus_alpha, config::one_minus_alpha_eps);
++                const float dL_dalpha = T[r] * dot_color - rho[r] * one_minus_alpha_rcp;
++                acc[5] += gaussian * dL_dalpha;
++                const float gaussian_grad_helper = -alpha * dL_dalpha;
++                acc[2] += 0.5f * gaussian_grad_helper * delta.x * delta.x;
++                acc[3] += 0.5f * gaussian_grad_helper * delta.x * delta.y;
++                acc[4] += 0.5f * gaussian_grad_helper * delta.y * delta.y;
++                const float dmx = gaussian_grad_helper * (conic_opacity.x * delta.x + conic_opacity.y * delta.y);
++                const float dmy = gaussian_grad_helper * (conic_opacity.y * delta.x + conic_opacity.z * delta.y);
++                acc[0] += dmx;
++                acc[1] += dmy;
++                if constexpr (compute_abs_grad) {
++                    acc[9] += fabsf(dmx);
++                    acc[10] += fabsf(dmy);
++                }
++                T[r] *= one_minus_alpha;
++            }
++            if (__ballot_sync(full_mask, used) == 0u) continue; // warp-uniform
++            #pragma unroll
++            for (int k = 0; k < n_values; ++k) {
++                #pragma unroll
++                for (int offset = 16; offset > 0; offset /= 2) acc[k] += __shfl_down_sync(full_mask, acc[k], offset);
++            }
++            if (lane_idx == 0) {
++                const uint primitive_idx = s_primitive_idx[warp_idx][j];
++                const uint color_mask = s_color_mask[warp_idx][j];
++                atomicAdd(&grad_mean2d[primitive_idx].x, acc[0]);
++                atomicAdd(&grad_mean2d[primitive_idx].y, acc[1]);
++                if constexpr (compute_abs_grad) {
++                    atomicAdd(&grad_mean2d_abs[primitive_idx].x, acc[9]);
++                    atomicAdd(&grad_mean2d_abs[primitive_idx].y, acc[10]);
++                }
++                atomicAdd(&grad_conic[primitive_idx], acc[2]);
++                atomicAdd(&grad_conic[n_primitives + primitive_idx], acc[3]);
++                atomicAdd(&grad_conic[2 * n_primitives + primitive_idx], acc[4]);
++                atomicAdd(&grad_opacity[primitive_idx], proper_antialiasing ? acc[5] : opacity * (1.0f - opacity) * acc[5]);
++                atomicAdd(&grad_sh_coefficients_0[primitive_idx].x, (color_mask & 1u) ? acc[6] : 0.0f);
++                atomicAdd(&grad_sh_coefficients_0[primitive_idx].y, (color_mask & 2u) ? acc[7] : 0.0f);
++                atomicAdd(&grad_sh_coefficients_0[primitive_idx].z, (color_mask & 4u) ? acc[8] : 0.0f);
++            }
++        }
++    }
++
+ }
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/rasterization_api.h b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/rasterization_api.h
+index 025f278..9f1f30b 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/rasterization_api.h
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/rasterization_api.h
+@@ -56,7 +56,8 @@ namespace faster_gs::rasterization {
+         const bool proper_antialiasing,
+         const int n_instances,
+         const int n_buckets,
+-        const int instance_primitive_indices_selector);
++        const int instance_primitive_indices_selector,
++        const int blend_backward_mode);
+ 
+     torch::Tensor
+     inference_wrapper(
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/rasterization_config.h b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/rasterization_config.h
+index 0bb029c..8ca0627 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/rasterization_config.h
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/rasterization_config.h
+@@ -58,6 +58,9 @@ namespace faster_gs::rasterization::config {
+     DEF int subtile_width = 8;
+     DEF int subtile_height = 4;
+     DEF int subgrid_width = tile_width / subtile_width; // 2
++    // Phase 1 macro backward (blend_backward_macro_cu)
++    DEF int macro_warps_per_block = 4;
++    DEF int macro_pixels_per_lane = block_size_blend / 32; // 6
+ }
+ 
+ namespace config = faster_gs::rasterization::config;
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/backward.cu b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/backward.cu
+index 07b4553..cc2ff4f 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/backward.cu
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/backward.cu
+@@ -42,7 +42,8 @@ void faster_gs::rasterization::backward(
+     const float focal_y,
+     const float center_x,
+     const float center_y,
+-    const bool proper_antialiasing)
++    const bool proper_antialiasing,
++    const int blend_backward_mode)
+ {
+     const dim3 grid(div_round_up(width, config::tile_width), div_round_up(height, config::tile_height), 1);
+     const int n_tiles = grid.x * grid.y;
+@@ -54,6 +55,39 @@ void faster_gs::rasterization::backward(
+ 
+     // note that with c++20 one could use a templated lambda to improve readability here
+     auto dispatch_rasterize_backward = [&](const uint* instance_primitive_indices) {
++        if (blend_backward_mode == 1) {
++            if (n_buckets == 0) return;
++            const auto macro_kernel = grad_mean2d_abs_helper != nullptr ? kernels::backward::blend_backward_macro_cu<true> : kernels::backward::blend_backward_macro_cu<false>;
++            constexpr int n_warps = config::macro_warps_per_block;
++            macro_kernel<<<div_round_up(n_buckets, n_warps), 32 * n_warps>>>(
++                tile_buffers.instance_ranges,
++                tile_buffers.buckets_offset,
++                instance_primitive_indices,
++                primitive_buffers.mean2d,
++                primitive_buffers.conic_opacity,
++                primitive_buffers.color,
++                bg_color,
++                grad_image,
++                image,
++                tile_buffers.max_n_processed,
++                tile_buffers.n_processed,
++                bucket_buffers.tile_index,
++                bucket_buffers.color_transmittance,
++                grad_mean2d_helper,
++                grad_conic_helper,
++                grad_opacities,
++                grad_sh_coefficients_0,
++                grad_mean2d_abs_helper,
++                n_buckets,
++                n_primitives,
++                width,
++                height,
++                grid.x,
++                proper_antialiasing
++            );
++            CHECK_CUDA(config::debug, "blend_backward_macro")
++            return;
++        }
+         const auto blend_backward_kernel = grad_mean2d_abs_helper != nullptr ? kernels::backward::blend_backward_cu<true> : kernels::backward::blend_backward_cu<false>;
+         blend_backward_kernel<<<n_buckets, 32>>>(
+             tile_buffers.instance_ranges,
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/rasterization_api.cu b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/rasterization_api.cu
+index 83abda1..78f7374 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/rasterization_api.cu
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/rasterization_api.cu
+@@ -120,7 +120,8 @@ faster_gs::rasterization::backward_wrapper(
+     const bool proper_antialiasing,
+     const int n_instances,
+     const int n_buckets,
+-    const int instance_primitive_indices_selector)
++    const int instance_primitive_indices_selector,
++    const int blend_backward_mode)
+ {
+     const int n_primitives = means.size(0);
+     const int total_sh_bases = sh_coefficients_rest.size(1);
+@@ -176,7 +177,8 @@ faster_gs::rasterization::backward_wrapper(
+         focal_y,
+         center_x,
+         center_y,
+-        proper_antialiasing
++        proper_antialiasing,
++        blend_backward_mode
+     );
+ 
+     return {grad_means, grad_scales, grad_rotations, grad_opacities, grad_sh_coefficients_0, grad_sh_coefficients_rest};
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/torch_bindings/rasterization.py b/FasterGSCudaBackend/FasterGSCudaBackend/torch_bindings/rasterization.py
+index 8e8214f..7216636 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/torch_bindings/rasterization.py
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/torch_bindings/rasterization.py
+@@ -1,4 +1,5 @@
+ from typing import NamedTuple, Any
++import os
+ import torch
+ from torch.autograd.function import once_differentiable
+ 
+@@ -38,6 +39,63 @@ class RasterizerSettings(NamedTuple):
+         )
+ 
+ 
++# Phase 1 (3dgs-project): blend backward selection and in-training checks.
++#   FGS_BLEND_BWD=macro|taming   blend backward kernel (default macro; taming = stock Faster-GS kernel)
++#   FGS_GRADCHECK_EVERY=n        every n-th backward call also runs the other kernel on the same forward buffers and
++#                                prints GRADCHECK lines: norm-based rel error of each gradient (reference = taming)
++#   FGS_BWDTIME_REPS=k           on those calls, also time k runs of _C.backward per kernel (CUDA events, median ms)
++BLEND_BACKWARD_MODES = {'taming': 0, 'macro': 1}
++BLEND_BACKWARD_MODE = BLEND_BACKWARD_MODES[os.environ.get('FGS_BLEND_BWD', 'macro')]
++_GRADCHECK_EVERY = int(os.environ.get('FGS_GRADCHECK_EVERY', '0'))
++_BWDTIME_REPS = int(os.environ.get('FGS_BWDTIME_REPS', '0'))
++_GRAD_NAMES = ('means', 'scales', 'rotations', 'opacities', 'sh0', 'sh_rest')
++_n_backward_calls = 0
++
++
++def rel_error(a: torch.Tensor, b: torch.Tensor) -> float:
++    """||a - b|| / ||b|| in float64 (0 if both are zero)."""
++    a, b = a.double().flatten(), b.double().flatten()
++    nb = torch.linalg.vector_norm(b).item()
++    nd = torch.linalg.vector_norm(a - b).item()
++    return nd / nb if nb > 0 else nd
++
++
++def _backward_call(args_head: tuple, densification_info: torch.Tensor, args_tail: tuple, mode: int) -> tuple:
++    return _C.backward(densification_info, *args_head, *args_tail, mode)
++
++
++def _check_and_time(args_head: tuple, densification_info: torch.Tensor, args_tail: tuple, grads: tuple,
++                    densification_info_before: torch.Tensor, mode: int) -> None:
++    other = 1 - mode
++    di_other = densification_info_before.clone()
++    grads_other = _backward_call(args_head, di_other, args_tail, other)
++    macro, taming = (grads, grads_other) if mode == 1 else (grads_other, grads)
++    errs = {name: rel_error(m, t) for name, m, t in zip(_GRAD_NAMES, macro, taming)}
++    if densification_info.numel() > 0:
++        d_mode = densification_info - densification_info_before
++        d_other = di_other - densification_info_before
++        d_macro, d_taming = (d_mode, d_other) if mode == 1 else (d_other, d_mode)
++        for row in range(d_macro.shape[0]):
++            errs[f'densify{row}'] = rel_error(d_macro[row], d_taming[row])
++    line = ' '.join(f'{k}={v:.3e}' for k, v in errs.items())
++    print(f'GRADCHECK call={_n_backward_calls} n={args_head[2].shape[0]} max={max(errs.values()):.3e} {line}', flush=True)
++    if _BWDTIME_REPS > 0:
++        times = {}
++        for name, m in BLEND_BACKWARD_MODES.items():
++            ms = []
++            for _ in range(_BWDTIME_REPS):
++                di = densification_info_before.clone()
++                start, end = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
++                start.record()
++                _backward_call(args_head, di, args_tail, m)
++                end.record()
++                torch.cuda.synchronize()
++                ms.append(start.elapsed_time(end))
++            times[name] = sorted(ms)[len(ms) // 2]
++        print(f'BWDTIME call={_n_backward_calls} n={args_head[2].shape[0]} taming_ms={times["taming"]:.4f} '
++              f'macro_ms={times["macro"]:.4f} speedup={times["taming"] / times["macro"]:.3f}', flush=True)
++
++
+ class _Rasterize(torch.autograd.Function):
+     # visibility hand-off for the sparse optimizer: when track_visibility is set, each differentiable forward
+     # stores the per-primitive n_touched_tiles (int32, > 0 = visible in that view) in last_visibility
+@@ -95,16 +153,19 @@ class _Rasterize(torch.autograd.Function):
+         ctx: Any,
+         grad_image: torch.Tensor,
+     ) -> 'tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, None, None]':
++        global _n_backward_calls
++        _n_backward_calls += 1
++        args_head = (grad_image, *ctx.saved_tensors)
++        args_tail = (*ctx.rasterizer_settings.as_tuple(), *ctx.buffer_state)
++        check = _GRADCHECK_EVERY > 0 and _n_backward_calls % _GRADCHECK_EVERY == 0
++        densification_info_before = ctx.densification_info.clone() if check else None
++        grads = _backward_call(args_head, ctx.densification_info, args_tail, BLEND_BACKWARD_MODE)
++        if check:
++            _check_and_time(args_head, ctx.densification_info, args_tail, grads, densification_info_before, BLEND_BACKWARD_MODE)
+         (
+             grad_means, grad_scales, grad_rotations, grad_opacities,
+             grad_sh_coefficients_0, grad_sh_coefficients_rest
+-        ) = _C.backward(
+-            ctx.densification_info,
+-            grad_image,
+-            *ctx.saved_tensors,
+-            *ctx.rasterizer_settings.as_tuple(),
+-            *ctx.buffer_state,
+-        )
++        ) = grads
+         return (
+             grad_means,
+             grad_scales,
