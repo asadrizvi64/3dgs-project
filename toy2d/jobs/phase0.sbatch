@@ -18,7 +18,7 @@ source "${GS2D_ENV:-$(ws_find 3dgs)/venv}/bin/activate"
 
 mkdir -p logs results profiles
 export TORCH_CUDA_ARCH_LIST="${TORCH_CUDA_ARCH_LIST:-9.0}"
-export TORCH_EXTENSIONS_DIR="${TORCH_EXTENSIONS_DIR:-$(ws_find 3dgs)/torch_extensions}"
+export TORCH_EXTENSIONS_DIR="${TORCH_EXTENSIONS_DIR:-$HOME/.cache/torch_extensions}"
 COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo nogit)
 TAG="${COMMIT}-${SLURM_JOB_ID:-local}"
 
