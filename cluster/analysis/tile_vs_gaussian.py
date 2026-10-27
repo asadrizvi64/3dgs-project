@@ -47,7 +47,9 @@ dataset.train()
 views = [dataset[i] for i in range(0, len(dataset), args.view_stride)]
 gen = torch.Generator(device='cpu').manual_seed(args.seed)
 
-from Methods.FasterGS.FasterGSCudaBackend.torch_bindings.rasterization import _Rasterize  # noqa: E402
+with utils.DiscoverSourcePath():
+    from Methods.FasterGS import Renderer as _R
+_Rasterize = sys.modules[_R.diff_rasterize.__module__]._Rasterize  # the class the renderer actually calls
 
 
 def select(policy, frac, tile_err):
