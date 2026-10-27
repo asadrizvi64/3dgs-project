@@ -58,6 +58,10 @@ p.add_argument('--model-ckpt', default='0015000.pt')
 p.add_argument('--policy', choices=['dense', 'err_block', 'rand_block'], default='dense')
 p.add_argument('--adam', choices=['dense', 'sparse'], default='dense')
 p.add_argument('--frac', type=float, default=0.25)
+p.add_argument('--lr', choices=['frac', 'none'], default='frac',
+               help='frac: multiply every learning rate by the pixel fraction, so Adam (whose step size is ~lr per step '
+                    'regardless of gradient size) moves parameters about as far per image equivalent as dense training; '
+                    'none: stock learning rates on every step')
 p.add_argument('--images', type=int, default=15000, help='image equivalents to train (15000 = rest of the 30k schedule)')
 p.add_argument('--eval-every', type=int, default=1500, help='in image equivalents')
 p.add_argument('--seed', type=int, default=0)
@@ -219,6 +223,15 @@ if args.calibrate:
 assert args.out, '--out is required for training'
 frac = 1.0 if args.policy == 'dense' else args.frac
 set_adam(args.adam)
+LR_SCALE = frac if args.lr == 'frac' else 1.0
+for grp in g.optimizer.param_groups:
+    grp['lr0'] = grp['lr']
+
+
+def set_lr(it):
+    g.update_learning_rate(it)  # sets the means group from the schedule
+    for grp in g.optimizer.param_groups:
+        grp['lr'] = (grp['lr'] if grp['name'] == 'means' else grp['lr0']) * LR_SCALE
 cal = json.loads(Path(args.calib).read_text()) if args.calib else None
 
 
@@ -251,7 +264,7 @@ steps_total = round(args.images / frac)
 eval_every_steps = round(args.eval_every / frac)
 train_s = proj_s = proj_scan_s = 0.0
 psnr0 = evaluate()
-base = dict(policy=args.policy, adam=args.adam, frac=frac, seed=args.seed, n=N)
+base = dict(policy=args.policy, adam=args.adam, lr=args.lr, frac=frac, seed=args.seed, n=N)
 rows.append(dict(base, step=0, image_equiv=0, iteration_equiv=start_iter, train_s=0.0, proj_s=0.0, proj_scan_s=0.0,
                  test_psnr=psnr0, active_of_n='', pix_frac=''))
 print(f'EVAL step=0 img_eq=0 train_s=0.0 psnr={psnr0:.3f}', flush=True)
@@ -259,7 +272,7 @@ acc = torch.zeros(3, device='cuda')  # sums of active fraction and pixel fractio
 torch.cuda.synchronize()
 t0 = time.perf_counter()
 for step in range(1, steps_total + 1):
-    g.update_learning_rate(int(start_iter + (step - 1) * frac) + 1)
+    set_lr(int(start_iter + (step - 1) * frac) + 1)
     vi = int(torch.randint(len(train_views), (1,), generator=vgen))
     img, loss = forward_loss(vi, args.policy, frac)
     loss.backward()
@@ -292,4 +305,4 @@ with open(args.out, 'a', newline='') as f:
     if new:
         w.writeheader()
     w.writerows(rows)
-print(f'DONE policy={args.policy} adam={args.adam} seed={args.seed} final_img_eq={rows[-1]["image_equiv"]:.0f} psnr={rows[-1]["test_psnr"]:.3f}', flush=True)
+print(f'DONE policy={args.policy} adam={args.adam} lr={args.lr} seed={args.seed} final_img_eq={rows[-1]["image_equiv"]:.0f} psnr={rows[-1]["test_psnr"]:.3f}', flush=True)

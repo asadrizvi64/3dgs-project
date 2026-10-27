@@ -19,7 +19,8 @@ set -euo pipefail
 SCENE=${SCENE:-garden}
 SCALE=${SCALE:-0.25}
 SEEDS=${SEEDS:-"0 1 2"}
-ARMS=${ARMS:-"dense:dense err_block:dense rand_block:dense err_block:sparse rand_block:sparse dense:sparse"}
+# policy:adam[:lr]  (lr = frac (default): learning rates x pixel fraction; none: stock learning rates)
+ARMS=${ARMS:-"dense:dense err_block:dense rand_block:dense err_block:sparse rand_block:sparse dense:sparse err_block:sparse:none"}
 IMAGES=${IMAGES:-15000}
 HERE=${SLURM_SUBMIT_DIR:-$PWD}/cluster
 DATA=$(ws_find -F cat 3dgs-data) || { echo "cat workspace not visible on $(hostname)"; exit 1; }
@@ -46,7 +47,7 @@ for seed in $SEEDS; do
       echo "FAILED training seed $seed (no state_0015000.pt), see $LOGS/train_s$seed.log"; FAILED+=("train:s$seed"); continue
     fi
   fi
-  echo "run=$RUN stock-30k: $(tail -1 $RUN/test_*/metrics_8bit.txt 2>/dev/null || echo n/a)"
+  echo "run=$RUN stock-30k: $(tail -1 $RUN/test_30000/metrics_8bit.txt 2>/dev/null || echo n/a)"
   CAL=$LOGS/calib_s$seed.json
   if ! python "$HERE/analysis/time_to_quality.py" --run "$RUN" --seed $seed --calibrate "$CAL" > "$LOGS/calib_s$seed.log" 2>&1; then
     echo "FAILED calibration seed $seed:"; tail -25 "$LOGS/calib_s$seed.log"; FAILED+=("calib:s$seed"); CAL=
@@ -54,14 +55,14 @@ for seed in $SEEDS; do
     grep "^CALIB" "$LOGS/calib_s$seed.log"
   fi
   for arm in $ARMS; do
-    pol=${arm%%:*}; adam=${arm#*:}
-    L=$LOGS/s${seed}_${pol}_${adam}.log
-    echo "########## seed $seed policy $pol adam $adam $(date +%T)"
-    if python "$HERE/analysis/time_to_quality.py" --run "$RUN" --policy $pol --adam $adam --seed $seed --images $IMAGES \
+    IFS=: read -r pol adam lr <<< "$arm"; lr=${lr:-frac}
+    L=$LOGS/s${seed}_${pol}_${adam}_${lr}.log
+    echo "########## seed $seed policy $pol adam $adam lr $lr $(date +%T)"
+    if python "$HERE/analysis/time_to_quality.py" --run "$RUN" --policy $pol --adam $adam --lr $lr --seed $seed --images $IMAGES \
          ${CAL:+--calib "$CAL"} --out "$CSV" > "$L" 2>&1; then
       grep -E "^(state|EVAL|DONE)" "$L"
     else
-      echo "FAILED seed $seed $pol $adam (exit $?):"; grep -vE "WARNING|INFO" "$L" | tail -30; FAILED+=("s$seed:$pol:$adam")
+      echo "FAILED seed $seed $pol $adam $lr (exit $?):"; grep -vE "WARNING|INFO" "$L" | tail -30; FAILED+=("s$seed:$pol:$adam:$lr")
     fi
   done
 done
@@ -74,8 +75,9 @@ rows = list(csv.DictReader(open(path))) if __import__('os').path.exists(path) el
 missing = []
 for s in seeds:
     for a in arms:
-        pol, adam = a.split(':')
-        final = [r for r in rows if r['seed'] == s and r['policy'] == pol and r['adam'] == adam and abs(float(r['image_equiv']) - images) < 1e-6]
+        pol, adam, *lr = a.split(':')
+        lr = lr[0] if lr else 'frac'
+        final = [r for r in rows if r['seed'] == s and r['policy'] == pol and r['adam'] == adam and r['lr'] == lr and abs(float(r['image_equiv']) - images) < 1e-6]
         if len(final) != 1:
             missing.append(f's{s}:{a} ({len(final)} final rows)')
 print('all arms complete' if not missing else 'MISSING: ' + ', '.join(missing))
