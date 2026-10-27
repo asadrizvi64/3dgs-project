@@ -21,6 +21,7 @@ METHOD=${METHOD:-FasterGS}
 SEED=${SEED:-0}
 TAG=${TAG:-}          # appended to the run name, e.g. TAG=prof for profiling runs
 LAUNCHER=${LAUNCHER:-}  # optional prefix, e.g. "nsys profile ..." or "ncu ..."
+BACKUP_INTERVAL=${BACKUP_INTERVAL:--1}  # >0: also save checkpoints/<iter>.pt every this many steps
 OPT_FLAGS=${OPT_FLAGS:-}  # extra TRAINING.OPTIMIZER keys, e.g. "SPARSE_ADAM=true,SH_REST_BF16_MOMENTS=true"
 SCALE=${SCALE:-0.25}   # 0.25 for outdoor scenes, 0.5 for indoor, as in 3DGS
 DATA=$(ws_find -F cat 3dgs-data) || { echo "cat workspace not visible on $(hostname); resubmit with --exclude=$(hostname)"; exit 1; }   # c20 lacks /data/cat (2026-10-27)
@@ -68,7 +69,7 @@ sed -e "s|PATH: dataset/mipnerf360/garden|PATH: $DATA/data/360_v2/$SCENE|" \
     -e "s|MODEL_NAME: ${LOW}_garden|MODEL_NAME: $NAME|" \
     -e "s|RANDOM_SEED: 0|RANDOM_SEED: $SEED|" \
     -e "s|IMAGE_SCALE_FACTOR: 0.25|IMAGE_SCALE_FACTOR: $SCALE|" \
-    -e "/^    GUI:/,/^    [A-Z]/ s|ACTIVATE: true|ACTIVATE: false|" \
+    -e "/^    GUI:/,/^    [A-Z]/ s|ACTIVATE: true|ACTIVATE: false|"     -e "/^    BACKUP:/,/^    [A-Z]/ s|INTERVAL: -1|INTERVAL: ${BACKUP_INTERVAL:--1}|" \
     "$MDIR/${LOW}_garden.yaml" > "$CFG"
 for kv in ${OPT_FLAGS//,/ }; do   # insert extra optimizer options right below "    OPTIMIZER:"
   sed -i "/^    OPTIMIZER:/a\        ${kv%%=*}: ${kv#*=}" "$CFG"
