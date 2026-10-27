@@ -183,7 +183,8 @@ def load_extension(with_cuda: bool | None = None, verbose: bool = False) -> Exte
 
 
 def _ext_for(t: Tensor) -> Extension:
-    return load_extension(with_cuda=True) if t.is_cuda else load_extension()
+    # CPU tensors always use the CPU-only build, so its op counters are the ones that move.
+    return load_extension(with_cuda=t.is_cuda)
 
 
 @dataclass(frozen=True)
