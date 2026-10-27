@@ -18,7 +18,10 @@ import torch
 
 BACKEND = os.environ.get('FGS_BACKEND', 'FasterGSMacroCudaBackend')
 TOL = float(os.environ.get('PARITY_TOL', '1e-5'))
-TAMING, MACRO = 0, 1
+TAMING = 0
+# macro mode bits: 1 macro kernel, 2 subtile skip, 4 transposing reduction, 8 = 8 warps per block
+MACRO_MODES = [int(m) for m in os.environ.get('PARITY_MODES', '1,3,5,7,15').split(',')]
+MACRO = 3  # default macro variant (MACRO_DEFAULT in the binding)
 GRAD_NAMES = ('means', 'scales', 'rotations', 'opacities', 'sh0', 'sh_rest')
 
 if not torch.cuda.is_available():
@@ -81,7 +84,7 @@ def make_inputs(scene: Scene, seed: int, proper_antialiasing: bool) -> tuple[tup
     return params, settings, {'generator': g}
 
 
-def run_both(scene: Scene, seed: int, abs_grad: bool | None, proper_antialiasing: bool) -> dict[str, float]:
+def run_both(scene: Scene, seed: int, abs_grad: bool | None, proper_antialiasing: bool, macro_mode: int = MACRO) -> dict[str, float]:
     params, settings, extra = make_inputs(scene, seed, proper_antialiasing)
     means, scales, rotations, opacities, sh0, sh_rest = params
     image, pb, tb, ib, bb, n_inst, n_buckets, sel = _C.forward(*params, *settings)
@@ -89,36 +92,38 @@ def run_both(scene: Scene, seed: int, abs_grad: bool | None, proper_antialiasing
     grad_image = torch.randn(image.shape, generator=extra['generator'], device='cuda')
     rows = 0 if abs_grad is None else (3 if abs_grad else 2)
     out = {}
-    for mode in (TAMING, MACRO):
+    for mode in (TAMING, macro_mode):
         di = torch.zeros(rows, scene.n, device='cuda') if rows else torch.empty(0, device='cuda')
         grads = _C.backward(di, grad_image, image, means, scales, rotations, opacities, sh_rest, pb, tb, ib, bb,
                             *settings, n_inst, n_buckets, sel, mode)
         torch.cuda.synchronize()
         out[mode] = (grads, di)
     errs = {}
-    for name, m, t in zip(GRAD_NAMES, out[MACRO][0], out[TAMING][0]):
+    for name, m, t in zip(GRAD_NAMES, out[macro_mode][0], out[TAMING][0]):
         assert torch.isfinite(m).all(), name
         errs[name] = rel_error(m, t)
     for r in range(rows):
-        errs[f'densify{r}'] = rel_error(out[MACRO][1][r], out[TAMING][1][r])
+        errs[f'densify{r}'] = rel_error(out[macro_mode][1][r], out[TAMING][1][r])
     # the reference must actually produce gradients, else the comparison is vacuous
     assert torch.linalg.vector_norm(out[TAMING][0][0]).item() > 0
-    print(f'PARITY scene={scene.name} n={scene.n} buckets={n_buckets} abs={abs_grad} pa={proper_antialiasing} '
+    print(f'PARITY mode={macro_mode} scene={scene.name} n={scene.n} buckets={n_buckets} abs={abs_grad} pa={proper_antialiasing} '
           f'max={max(errs.values()):.3e} ' + ' '.join(f'{k}={v:.2e}' for k, v in errs.items()))
     return errs
 
 
 @pytest.mark.parametrize('scene', SCENES, ids=[s.name for s in SCENES])
 @pytest.mark.parametrize('abs_grad', [None, False, True], ids=['no_densify', 'densify', 'densify_abs'])
-def test_parity(scene: Scene, abs_grad: bool | None) -> None:
-    errs = run_both(scene, seed=0, abs_grad=abs_grad, proper_antialiasing=False)
+@pytest.mark.parametrize('macro_mode', MACRO_MODES, ids=[f'mode{m}' for m in MACRO_MODES])
+def test_parity(scene: Scene, abs_grad: bool | None, macro_mode: int) -> None:
+    errs = run_both(scene, seed=0, abs_grad=abs_grad, proper_antialiasing=False, macro_mode=macro_mode)
     bad = {k: v for k, v in errs.items() if not v <= TOL}
     assert not bad, f'rel error above {TOL}: {bad}'
 
 
 @pytest.mark.parametrize('scene', SCENES[:3], ids=[s.name for s in SCENES[:3]])
-def test_parity_proper_antialiasing(scene: Scene) -> None:
-    errs = run_both(scene, seed=1, abs_grad=True, proper_antialiasing=True)
+@pytest.mark.parametrize('macro_mode', MACRO_MODES, ids=[f'mode{m}' for m in MACRO_MODES])
+def test_parity_proper_antialiasing(scene: Scene, macro_mode: int) -> None:
+    errs = run_both(scene, seed=1, abs_grad=True, proper_antialiasing=True, macro_mode=macro_mode)
     bad = {k: v for k, v in errs.items() if not v <= TOL}
     assert not bad, f'rel error above {TOL}: {bad}'
 

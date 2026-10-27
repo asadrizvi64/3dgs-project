@@ -2,7 +2,8 @@
 # Phase 1: macro blend backward (FasterGSMacro) vs Faster-GS (FasterGS @1144604, stock Adam), one node, one job.
 #   build     phase1/make_variant.sh: clone FasterGS -> FasterGSMacro, apply phase1/fastergs_macro.patch, build
 #   test      GPU parity tests (phase1/tests/test_parity.py); the job stops if any fail
-#   bench     synthetic backward timing, stock vs macro (bench/phase1/kernel_bench.py)
+#   bench     synthetic backward timing per mode (bench/phase1/kernel_bench.py)
+#   ncu       Nsight Compute metrics of each blend backward mode on synthetic scenes (bench/phase1/ncu_kernels.py)
 #   gradcheck one garden run of FasterGSMacro with FGS_GRADCHECK_EVERY / FGS_BWDTIME_REPS: per-step gradient
 #             rel error vs the stock kernel on real views, and blend-backward timing of both kernels (+ STAGE lines)
 #   compare   SEEDS x {base = FasterGS, macro = FasterGSMacro}, interleaved, clean timing (no hooks)
@@ -20,7 +21,7 @@
 #SBATCH --output=bench/phase1/logs/%x-%j.out
 set -euo pipefail
 
-STAGES=${STAGES:-"build test bench gradcheck compare"}
+STAGES=${STAGES:-"build test bench ncu gradcheck compare"}
 SCENE=${SCENE:-garden}
 SCALE=${SCALE:-0.25}
 SEEDS=${SEEDS:-"0 1 2"}
@@ -52,6 +53,23 @@ fi
 if has bench; then
   echo "########## synthetic kernel timing"
   python "$REPO/bench/phase1/kernel_bench.py" --reps 50
+fi
+
+if has ncu; then
+  echo "########## Nsight Compute, one launch per mode"
+  NCU=$(command -v ncu || true)
+  PROF=$DATA/prof
+  if [ -z "$NCU" ]; then echo "ncu not found"; else
+    M=$(python "$REPO/bench/phase1/ncu_kernels.py" metrics)
+    for scene in ${NCU_SCENES:-garden_res small_splats heavy_overlap}; do
+      rep=$PROF/phase1_macro_${scene}_${SLURM_JOB_ID:-local}
+      "$NCU" --profile-from-start off --clock-control none -k regex:blend_backward --metrics "$M" -f -o "$rep" \
+        python "$REPO/bench/phase1/ncu_kernels.py" run "$scene" "${NCU_MODES:-0,1,3,5,7,9,15}" > "$rep.run.log" 2>&1 \
+        || { tail -20 "$rep.run.log"; continue; }
+      "$NCU" -i "$rep.ncu-rep" --csv --page raw --metrics "$M" > "$rep.csv"
+      python "$REPO/bench/phase1/ncu_kernels.py" table "$rep.csv" "$scene"
+    done
+  fi
 fi
 
 run() {  # method tag seed [extra env...]

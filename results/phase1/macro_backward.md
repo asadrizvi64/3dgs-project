@@ -62,8 +62,48 @@ The metric is the same as phase0: ‖macro − stock‖₂ / ‖stock‖₂ in f
 
    **Scales and rotations miss the 1e-5 target on real scenes, and the stock kernel misses it against itself too.** Their gradients come from the conic gradient through `preprocess_backward_cu`, which multiplies by 1/det(cov2d)². That amplifies the last-bit differences from atomic summation order for near-degenerate Gaussians. Macro vs stock is usually within 1–3× of the stock run-to-run noise. At a few steps (15000, 23000) it is about 10× higher: one outlier tensor of 4.1M Gaussians, dominated by a handful of them. Every gradient that does not pass through that factor (opacities, colours, SH, densification) agrees to ≤ 1e-6 on real views. Training quality matches (table above).
 
+## v2: profile and three kernel options (2026-10-27, jobs 4477993, 4478014, 4478042)
+
+The macro kernel is now one template with three switches. They are set as bits of `FGS_BLEND_BWD` (an int): 1 = macro, 2 = subtile skip, 4 = transposing reduction, 8 = 8 warps per block.
+
+- **Subtile skip (2):** for each splat, skip the pixels whose 8×4 subtile its screen bounds miss. This is the same culling `blend_cu` applies, so the replay now sees exactly the forward's splat sequence. When a 2-row band misses, the whole warp skips it.
+- **Transposing reduction (4):** a transposing butterfly reduces the 8 mean2d/conic/colour sums in 9 shuffles and the opacity and |mean2d| sums in 5–6, instead of 5 shuffles per value. The atomics are then issued by up to 11 lanes in parallel.
+- **8 warps per block (8)** instead of 4.
+
+All 92 parity tests pass for modes 1, 3, 5, 7 and 15 (max rel err < 2.5e-6).
+
+**Nsight Compute, one launch per mode, synthetic scenes with the abs gradient on** (µs, registers, achieved occupancy, SM throughput, instructions):
+
+| scene | stock | macro v1 (1) | + subtile skip (3) | + transpose reduce (5) | 3 + transpose (7) | 8 warps (9) |
+|---|---|---|---|---|---|---|
+| garden_res (200k) | 912 µs | **602** (1.52×) | 607 | 694 | 685 | 607 |
+| small_splats (500k) | 618 | 381 (1.62×) | **365** (1.69×) | 448 | 415 | 393 |
+| heavy_overlap (50k) | 215 | **155** (1.38×) | 156 | 176 | 176 | 195 |
+
+- **The macro kernel is issue-bound,** not shuffle- or memory-bound. At garden_res: 73% SM throughput; most stalls are `not_selected`/`wait`, so warps are eligible and the scheduler is busy. It executes 459M instructions to stock's 747M, which is where the 1.5× comes from.
+- **Transposing reduction is slower.** The instruction count barely changes, and the divergent per-lane atomics add branch stalls (1.0 vs 0.4 per instruction) and 7 registers. Shuffles were not the bottleneck.
+- **8 warps per block** is neutral, and worse on heavy overlap, where occupancy drops.
+- **Subtile skip** cuts instructions by 9% on small splats, and is neutral elsewhere.
+
+**Real garden, subtile skip vs v1:**
+- Full rasterizer backward ratio to stock at 4.16M Gaussians: 1.33× vs 1.30× (BWDTIME, job 4478014).
+- Gradient parity is the same as v1. Scales and rotations stay within the stock run-to-run floor (max 6.1e-3, against a floor of up to 2.7e-3 in the same run). Everything else is ≤ 1e-6.
+
+**Training, garden, 3 seeds, base and mode 3 alternating on one node (job 4478042, node c65):**
+
+| variant | ms/step | train time (s) | PSNR (dB) | SSIM | LPIPS |
+|---|---|---|---|---|---|
+| base: FasterGS | 8.437 ± 0.006 | 253.1 ± 0.2 | 27.514 ± 0.041 | 0.8671 | 0.1202 |
+| **macro + subtile skip (mode 3)** | **7.537 ± 0.023** | **226.1 ± 0.7** | 27.521 ± 0.035 | 0.8672 | 0.1203 |
+| difference | −0.90 ms (**−10.7%**) | −27.0 s | +0.01 | +0.0001 | +0.0002 |
+
+Against v1's −10.4% (job 4477625), the difference is within run-to-run noise. **Mode 3 is now the default** (`FGS_BLEND_BWD=macro`): it is never slower than v1 and it matches the forward's culling exactly. `macro1` and the numeric modes remain available.
+
 ## Not done yet / next
 
-- An nsys capture of the macro run, to get the blend-backward kernel time directly instead of the 1.1 ms estimate. Also ncu on the macro kernel: occupancy, and whether the 9×5 `shfl_down` reduction or the expf dominates.
-- Kernel v2 ideas from the plan: skip a lane's pixel rows using the splat's screen bounds; a transpose-reduce instead of 9 separate warp reductions; 8 warps per block.
+- **The kernel is issue-bound,** so further speed has to come from fewer instructions per (splat, pixel) pair, for example:
+  - computing the exponent incrementally down a lane's column, since dy changes by a constant 2 px per row band;
+  - computing `exp2` directly on a pre-scaled conic;
+  - a warp-uniform early exit when no lane's pixel can still use the bucket.
+- An nsys capture of a full training step to place the blend backward against the rest of the step. The 1.1 ms in-training estimate is consistent with ncu's 1.5× on the synthetic garden_res scene, but a direct measurement would confirm it.
 - The other scenes (bicycle, room, bonsai), and stacking with the bf16 SH-rest moments (−6.7%, no quality cost) from `results/optim/`.
