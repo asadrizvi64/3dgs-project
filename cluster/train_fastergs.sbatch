@@ -88,14 +88,20 @@ nvidia-smi --query-gpu=timestamp,uuid,clocks.sm,clocks.mem,power.draw,temperatur
   --format=csv,noheader,nounits -lms 1000 > "$CLK" &
 CLKPID=$!
 TIMER=; [ -x /usr/bin/time ] && TIMER="/usr/bin/time -v"   # not installed on every node
+# keep the training (or profiler) process's own exit status: the log filter must not hide a failure
+set +e
 $TIMER $LAUNCHER python scripts/train.py -c "$CFG" 2>&1 \
-  | grep -vE "^\s+(Page|Socket|Signals|Swaps|File system|Voluntary|Involuntary|Average|Major|Minor|Exit|Percent|System|User)" || true
+  | grep -vE "^\s+(Page|Socket|Signals|Swaps|File system|Voluntary|Involuntary|Average|Major|Minor|Exit|Percent|System|User)"
+TRAIN_RC=${PIPESTATUS[0]}
+set -e
 kill $CLKPID 2>/dev/null || true
+echo "== training exit status $TRAIN_RC"
 
-RUN=$(ls -dt output/$METHOD/${NAME}_* | head -1)
+RUN=$(ls -dt output/$METHOD/${NAME}_* 2>/dev/null | head -1) || true
+if [ -z "$RUN" ]; then echo "== no run dir"; rm -f "$CLK"; exit "$(( TRAIN_RC ? TRAIN_RC : 1 ))"; fi
 echo "== run dir $RUN"
-mv "$CLK" "$RUN/gpu_clock_log.csv"
-python - "$RUN/gpu_clock_log.csv" > "$RUN/gpu_clock_summary.txt" <<'PY2'
+mv "$CLK" "$RUN/gpu_clock_log.csv" || true
+python - "$RUN/gpu_clock_log.csv" > "$RUN/gpu_clock_summary.txt" <<'PY2' || true
 import sys, statistics as st
 rows = [r.split(', ') for r in open(sys.argv[1]) if r.count(',') >= 7]
 busy = [r for r in rows if r[6].strip().isdigit() and int(r[6]) >= 50]   # samples with >= 50% GPU utilization
@@ -110,8 +116,9 @@ if sm:
 else:
     print(f'CLOCK no busy samples ({len(rows)} rows)')
 PY2
-cat "$RUN/gpu_clock_summary.txt"
-ls "$RUN"
+cat "$RUN/gpu_clock_summary.txt" || true
+ls "$RUN" || true
 cat "$RUN/n_gaussians.txt" "$RUN/vram_stats.txt" 2>/dev/null || true; echo
 grep -A3 "^training_iteration:" "$RUN/timings.txt" 2>/dev/null || true
 tail -2 "$RUN"/test_*/metrics_8bit.txt 2>/dev/null || true
+exit "$TRAIN_RC"

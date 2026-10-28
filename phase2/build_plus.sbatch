@@ -22,6 +22,8 @@
 #            FGS_PROF=1 (STAGE fwd/bwd/opt CUDA events every 250 steps, CURVE ms/step every 500; the hooks sync the
 #            host every step, so these are not benchmark times) and two nsys captures of 50 steps at 5000 and 20000
 #            (NVTX fwd/bwd/opt); reports in $HOME/3dgs-archive/profile/<job>/, CSV summaries in phase2/logs/run_<job>/
+#   ctltest  (with build/unit/switch) the timer-control path at 1200 iterations on garden seed 0, whose real output must
+#            pass analyze_timerctl.py and record_runs.py before the full timerctl runs are trusted
 #   timerctl (step 4b) one scene, SEEDS (default 0 1 2): stock and A+B+C, each with NeRFICG's per-step timer ON (the
 #            benchmark protocol: device sync after every step) and OFF; interleaved, order rotated by seed. Every run
 #            also logs FGS_WALL (unprofiled wall time over 0-15k and 15k-30k, device synced only at those boundaries)
@@ -100,7 +102,9 @@ train() {  # name method seed iters opt_flags blend [segk]
   fi
   # lowest single test image (index, PSNR) and the number of test images, to catch one-view artifacts
   echo "PERIMG $name $(awk -F'	' '/^Image/{f=1;next} f&&$1~/^[0-9]+$/{n++; if(min==""||$2<min){min=$2;i=$1}} END{print "n_images=" n " min_image=" i " min_psnr=" min}' "$DATA/nerficg/$RUN/test_$iters/metrics_8bit.txt")"
-  echo "RESULT $name $(tail -1 "$DATA/nerficg/$RUN/test_$iters/metrics_8bit.txt") $(grep -o 'N_Gaussians:[0-9]*' "$DATA/nerficg/$RUN/n_gaussians.txt") $(grep -A2 '^training_iteration:' "$DATA/nerficg/$RUN/timings.txt" | awk -F': ' '/per iteration/{print "ms_it=" $2}') $(grep allocated "$DATA/nerficg/$RUN/vram_stats.txt" | head -1 | tr -s ' \t' ' ')"
+  # ms_it= is always written (empty when NeRFICG's timer is off and there is no timings.txt)
+  local MSIT; MSIT=$(grep -A2 '^training_iteration:' "$DATA/nerficg/$RUN/timings.txt" 2>/dev/null | awk -F': ' '/per iteration/{gsub(/[ \t]+$/, "", $2); print $2}' || true)
+  echo "RESULT $name $(tail -1 "$DATA/nerficg/$RUN/test_$iters/metrics_8bit.txt") $(grep -o 'N_Gaussians:[0-9]*' "$DATA/nerficg/$RUN/n_gaussians.txt") ms_it=${MSIT} $(grep allocated "$DATA/nerficg/$RUN/vram_stats.txt" 2>/dev/null | head -1 | tr -s ' \t' ' ')"
 }
 
 if has switch; then
@@ -204,14 +208,10 @@ nsys_window() {  # name method flags blend start: nsys capture of steps start..s
     # the window must hold exactly 50 training steps: one forward blend kernel per step
     local nb; nb=$(python3 -c "import csv,sys; print(sum(int(r['Instances']) for r in csv.DictReader(open(sys.argv[1])) if 'forward::blend_cu' in r['Name']))" "$OUT/${name}_cuda_gpu_kern_sum.csv" 2>/dev/null || echo 0)
     [ "$nb" = 50 ] || why="$why forward blend launches = $nb, expected 50;"
-    if [ -n "${NSYS_EXTRA:-}" ]; then   # backtrace captures: PyTorch op ranges and Python callchains must be present
+    if [ -n "${NSYS_EXTRA:-}" ]; then   # backtrace captures: PyTorch op ranges, and resolved Python frames on the kernel launches
       grep -q "aten::" "$OUT/${name}_nvtx_sum.csv" 2>/dev/null || why="$why no PyTorch (aten::) NVTX ranges;"
-      python3 - "$REP/$name.sqlite" <<'PYCHK' || why="$why no Python backtrace rows;"
-import re, sqlite3, sys
-c = sqlite3.connect(sys.argv[1])
-t = [r[0] for r in c.execute("select name from sqlite_master where type='table'") if re.search('CALLCHAIN', r[0], re.I)]
-sys.exit(0 if any(c.execute(f'select count(*) from {x}').fetchone()[0] > 0 for x in t) else 1)
-PYCHK
+      # runtime callchainId -> CUDA_CALLCHAINS only; at least half of the kernel launches must carry a .py frame
+      python3 "$REPO/phase2/host_gaps.py" "$REP/$name.sqlite" --check-backtraces || why="$why kernel launches lack resolved Python frames;"
     fi
   fi
   if [ -n "$why" ]; then
@@ -220,20 +220,44 @@ PYCHK
   echo "NSYS $name validated (50 steps, $nb forward blends) rep $REP/$name.nsys-rep"
 }
 
-if has timerctl; then
-  BSCENE=${SCENE:?set SCENE for the timerctl stage}
+run_timerctl() {  # scene, seeds, iterations: stock / A+B+C x NeRFICG timer on / off, interleaved, order rotated by seed
+  BSCENE=$1; local seeds=$2 TC=$3
   case $BSCENE in room|counter|kitchen|bonsai) BSCALE=0.5 ;; *) BSCALE=0.25 ;; esac
-  echo "########## timerctl (scene $BSCENE scale $BSCALE, seeds ${SEEDS:-0 1 2}; timer on/off x stock/A+B+C)"
-  CONFIGS=(stock_on abc_on stock_off abc_off)
-  for seed in ${SEEDS:-0 1 2}; do
+  echo "########## timerctl (scene $BSCENE scale $BSCALE, seeds $seeds, $TC iterations; timer on/off x stock/A+B+C)"
+  local CONFIGS=(stock_on abc_on stock_off abc_off) seed k cfg arm tm off m fl bl
+  for seed in $seeds; do
     for k in 0 1 2 3; do
       cfg=${CONFIGS[$(( (k + seed) % 4 ))]}
       arm=${cfg%_*}; tm=${cfg#*_}
       off=0; [ "$tm" = off ] && off=1
       if [ $arm = stock ]; then m=FasterGS; fl=""; bl=taming; else m=FasterGSPlus; fl="SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true"; bl=macro; fi
-      TRAIN_ENV="FGS_WALL=0,15000,30000 TIMING_OFF=$off" train "t_${BSCENE}_${arm}_${tm}_s$seed" $m "$seed" 30000 "$fl" $bl
+      TRAIN_ENV="FGS_WALL=0,$(( TC / 2 )),$TC TIMING_OFF=$off" train "t_${BSCENE}_${arm}_${tm}_s$seed" $m "$seed" "$TC" "$fl" $bl
     done
   done
+}
+
+if has ctltest; then   # short end-to-end test of the timer-control path: real runs, real output through analyzer and recorder
+  run_timerctl garden 0 1200
+  LOG=$REPO/phase2/logs/${SLURM_JOB_NAME:-local}-${SLURM_JOB_ID:-local}.out
+  echo "########## ctltest checks on $LOG"
+  python3 "$REPO/phase2/analyze_timerctl.py" "$LOG" --seeds 0 --iters 1200 > "$OUT/ctltest_analysis.md" 2>&1 \
+    && { echo "PASS ctltest: analyzer validated all 4 runs"; grep -E "^\| (stock|A\+B\+C)" "$OUT/ctltest_analysis.md"; } \
+    || { echo "FAIL ctltest: analyzer"; cat "$OUT/ctltest_analysis.md"; FAILED+=(ctltest_analyzer); }
+  ( cd "$REPO" && python3 phase2/record_runs.py "$LOG" --dry-run ) > "$OUT/ctltest_record.txt" 2>&1 || true
+  python3 - "$OUT/ctltest_record.txt" <<'PYC' && echo "PASS ctltest: recorder parsed 4 runs (2 timer ON, 2 timer OFF), none failed" || { echo "FAIL ctltest: recorder"; cat "$OUT/ctltest_record.txt"; FAILED+=(ctltest_recorder); }
+import csv, io, sys
+t = open(sys.argv[1]).read()
+rows = [r for r in csv.reader(io.StringIO(t.split('\n', 1)[1])) if len(r) > 5 and 'run=t_garden_' in ','.join(r)]
+notes = [','.join(r) for r in rows]
+ok = (len(rows) == 4 and not any('FAILED' in n for n in notes)
+      and sum('timer OFF' in n for n in notes) == 2 and sum('timer ON' in n for n in notes) == 2
+      and all('wall clock' in n for n in notes))
+sys.exit(0 if ok else 1)
+PYC
+fi
+
+if has timerctl; then
+  run_timerctl "${SCENE:?set SCENE for the timerctl stage}" "${SEEDS:-0 1 2}" "${TC_ITERS:-30000}"
 fi
 
 if has hostprof; then   # where the host-side gaps come from: PyTorch op ranges + Python backtraces on CUDA API calls

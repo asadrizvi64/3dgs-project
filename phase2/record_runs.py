@@ -74,7 +74,7 @@ for path in args.logs:
         grab = lambda pat: next((m for m in (re.match(pat, l) for l in L) if m), None)
         clk = [m for m in (re.match(r'SEGCLOCK step=(\d+) \S+ cum_s=(\S+) sparse=(\d)(?: visfrac=(\S+))?(?: N=(\d+) peak_alloc_gib=(\S+))?', l) for l in L) if m]
         clk = clk[-1] if clk else None
-        res = grab(r'RESULT \S+ PSNR:(\S+) SSIM:(\S+) LPIPS:(\S+) N_Gaussians:(\d+) ms_it=(\S*)(?:\s+allocated: ([\d.]+))?')
+        res = grab(r'RESULT \S+ PSNR:(\S+) SSIM:(\S+) LPIPS:(\S+) N_Gaussians:(\d+)(?:\s+ms_it=(\S*))?(?:\s+allocated: ([\d.]+))?')
         n15 = grab(r'FGS_N iteration=15000 N=(\d+)')
         end = grab(r'FGS_TRAIN_END N=(\d+) peak_alloc_gib=(\S+) peak_reserved_gib=(\S+)')
         per = grab(r'PERIMG \S+ n_images=(\d+) min_image=(\d+) min_psnr=(\S+)')

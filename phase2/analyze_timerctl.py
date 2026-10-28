@@ -24,7 +24,9 @@ from collections import defaultdict
 ap = argparse.ArgumentParser()
 ap.add_argument('logs', nargs='+')
 ap.add_argument('--seeds', type=int, nargs='+', default=[0, 1, 2])
+ap.add_argument('--iters', type=int, default=30000, help='run length; the wall windows are 0-iters/2 and iters/2-iters')
 args = ap.parse_args()
+I, H = args.iters, args.iters // 2
 sys.stdout.reconfigure(encoding='utf-8')
 
 ARMS, TIMERS = ('stock', 'abc'), ('on', 'off')
@@ -61,19 +63,19 @@ for sc in scenes:
                     errors[sc].append(f'{name}: FAILED')
                 walls = {(int(a), int(b)): (float(t), h) for a, b, t, h in
                          (m.groups() for m in (re.match(r'FGS_WALL from=(\d+) to=(\d+) s=([\d.]+) views=(\w+)', l) for l in L) if m)}
-                clk = [float(m.group(1)) for m in (re.match(r'SEGCLOCK step=30000 \S+ cum_s=([\d.]+)', l) for l in L) if m]
-                res = [m for m in (re.match(r'RESULT \S+ PSNR:(\S+) SSIM:(\S+) LPIPS:(\S+) N_Gaussians:(\d+) ms_it=(\S*)', l) for l in L) if m]
-                if set(walls) != {(0, 15000), (15000, 30000)}:
+                clk = [float(m.group(1)) for m in (re.match(rf'SEGCLOCK step={I} \S+ cum_s=([\d.]+)', l) for l in L) if m]
+                res = [m for m in (re.match(r'RESULT \S+ PSNR:(\S+) SSIM:(\S+) LPIPS:(\S+) N_Gaussians:(\d+)(?:\s+ms_it=(\S*))?', l) for l in L) if m]
+                if set(walls) != {(0, H), (H, I)}:
                     errors[sc].append(f'{name}: FGS_WALL windows {sorted(walls)}'); continue
                 if len(clk) != 1 or len(res) != 1:
-                    errors[sc].append(f'{name}: {len(clk)} SEGCLOCK step=30000, {len(res)} RESULT'); continue
-                msit = res[0].group(5)
+                    errors[sc].append(f'{name}: {len(clk)} SEGCLOCK step={I}, {len(res)} RESULT'); continue
+                msit = res[0].group(5) or ''
                 if tm == 'on' and not msit:
                     errors[sc].append(f'{name}: timer ON but no NeRFICG ms/it')
                 if tm == 'off' and msit:
                     errors[sc].append(f'{name}: timer OFF but NeRFICG ms/it {msit} present (timer not off?)')
-                runs[key] = dict(w1=walls[(0, 15000)][0], w2=walls[(15000, 30000)][0], h1=walls[(0, 15000)][1],
-                                 h2=walls[(15000, 30000)][1], seg=clk[0], psnr=float(res[0].group(1)),
+                runs[key] = dict(w1=walls[(0, H)][0], w2=walls[(H, I)][0], h1=walls[(0, H)][1],
+                                 h2=walls[(H, I)][1], seg=clk[0], psnr=float(res[0].group(1)),
                                  msit=float(msit) if msit else math.nan)
                 runs[key]['wall'] = runs[key]['w1'] + runs[key]['w2']
     for seed in args.seeds:
@@ -96,7 +98,7 @@ get = lambda sc, arm, tm, k: [runs[(sc, arm, tm, s)][k] for s in S]
 pct = lambda a, b: [100 * (x / y - 1) for x, y in zip(a, b)]
 for sc in ok:
     print(f'\n## {sc} (job {jobs.get(sc, "?")}; seeds {", ".join(map(str, S))})\n')
-    print('| arm | timer | wall 0–30k, s | wall 0–15k | wall 15k–30k | summed step events (SEGCLOCK), s | wall − SEGCLOCK, s | NeRFICG ms/it | PSNR |')
+    print('| arm | timer | wall 0–end, s | wall first half | wall second half | summed step events (SEGCLOCK), s | wall − SEGCLOCK, s | NeRFICG ms/it | PSNR |')
     print('|---|---|---|---|---|---|---|---|---|')
     for arm in ARMS:
         for tm in TIMERS:
