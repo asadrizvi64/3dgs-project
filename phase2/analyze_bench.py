@@ -9,8 +9,13 @@ Validation first, per scene. A scene is analyzed only if every run passes:
   - one PERIMG line, with the same number of test images in every run of the scene;
   - one RESULT line with finite PSNR / SSIM / LPIPS;
   - A+B and A+B+C: exactly one switch line at 15000 and sparse=1 at the end; stock: no switch line and sparse=0.
-Runs whose lowest single-image PSNR is far below the scene's other runs (> 2 dB under their median) are flagged as
-possible one-view artifacts; they are reported, not removed.
+Every run's archived per-image test metrics (phase2/logs/run_<job>/runs/<run>/test_30000/metrics_8bit.txt) are
+required. Each test image is compared with the same image in the scene's other runs (and the same-seed runs of the
+other arms are listed): an image more than 1 dB below that median is flagged as a possible one-view artifact.
+Flagged runs stay in all results; the flags are reported next to them.
+
+The overall verdict is given only when all 9 scenes x 3 arms x 3 seeds (81 runs) pass validation. Otherwise the
+summary is printed as partial, the verdict reads 'incomplete - not evaluated', and the exit code is 2.
 
 Report: one table per scene (paired deltas against stock per seed), then a summary across scenes and the
 pre-registered win criterion from phase2/PLAN.md, for each of A+B and A+B+C:
@@ -18,6 +23,7 @@ pre-registered win criterion from phase2/PLAN.md, for each of A+B and A+B+C:
 """
 import argparse
 import math
+import os
 import re
 import statistics as st
 import sys
@@ -32,10 +38,11 @@ sys.stdout.reconfigure(encoding="utf-8")
 ARMS = ('stock', 'ab', 'abc')
 LABEL = {'stock': 'stock Faster-GS', 'ab': 'A+B', 'abc': 'A+B+C'}
 ORDER = ['bicycle', 'flowers', 'garden', 'stump', 'treehill', 'room', 'counter', 'kitchen', 'bonsai']
+IMG_DROP = 1.0   # flag a test image this many dB below the median of the same image in the scene's other runs
 fin = lambda x: x is not None and math.isfinite(x)
 
 blocks = defaultdict(list)          # (scene, arm, seed) -> [lines] per header occurrence
-jobs = {}
+jobs, archives = {}, {}
 for path in args.logs:
     cur = None
     head = open(path, encoding='utf-8', errors='replace').read()
@@ -47,6 +54,7 @@ for path in args.logs:
             blocks[cur].append([])
             if mjob:
                 jobs[cur[0]] = f'{mjob.group(2)} ({mjob.group(1)})'
+                archives[cur[0]] = os.path.join(os.path.dirname(path), f'run_{mjob.group(2)}', 'runs')
             continue
         if line.startswith('#####'):
             cur = None
@@ -100,15 +108,27 @@ for sc in scenes:
     nimg = {runs[k]['n_img'] for k in runs if k[0] == sc}
     if len(nimg) > 1:
         errors[sc].append(f'test image counts differ between runs: {sorted(nimg)}')
-    mins = [runs[k]['min_psnr'] for k in runs if k[0] == sc]
+    # per-image comparison: the same test image across the scene's runs (archived metrics_8bit.txt of every run)
     for k in [k for k in runs if k[0] == sc]:
-        others = [runs[j]['min_psnr'] for j in runs if j[0] == sc and j != k]
-        if others and runs[k]['min_psnr'] < st.median(others) - 2.0:
-            flags[sc].append(f'b_{sc}_{k[1]}_s{k[2]}: image {runs[k]["min_img"]} at {runs[k]["min_psnr"]:.2f} dB, '
-                             f'other runs\' lowest image median {st.median(others):.2f} dB')
+        name = f'b_{sc}_{k[1]}_s{k[2]}'
+        mf = os.path.join(archives.get(sc, ''), name, 'test_30000', 'metrics_8bit.txt')
+        if not os.path.exists(mf):
+            errors[sc].append(f'{name}: no archived per-image metrics ({mf})'); continue
+        img = {int(m.group(1)): float(m.group(2))
+               for m in re.finditer(r'^(\d+)\t([\d.]+)', open(mf).read().split('Image', 1)[-1], re.M)}
+        if len(img) != runs[k]['n_img']:
+            errors[sc].append(f'{name}: {len(img)} per-image values, PERIMG says {runs[k]["n_img"]}')
+        runs[k]['img'] = img
+    for k in [k for k in runs if k[0] == sc and 'img' in runs[k]]:
+        for i, v in runs[k]['img'].items():
+            others = [runs[j]['img'][i] for j in runs if j[0] == sc and j != k and i in runs[j].get('img', {})]
+            paired = {a: runs[(sc, a, k[2])]['img'].get(i) for a in ARMS if a != k[1] and 'img' in runs.get((sc, a, k[2]), {})}
+            if others and v < st.median(others) - IMG_DROP:
+                flags[sc].append(f'b_{sc}_{k[1]}_s{k[2]}: test image {i} at {v:.2f} dB; same image in the other runs: median '
+                                 f'{st.median(others):.2f} dB, same seed ' + ', '.join(f'{LABEL[a]} {p:.2f}' for a, p in paired.items() if p is not None))
 
 ok = [sc for sc in scenes if not errors[sc]]
-print(f'## Validation: {len(ok)}/{len(scenes)} scenes pass ({", ".join(scenes)})')
+print(f'## Validation: {len(ok)}/{len(ORDER)} expected scenes pass ({", ".join(scenes)})')
 for sc in scenes:
     for e in errors[sc]:
         print(f'  - {sc}: {e}')
@@ -147,7 +167,9 @@ for sc in ok:
                              dlpips=st.mean(dif(sc, arm, 'lpips')), seeds_faster=sum(x > 0 for x in red(sc, arm)))
                    for arm in ('ab', 'abc')}
 
-print('\n## Across scenes (each scene = mean of its paired seeds)\n')
+complete = set(ok) == set(ORDER) and all((sc, a, s) in runs for sc in ORDER for a in ARMS for s in S)
+verdicts = {}
+print('\n## Across scenes (each scene = mean of its paired seeds)' + ('' if complete else f' - PARTIAL, {len(ok)}/{len(ORDER)} scenes') + '\n')
 print('| scene | A+B time | A+B ΔPSNR | A+B ΔLPIPS | A+B+C time | A+B+C ΔPSNR | A+B+C ΔLPIPS |')
 print('|---|---|---|---|---|---|---|')
 for sc in ok:
@@ -165,6 +187,14 @@ for arm in ('ab', 'abc'):
           f'range {min(reds):.1f}–{max(reds):.1f}%; ΔPSNR mean {st.mean(dps):+.3f}, worst {worst} {min(dps):+.3f}; '
           f'ΔLPIPS mean {st.mean(dls):+.4f}; paired runs faster: {sum(summary[sc][arm]["seeds_faster"] for sc in ok)}/{len(ok) * len(S)}')
     for k, v in crit.items():
-        print(f'  - {"PASS" if v else "FAIL"} {k}')
-    if len(ok) < len(ORDER):
-        print(f'  - (criterion is defined over all {len(ORDER)} scenes; only {len(ok)} analyzed)')
+        print(f'  - {"meets" if v else "misses"} {k}' + ('' if complete else ' (partial data, not a verdict)'))
+    verdicts[arm] = all(crit.values())
+
+n_valid = sum(1 for k in runs if k[0] in ok)
+print()
+if complete:
+    for arm in ('ab', 'abc'):
+        print(f'VERDICT {LABEL[arm]}: {"PASS" if verdicts[arm] else "FAIL"} (all 9 scenes, 81 runs validated)')
+else:
+    print(f'VERDICT: incomplete - not evaluated ({len(ok)}/{len(ORDER)} scenes and {n_valid}/{len(ORDER) * len(ARMS) * len(S)} runs validated)')
+    sys.exit(2)

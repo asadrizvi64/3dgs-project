@@ -8,7 +8,8 @@ run files in phase2/logs/run_<job>/runs/<run name>/ (rundir.txt, gpu_clock_summa
 
 Columns follow the existing log. Train time is the CUDA-event clock (SEGCLOCK cum_s). peak_vram_gb is the
 training-only peak (GiB) from clock hook v4 when present; otherwise the trainer's own figure, read after the final
-evaluation (the notes say which). role: stock -> baseline, runs shorter than 30k -> check, everything else -> experiment.
+evaluation (the notes say which). role: stage-render runs (r_*, intermediate renders every N iterations; not
+for timing claims) -> stage-render, stock -> baseline, runs shorter than 30k -> check, everything else -> experiment.
 """
 import argparse
 import csv
@@ -78,7 +79,7 @@ for path in args.logs:
         end = grab(r'FGS_TRAIN_END N=(\d+) peak_alloc_gib=(\S+) peak_reserved_gib=(\S+)')
         per = grab(r'PERIMG \S+ n_images=(\d+) min_image=(\d+) min_psnr=(\S+)')
         failed = any(l.startswith(f'FAILED {b["name"]}') for l in L)
-        sm = re.match(r'b_([a-z]+)_', b['name'])
+        sm = re.match(r'[br]_([a-z]+)_', b['name'])
         scene = sm.group(1) if sm else 'garden'
         rundir, clock = '', ''
         adir = os.path.join(archive, b['name'])
@@ -114,6 +115,8 @@ for path in args.logs:
             notes.append(f'VRAM {res.group(6)} GiB allocated, read after the final evaluation (not training-only)')
         if per:
             notes.append(f'lowest test image {per.group(2)} at {per.group(3)} dB ({per.group(1)} images)')
+        if b['name'].startswith('r_'):
+            notes.append('stage-render run: test renders and metrics every 1000 iterations, so its timing and quality are not benchmark values')
         if clock:
             notes.append(clock)
         if rundir:
@@ -129,7 +132,7 @@ for path in args.logs:
                    psnr=f'{float(res.group(1)):.3f}' if res else '', ssim=f'{float(res.group(2)):.4f}' if res else '',
                    lpips=f'{float(res.group(3)):.4f}' if res else '', gaussian_count=res.group(4) if res else '',
                    notes='; '.join(notes), train_resolution=RES.get(scene, ''),
-                   role='check' if b['iters'] < 30000 else ('baseline' if b['method'] == 'FasterGS' or b['name'].endswith(('a0b0c0_s0', 'a0b0c0_s1', 'a0b0c0_s2')) else 'experiment'),
+                   role='stage-render' if b['name'].startswith('r_') else 'check' if b['iters'] < 30000 else ('baseline' if b['method'] == 'FasterGS' or b['name'].endswith(('a0b0c0_s0', 'a0b0c0_s1', 'a0b0c0_s2')) else 'experiment'),
                    **CONST)
         new_rows.append([row.get(h, '') for h in header])
         seen.add(key)
