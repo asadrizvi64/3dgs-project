@@ -1,0 +1,71 @@
+STAGE step=500 fwd=1.889 bwd=1.035 opt=0.078 n_gauss=112627
+STAGE step=1000 fwd=1.321 bwd=1.058 opt=0.181 n_gauss=196904
+STAGE step=1500 fwd=2.210 bwd=1.272 opt=0.290 n_gauss=322283
+STAGE step=2000 fwd=1.537 bwd=1.251 opt=0.403 n_gauss=450875
+STAGE step=2500 fwd=1.642 bwd=1.617 opt=0.515 n_gauss=573901
+STAGE step=3000 fwd=0.900 bwd=0.696 opt=0.614 n_gauss=692534
+STAGE step=3500 fwd=1.482 bwd=1.773 opt=0.606 n_gauss=676521
+STAGE step=4000 fwd=1.233 bwd=1.368 opt=0.691 n_gauss=777214
+STAGE step=4500 fwd=1.304 bwd=1.342 opt=0.774 n_gauss=876063
+STAGE step=5000 fwd=1.475 bwd=1.820 opt=0.851 n_gauss=965591
+STAGE step=5500 fwd=1.596 bwd=2.065 opt=0.921 n_gauss=1050753
+STAGE step=6000 fwd=1.126 bwd=1.115 opt=0.995 n_gauss=1130282
+STAGE step=6500 fwd=1.447 bwd=1.688 opt=0.919 n_gauss=1045451
+STAGE step=7000 fwd=1.565 bwd=1.866 opt=0.973 n_gauss=1105524
+STAGE step=7500 fwd=1.559 bwd=2.144 opt=1.021 n_gauss=1162695
+STAGE step=8000 fwd=1.492 bwd=1.865 opt=1.066 n_gauss=1213186
+STAGE step=9000 fwd=1.220 bwd=1.486 opt=1.145 n_gauss=1309037
+STAGE step=9500 fwd=1.527 bwd=1.975 opt=1.072 n_gauss=1223780
+STAGE step=10000 fwd=1.508 bwd=1.954 opt=1.094 n_gauss=1251903
+STAGE step=10500 fwd=1.579 bwd=1.833 opt=1.125 n_gauss=1282509
+STAGE step=11000 fwd=1.617 bwd=2.246 opt=1.143 n_gauss=1308178
+STAGE step=11500 fwd=1.749 bwd=2.156 opt=1.169 n_gauss=1333528
+STAGE step=12000 fwd=1.307 bwd=1.496 opt=1.183 n_gauss=1356478
+STAGE step=12500 fwd=1.865 bwd=2.215 opt=1.125 n_gauss=1287410
+STAGE step=13500 fwd=1.722 bwd=2.149 opt=1.148 n_gauss=1315412
+STAGE step=14000 fwd=1.748 bwd=2.335 opt=1.161 n_gauss=1328032
+STAGE step=14500 fwd=1.339 bwd=1.481 opt=1.172 n_gauss=1343049
+STAGE step=15000 fwd=1.866 bwd=2.391 opt=0.453 n_gauss=1351753
+STAGE step=15500 fwd=1.892 bwd=2.399 opt=0.446 n_gauss=1351753
+CURVE step=16000 ms_per_step=4.167 n_gauss=1351753
+STAGE step=16000 fwd=2.154 bwd=2.309 opt=0.379 n_gauss=1351753
+STAGE step=16500 fwd=2.186 bwd=2.522 opt=0.472 n_gauss=1351753
+CURVE step=17000 ms_per_step=4.169 n_gauss=1351753
+STAGE step=17000 fwd=1.707 bwd=2.199 opt=0.402 n_gauss=1351753
+STAGE step=17500 fwd=1.651 bwd=2.063 opt=0.380 n_gauss=1351753
+CURVE step=18000 ms_per_step=4.117 n_gauss=1351753
+STAGE step=18000 fwd=1.684 bwd=2.208 opt=0.424 n_gauss=1351753
+STAGE step=18500 fwd=1.362 bwd=1.549 opt=0.267 n_gauss=1351753
+CURVE step=19000 ms_per_step=4.101 n_gauss=1351753
+STAGE step=19000 fwd=1.841 bwd=2.504 opt=0.463 n_gauss=1351753
+STAGE step=19500 fwd=1.507 bwd=1.555 opt=0.248 n_gauss=1351753
+CURVE step=20000 ms_per_step=4.093 n_gauss=1351753
+STAGE step=20000 fwd=1.734 bwd=2.327 opt=0.437 n_gauss=1351753
+STAGE step=20500 fwd=1.830 bwd=2.369 opt=0.461 n_gauss=1351753
+CURVE step=21000 ms_per_step=4.080 n_gauss=1351753
+STAGE step=21000 fwd=1.795 bwd=2.506 opt=0.446 n_gauss=1351753
+STAGE step=21500 fwd=1.696 bwd=2.282 opt=0.412 n_gauss=1351753
+CURVE step=22000 ms_per_step=4.064 n_gauss=1351753
+STAGE step=22000 fwd=1.463 bwd=1.472 opt=0.265 n_gauss=1351753
+STAGE step=22500 fwd=1.514 bwd=1.967 opt=0.379 n_gauss=1351753
+CURVE step=23000 ms_per_step=4.036 n_gauss=1351753
+STAGE step=23000 fwd=1.591 bwd=1.942 opt=0.357 n_gauss=1351753
+STAGE step=23500 fwd=1.687 bwd=2.120 opt=0.348 n_gauss=1351753
+CURVE step=24000 ms_per_step=4.067 n_gauss=1351753
+STAGE step=24000 fwd=1.675 bwd=2.181 opt=0.408 n_gauss=1351753
+STAGE step=24500 fwd=1.596 bwd=1.654 opt=0.267 n_gauss=1351753
+CURVE step=25000 ms_per_step=4.031 n_gauss=1351753
+STAGE step=25500 fwd=1.620 bwd=2.141 opt=0.349 n_gauss=1351753
+CURVE step=26000 ms_per_step=4.019 n_gauss=1351753
+STAGE step=26000 fwd=1.718 bwd=2.236 opt=0.438 n_gauss=1351753
+STAGE step=26500 fwd=1.662 bwd=2.189 opt=0.429 n_gauss=1351753
+CURVE step=27000 ms_per_step=4.069 n_gauss=1351753
+STAGE step=27000 fwd=1.794 bwd=2.279 opt=0.456 n_gauss=1351753
+STAGE step=27500 fwd=1.722 bwd=2.131 opt=0.439 n_gauss=1351753
+CURVE step=28000 ms_per_step=3.998 n_gauss=1351753
+STAGE step=28000 fwd=1.667 bwd=2.121 opt=0.424 n_gauss=1351753
+STAGE step=28500 fwd=1.652 bwd=2.106 opt=0.417 n_gauss=1351753
+CURVE step=29000 ms_per_step=3.997 n_gauss=1351753
+STAGE step=29000 fwd=1.590 bwd=1.774 opt=0.352 n_gauss=1351753
+STAGE step=29500 fwd=1.549 bwd=1.564 opt=0.298 n_gauss=1351753
+CURVE step=30000 ms_per_step=4.006 n_gauss=1351753

@@ -1,0 +1,91 @@
+node=c46 job=4484137 gpu=NVIDIA H100 stages=profile repo=2a9d8f2
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## profile (scene garden scale 0.25, seed 0; stock vs A+B+C)
+##### p_garden_stock_s0: method=FasterGS seed=0 iters=30000 flags= blend=taming 21:00:25
+SEGCLOCK step=1000 seg_s=2.107 cum_s=2.107 sparse=0 N=269190 peak_alloc_gib=2.38
+SEGCLOCK step=2000 seg_s=3.025 cum_s=5.132 sparse=0 N=1047165 peak_alloc_gib=3.20
+SEGCLOCK step=3000 seg_s=4.708 cum_s=9.840 sparse=0 N=1957002 peak_alloc_gib=4.16
+SEGCLOCK step=4000 seg_s=5.849 cum_s=15.689 sparse=0 N=2438729 peak_alloc_gib=4.65
+SEGCLOCK step=5000 seg_s=7.100 cum_s=22.789 sparse=0 N=3067458 peak_alloc_gib=5.31
+SEGCLOCK step=6000 seg_s=7.938 cum_s=30.727 sparse=0 N=3549365 peak_alloc_gib=5.81
+SEGCLOCK step=7000 seg_s=8.352 cum_s=39.079 sparse=0 N=3627140 peak_alloc_gib=5.90
+SEGCLOCK step=8000 seg_s=8.755 cum_s=47.835 sparse=0 N=3839612 peak_alloc_gib=6.12
+SEGCLOCK step=9000 seg_s=9.096 cum_s=56.931 sparse=0 N=4010888 peak_alloc_gib=6.29
+SEGCLOCK step=10000 seg_s=9.227 cum_s=66.157 sparse=0 N=3984327 peak_alloc_gib=6.30
+SEGCLOCK step=11000 seg_s=9.265 cum_s=75.423 sparse=0 N=4058885 peak_alloc_gib=6.35
+SEGCLOCK step=12000 seg_s=9.387 cum_s=84.810 sparse=0 N=4132149 peak_alloc_gib=6.42
+SEGCLOCK step=13000 seg_s=9.427 cum_s=94.237 sparse=0 N=4090726 peak_alloc_gib=6.42
+SEGCLOCK step=14000 seg_s=9.409 cum_s=103.646 sparse=0 N=4125585 peak_alloc_gib=6.42
+SEGCLOCK step=15000 seg_s=9.440 cum_s=113.086 sparse=0 N=4163990 peak_alloc_gib=6.46
+FGS_N iteration=15000 N=4163990
+SEGCLOCK step=16000 seg_s=9.411 cum_s=122.496 sparse=0 N=4163990 peak_alloc_gib=6.46
+SEGCLOCK step=17000 seg_s=9.436 cum_s=131.932 sparse=0 N=4163990 peak_alloc_gib=6.46
+SEGCLOCK step=18000 seg_s=9.352 cum_s=141.283 sparse=0 N=4163990 peak_alloc_gib=6.46
+SEGCLOCK step=19000 seg_s=9.346 cum_s=150.630 sparse=0 N=4163990 peak_alloc_gib=6.46
+SEGCLOCK step=20000 seg_s=9.360 cum_s=159.990 sparse=0 N=4163990 peak_alloc_gib=6.46
+SEGCLOCK step=21000 seg_s=9.331 cum_s=169.321 sparse=0 N=4163990 peak_alloc_gib=6.46
+SEGCLOCK step=22000 seg_s=9.334 cum_s=178.655 sparse=0 N=4163990 peak_alloc_gib=6.46
+SEGCLOCK step=23000 seg_s=9.315 cum_s=187.970 sparse=0 N=4163990 peak_alloc_gib=6.46
+SEGCLOCK step=24000 seg_s=9.270 cum_s=197.240 sparse=0 N=4163990 peak_alloc_gib=6.46
+SEGCLOCK step=25000 seg_s=9.237 cum_s=206.477 sparse=0 N=4163990 peak_alloc_gib=6.46
+SEGCLOCK step=26000 seg_s=9.262 cum_s=215.738 sparse=0 N=4163990 peak_alloc_gib=6.46
+SEGCLOCK step=27000 seg_s=9.219 cum_s=224.957 sparse=0 N=4163990 peak_alloc_gib=6.46
+SEGCLOCK step=28000 seg_s=9.258 cum_s=234.215 sparse=0 N=4163990 peak_alloc_gib=6.46
+SEGCLOCK step=29000 seg_s=9.277 cum_s=243.492 sparse=0 N=4163990 peak_alloc_gib=6.46
+SEGCLOCK step=30000 seg_s=9.268 cum_s=252.759 sparse=0 N=4163990 peak_alloc_gib=6.46
+FGS_TRAIN_END N=4163990 peak_alloc_gib=6.46 peak_reserved_gib=8.00
+RUNDIR p_garden_stock_s0 output/FasterGS/fastergs_garden_1144604_s0p2p_garden_stock_s0_2026-10-28-21-00-39
+PERIMG p_garden_stock_s0 n_images=24 min_image=4 min_psnr=20.51
+RESULT p_garden_stock_s0 PSNR:27.52205228805542 SSIM:0.8670895000298818 LPIPS:0.12039202048132817 N_Gaussians:4148233 ms_it=8.51  allocated: 6.46 GiB
+PROF p_garden_stock_s0 52 STAGE lines, 0 CURVE lines
+##### n_garden_stock_5000: method=FasterGS seed=0 window=5000-5050 flags= blend=taming 21:05:45
+NSYS n_garden_stock_5000 3 csv reports, rep /home/syas272h/3dgs-archive/profile/4484137/n_garden_stock_5000.nsys-rep
+##### n_garden_stock_20000: method=FasterGS seed=0 window=20000-20050 flags= blend=taming 21:06:37
+note: nsys report nvtx_sum unavailable
+note: nsys report nvtx_kern_sum unavailable
+NSYS n_garden_stock_20000 1 csv reports, rep /home/syas272h/3dgs-archive/profile/4484137/n_garden_stock_20000.nsys-rep
+##### p_garden_abc_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 21:09:49
+SEGCLOCK step=1000 seg_s=1.888 cum_s=1.888 sparse=0 N=268887 peak_alloc_gib=2.38
+SEGCLOCK step=2000 seg_s=2.545 cum_s=4.433 sparse=0 N=1043704 peak_alloc_gib=3.19
+SEGCLOCK step=3000 seg_s=3.883 cum_s=8.316 sparse=0 N=1941523 peak_alloc_gib=4.12
+SEGCLOCK step=4000 seg_s=4.881 cum_s=13.196 sparse=0 N=2424852 peak_alloc_gib=4.61
+SEGCLOCK step=5000 seg_s=5.835 cum_s=19.031 sparse=0 N=3057566 peak_alloc_gib=5.26
+SEGCLOCK step=6000 seg_s=6.484 cum_s=25.515 sparse=0 N=3539838 peak_alloc_gib=5.76
+SEGCLOCK step=7000 seg_s=6.819 cum_s=32.335 sparse=0 N=3617426 peak_alloc_gib=5.88
+SEGCLOCK step=8000 seg_s=7.175 cum_s=39.509 sparse=0 N=3828804 peak_alloc_gib=6.07
+SEGCLOCK step=9000 seg_s=7.436 cum_s=46.946 sparse=0 N=3998079 peak_alloc_gib=6.23
+SEGCLOCK step=10000 seg_s=7.519 cum_s=54.465 sparse=0 N=3971282 peak_alloc_gib=6.23
+SEGCLOCK step=11000 seg_s=7.564 cum_s=62.029 sparse=0 N=4045718 peak_alloc_gib=6.32
+SEGCLOCK step=12000 seg_s=7.643 cum_s=69.673 sparse=0 N=4119661 peak_alloc_gib=6.37
+SEGCLOCK step=13000 seg_s=7.665 cum_s=77.338 sparse=0 N=4078814 peak_alloc_gib=6.37
+SEGCLOCK step=14000 seg_s=7.700 cum_s=85.038 sparse=0 N=4114560 peak_alloc_gib=6.39
+SEGCLOCK step=15000 seg_s=7.732 cum_s=92.770 sparse=0 N=4153914 peak_alloc_gib=6.40
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=4153914
+SEGCLOCK step=16000 seg_s=6.567 cum_s=99.337 sparse=1 visfrac=0.404 N=4153914 peak_alloc_gib=6.40
+SEGCLOCK step=17000 seg_s=6.542 cum_s=105.878 sparse=1 visfrac=0.347 N=4153914 peak_alloc_gib=6.40
+SEGCLOCK step=18000 seg_s=6.536 cum_s=112.414 sparse=1 visfrac=0.333 N=4153914 peak_alloc_gib=6.40
+SEGCLOCK step=19000 seg_s=6.526 cum_s=118.940 sparse=1 visfrac=0.347 N=4153914 peak_alloc_gib=6.40
+SEGCLOCK step=20000 seg_s=6.511 cum_s=125.451 sparse=1 visfrac=0.326 N=4153914 peak_alloc_gib=6.40
+SEGCLOCK step=21000 seg_s=6.535 cum_s=131.986 sparse=1 visfrac=0.341 N=4153914 peak_alloc_gib=6.40
+SEGCLOCK step=22000 seg_s=6.483 cum_s=138.469 sparse=1 visfrac=0.362 N=4153914 peak_alloc_gib=6.40
+SEGCLOCK step=23000 seg_s=6.455 cum_s=144.925 sparse=1 visfrac=0.318 N=4153914 peak_alloc_gib=6.40
+SEGCLOCK step=24000 seg_s=6.500 cum_s=151.424 sparse=1 visfrac=0.331 N=4153914 peak_alloc_gib=6.40
+SEGCLOCK step=25000 seg_s=6.465 cum_s=157.890 sparse=1 visfrac=0.328 N=4153914 peak_alloc_gib=6.40
+SEGCLOCK step=26000 seg_s=6.504 cum_s=164.393 sparse=1 visfrac=0.318 N=4153914 peak_alloc_gib=6.40
+SEGCLOCK step=27000 seg_s=6.464 cum_s=170.857 sparse=1 visfrac=0.390 N=4153914 peak_alloc_gib=6.40
+SEGCLOCK step=28000 seg_s=6.461 cum_s=177.318 sparse=1 visfrac=0.351 N=4153914 peak_alloc_gib=6.40
+SEGCLOCK step=29000 seg_s=6.451 cum_s=183.769 sparse=1 visfrac=0.403 N=4153914 peak_alloc_gib=6.40
+SEGCLOCK step=30000 seg_s=6.446 cum_s=190.215 sparse=1 visfrac=0.337 N=4153914 peak_alloc_gib=6.40
+FGS_TRAIN_END N=4153914 peak_alloc_gib=6.40 peak_reserved_gib=8.33
+RUNDIR p_garden_abc_s0 output/FasterGSPlus/fastergsplus_garden_e2e727b_s0p2p_garden_abc_s0_2026-10-28-21-09-56
+PERIMG p_garden_abc_s0 n_images=24 min_image=4 min_psnr=20.44
+RESULT p_garden_abc_s0 PSNR:27.50882077217102 SSIM:0.866968626777331 LPIPS:0.12056143954396248 N_Gaussians:4149592 ms_it=6.41  allocated: 6.40 GiB
+PROF p_garden_abc_s0 53 STAGE lines, 15 CURVE lines
+##### n_garden_abc_5000: method=FasterGSPlus seed=0 window=5000-5050 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 21:13:58
+NSYS n_garden_abc_5000 3 csv reports, rep /home/syas272h/3dgs-archive/profile/4484137/n_garden_abc_5000.nsys-rep
+##### n_garden_abc_20000: method=FasterGSPlus seed=0 window=20000-20050 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 21:14:45
+note: nsys report nvtx_sum unavailable
+note: nsys report nvtx_kern_sum unavailable
+NSYS n_garden_abc_20000 1 csv reports, rep /home/syas272h/3dgs-archive/profile/4484137/n_garden_abc_20000.nsys-rep
+JOB OK

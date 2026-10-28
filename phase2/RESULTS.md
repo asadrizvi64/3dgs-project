@@ -180,3 +180,18 @@ Stock, A+B and A+B+C were each trained once more on every scene (seed 0), render
 - At equal training time, both stacks are at or above stock over most of training on 8 of 9 scenes. On treehill both fall slightly behind stock in the last third (about 0.05–0.15 dB on this seed), consistent with treehill being the weakest benchmark scene.
 - Outdoor scenes reach stock's final PSNR well before 30k in all arms (stump at 14k, bicycle at 18–20k); indoor scenes are still improving at 30k. This supports testing an early stop (keeping the 30k schedule) on outdoor scenes first.
 - Test PSNR collapses to about 8–10 dB right after each opacity reset (every 3,000 iterations up to 15k); those stages are left out of the figures.
+
+## Step 4a: profiling the stack (garden and room, seed 0)
+
+Details: [`profile/README.md`](profile/README.md). Stock vs A+B+C, step split by CUDA events over a full run, plus nsys kernel captures at 5k and 20k.
+
+- **The indoor/outdoor difference is now measured, not inferred.** In stock, the optimizer is 31–34% of garden's step but 17–20% of room's; room's step is dominated by blending (blend backward 38% and forward blend 12% of kernel time). So selective Adam has less to remove indoors.
+- **What A+B+C leaves at 20k:**
+  - garden: blend backward 23%, preprocess backward 20%, Adam 25%, forward 17%, small PyTorch ops 10%;
+  - room: blending is about half of kernel time.
+- **About 0.75 ms per step (12% on garden, 18% on room) is not kernel time**, likely launch or host overhead. While densifying, the optimizer section is not faster in A+B+C by CUDA events, even though its kernels are; that needs a direct check.
+- **Suggested next levers, in order:**
+  1. launch/host overhead (fused Adam launch, CUDA graphs);
+  2. the blend kernels (indoor);
+  3. the densifying-phase optimizer (outdoor);
+  4. early stop (outdoor).

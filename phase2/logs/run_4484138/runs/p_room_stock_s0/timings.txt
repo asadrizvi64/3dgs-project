@@ -1,0 +1,91 @@
+Dataset loading:
+	Total execution time: 0:00:01
+	Time per iteration [ms]: 775.21
+	Number of iterations: 1
+
+_commit_wandb:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+_log_test_metrics_wandb:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+_prepare_dataset:
+	Total execution time: 0:00:14
+	Time per iteration [ms]: 13862.51
+	Number of iterations: 1
+
+_save_final_checkpoint:
+	Total execution time: 0:01:03
+	Time per iteration [ms]: 63306.57
+	Number of iterations: 1
+
+_save_intermediate_checkpoint:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+create_sampler:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 46.52
+	Number of iterations: 1
+
+densify:
+	Total execution time: 0:00:01
+	Time per iteration [ms]: 6.46
+	Number of iterations: 144
+
+finalize:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 14.55
+	Number of iterations: 1
+
+hard_pruning:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+increase_sh_degree:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.02
+	Number of iterations: 29
+
+log_wandb:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+morton_ordering:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 6.19
+	Number of iterations: 4
+
+recompute_3d_filter:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+reset_opacities:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.10
+	Number of iterations: 4
+
+reset_opacities_extra:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 13.88
+	Number of iterations: 1
+
+setup_gaussians:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 136.96
+	Number of iterations: 1
+
+training_iteration:
+	Total execution time: 0:02:30
+	Time per iteration [ms]: 5.00
+	Number of iterations: 30000
+
+Time:150.86596300000002
