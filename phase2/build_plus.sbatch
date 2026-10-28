@@ -185,13 +185,21 @@ nsys_window() {  # name method flags blend start: nsys capture of steps start..s
   [ -n "$NSYS" ] || { echo "FAILED $name: nsys not found"; FAILED+=("$name"); return; }
   local REP=$HOME/3dgs-archive/profile/${SLURM_JOB_ID:-local}; mkdir -p "$REP"
   echo "##### $name: method=$method seed=0 window=$a-$b flags=$flags blend=$blend $(date +%T)"
-  env FGS_BLEND_BWD=$blend FGS_PROF_RANGE=$a,$b FGS_PROF_EXIT=$b SCENE=$BSCENE SCALE=$BSCALE SEED=0 METHOD=$method TAG=p2$name       OPT_FLAGS=$flags LAUNCHER="$NSYS profile -t cuda,nvtx --capture-range=cudaProfilerApi --capture-range-end=stop -f true -o $REP/$name"       bash "$REPO/cluster/train_fastergs.sbatch" > "$OUT/$name.log" 2>&1 || true
+  env FGS_BLEND_BWD=$blend FGS_PROF_RANGE=$a,$b FGS_PROF_EXIT=$b SCENE=$BSCENE SCALE=$BSCALE SEED=0 METHOD=$method TAG=p2$name       OPT_FLAGS=$flags LAUNCHER="$NSYS profile -t cuda,nvtx ${NSYS_EXTRA:-}--capture-range=cudaProfilerApi --capture-range-end=stop -f true -o $REP/$name"       bash "$REPO/cluster/train_fastergs.sbatch" > "$OUT/$name.log" 2>&1 || true
   [ -f "$REP/$name.nsys-rep" ] || { echo "FAILED $name: no report"; tr '\r' '\n' < "$OUT/$name.log" | grep -E "Traceback|Error" | head; FAILED+=("$name"); return; }
   for r in cuda_gpu_kern_sum nvtx_sum nvtx_gpu_proj_sum; do
     "$NSYS" stats --force-export=true --report $r --format csv --output "$OUT/$name" "$REP/$name.nsys-rep" >/dev/null 2>&1 || echo "note: nsys report $r unavailable"
   done
   echo "NSYS $name $(ls "$OUT" | grep -c "^$name.*\.csv$") csv reports, rep $REP/$name.nsys-rep"
 }
+
+if has hostprof; then   # where the host-side gaps come from: PyTorch op ranges + Python backtraces on CUDA API calls
+  BSCENE=${SCENE:?set SCENE for the hostprof stage}
+  case $BSCENE in room|counter|kitchen|bonsai) BSCALE=0.5 ;; *) BSCALE=0.25 ;; esac
+  module load CUDA/12.8.0 >/dev/null 2>&1 || true
+  echo "########## hostprof (scene $BSCENE, A+B+C, nsys with --pytorch=autograd-nvtx --python-backtrace=cuda at 20000)"
+  NSYS_EXTRA="--pytorch=autograd-nvtx --python-backtrace=cuda --python-sampling=true "     nsys_window "h_${BSCENE}_abc_20000" FasterGSPlus "SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true" macro 20000
+fi
 
 if has profile; then
   BSCENE=${SCENE:?set SCENE for the profile stage}
