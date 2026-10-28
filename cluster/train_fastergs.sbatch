@@ -69,6 +69,7 @@ mkdir -p "$NERFICG/configs"
 sed -e "s|PATH: dataset/mipnerf360/garden|PATH: $DATA/data/360_v2/$SCENE|" \
     -e "s|MODEL_NAME: ${LOW}_garden|MODEL_NAME: $NAME|" \
     -e "s|RANDOM_SEED: 0|RANDOM_SEED: $SEED|" \
+    -e "s|NUM_ITERATIONS: 30_000|NUM_ITERATIONS: $ITERS|" \
     -e "s|IMAGE_SCALE_FACTOR: 0.25|IMAGE_SCALE_FACTOR: $SCALE|" \
     -e "/^    GUI:/,/^    [A-Z]/ s|ACTIVATE: true|ACTIVATE: false|"     -e "/^    BACKUP:/,/^    [A-Z]/ s|INTERVAL: -1|INTERVAL: ${BACKUP_INTERVAL:--1}|" \
     "$MDIR/${LOW}_garden.yaml" > "$CFG"
