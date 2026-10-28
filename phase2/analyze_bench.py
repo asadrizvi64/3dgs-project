@@ -204,9 +204,14 @@ for sc in ok:
             others = [runs[j]['img'][i] for j in runs if j[0] == sc and j != k]
             if v < st.median(others) - SEVERE:
                 severe[sc].add(i)
-                count[k[1]].append(f'{sc} s{k[2]} image {i} ({v - st.median(others):+.1f} dB)')
+                count[k[1]].append((f'{sc} s{k[2]}', f'{sc} s{k[2]} image {i} ({v - st.median(others):+.1f} dB)'))
 for arm in ARMS:
-    print(f'- {LABEL[arm]}: {len(count[arm])} failure(s) in 27 runs' + (': ' + '; '.join(count[arm]) if count[arm] else ''))
+    nruns = len({r for r, _ in count[arm]})
+    print(f'- {LABEL[arm]}: {len(count[arm])} failing image(s) in {nruns} of {len(ok) * len(S)} runs'
+          + (': ' + '; '.join(t for _, t in count[arm]) if count[arm] else ''))
+print()
+print('These happen without B or C (stock has them), but these counts cannot show whether B or C change how often they '
+      'happen. The exclusion below is a secondary analysis; the verdict uses all images.')
 print('\nDeltas with those images removed from every run of the scene (paired per seed, mean of 3 seeds):\n')
 print('| scene | images removed | A+B ΔPSNR | A+B ΔLPIPS | A+B+C ΔPSNR | A+B+C ΔLPIPS | C on top of A+B ΔPSNR |')
 print('|---|---|---|---|---|---|---|')

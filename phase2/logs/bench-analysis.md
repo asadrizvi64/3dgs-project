@@ -169,9 +169,11 @@ C on top of A+B (A+B+C vs A+B, paired): time 1.6 (2.3 / 0.5 / 1.9)% reduction, Î
 
 ## Sensitivity: one-view failures (a test image > 3 dB below the same image in the scene's other runs)
 
-- stock Faster-GS: 7 failure(s) in 27 runs: room s1 image 13 (-7.5 dB); room s1 image 17 (-14.8 dB); kitchen s0 image 2 (-11.6 dB); kitchen s0 image 3 (-3.3 dB); kitchen s0 image 4 (-10.6 dB); kitchen s1 image 13 (-3.4 dB); bonsai s1 image 17 (-3.8 dB)
-- A+B: 2 failure(s) in 27 runs: kitchen s2 image 21 (-3.6 dB); bonsai s1 image 24 (-7.5 dB)
-- A+B+C: 1 failure(s) in 27 runs: kitchen s1 image 4 (-10.3 dB)
+- stock Faster-GS: 7 failing image(s) in 4 of 27 runs: room s1 image 13 (-7.5 dB); room s1 image 17 (-14.8 dB); kitchen s0 image 2 (-11.6 dB); kitchen s0 image 3 (-3.3 dB); kitchen s0 image 4 (-10.6 dB); kitchen s1 image 13 (-3.4 dB); bonsai s1 image 17 (-3.8 dB)
+- A+B: 2 failing image(s) in 2 of 27 runs: kitchen s2 image 21 (-3.6 dB); bonsai s1 image 24 (-7.5 dB)
+- A+B+C: 1 failing image(s) in 1 of 27 runs: kitchen s1 image 4 (-10.3 dB)
+
+These happen without B or C (stock has them), but these counts cannot show whether B or C change how often they happen. The exclusion below is a secondary analysis; the verdict uses all images.
 
 Deltas with those images removed from every run of the scene (paired per seed, mean of 3 seeds):
 

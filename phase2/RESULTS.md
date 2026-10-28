@@ -109,7 +109,11 @@ The design:
 - All 81 runs were validated by [`analyze_bench.py`](analyze_bench.py). The checks covered: one clock record, a 15k and a last-step Gaussian count, the training-only VRAM peak, per-image metrics for every run, and the switch present exactly in the A+B / A+B+C runs.
 - Every run is in `experiment_log.csv` (81 rows), and its files are in `logs/run_<job>/runs/`. Full analysis output: [`logs/bench-analysis.md`](logs/bench-analysis.md).
 
-**Verdict (pre-registered criterion: median time reduction ≥ 20%, mean ΔPSNR ≥ −0.05 dB, no scene below −0.10 dB, mean ΔLPIPS ≤ +0.002): both stacks pass.**
+**Verdict (pre-registered criterion: median time reduction ≥ 20%, mean ΔPSNR ≥ −0.05 dB, no scene below −0.10 dB, mean ΔLPIPS ≤ +0.002): both stacks pass the benchmark-level criteria** on these nine scenes and this H100 setup.
+
+- **A+B is the conservative configuration:** no scene below −0.02 dB, and the largest per-scene ΔLPIPS is +0.0012.
+- **A+B+C is the fastest configuration that passed the agreed gate.** Its worst scene, treehill, is −0.060 dB with ΔLPIPS +0.0024. That LPIPS change is above +0.002 for that scene alone; the registered LPIPS limit applies to the mean across scenes (+0.0002), so the pass stands.
+- The report keeps both.
 
 | stack | median time reduction | mean | range | paired runs faster | mean ΔPSNR | worst scene | mean ΔLPIPS |
 |---|---|---|---|---|---|---|---|
@@ -130,7 +134,7 @@ The design:
 | kitchen | 197.7 | 163.8 | −17.1% | +0.431* | 158.3 | −19.9% | +0.190* | −0.0001 |
 | bonsai | 131.3 | 108.8 | −17.1% | +0.137* | 107.1 | −18.4% | +0.172* | −0.0005 |
 
-\*Inflated by one-view failures, mostly in stock runs (below).
+\*Inflated by one-view failures (single test images far below the same image in the other runs), most of them in stock runs (finding 3).
 
 Per-seed values, SSIM, ms/it, Gaussian counts and VRAM per scene are in the analysis file.
 
@@ -141,20 +145,30 @@ Per-seed values, SSIM, ms/it, Gaussian counts and VRAM per scene are in the anal
    - On outdoor scenes (2.9–4.9 M Gaussians) A+B saves 20.6–23.7% and A+B+C saves 23.6–28.4%.
    - On indoor scenes (1.1–1.6 M Gaussians) A+B saves only about 17% and A+B+C 18.4–19.9%.
    - A+B's median (20.6%) clears the 20% bar by a small margin: it is garden, the fifth of nine sorted values, and all four indoor scenes are below 20%.
-2. **Quality is within tolerance on every scene for both stacks.** A+B's worst scene is counter (−0.012 dB); A+B+C's is treehill (−0.060 dB). This is "within the pre-registered tolerances", not "no loss anywhere": some per-scene and per-seed deltas are negative.
+2. **Quality: both stacks pass the benchmark-level criteria. Not every scene meets every tolerance individually.**
+   - ΔPSNR is above −0.10 dB on every scene: A+B's worst is counter (−0.012 dB), A+B+C's is treehill (−0.060 dB).
+   - The LPIPS limit is a mean across scenes. Treehill's A+B+C ΔLPIPS (+0.0024) is above +0.002 on its own.
+   - So the claim is "within the pre-registered criteria", not "no loss anywhere": some per-scene and per-seed deltas are negative.
 3. **One-view failures.** These are single test images far below the same image in the other runs.
-   - Counting images more than 3 dB below the same image's median in the scene's other runs: **stock 7 in 27 runs, A+B 2, A+B+C 1**.
+   - Counting test images more than 3 dB below the same image's median in the scene's other runs:
+     - **stock: 7 images in 4 of 27 runs**;
+     - **A+B: 2 images in 2 runs**;
+     - **A+B+C: 1 image in 1 run**.
    - All are on indoor scenes except garden's image 22, the view that failed in the step 2 factorial; here it is 2.5 dB low in stock seed 0, below the 3 dB cut.
    - Worst cases: room stock seed 1, image 17, −14.8 dB; kitchen stock seed 0, images 2 and 4, −11.6 and −10.6 dB.
-   - These failures are not caused by B or C. Stock has more of them, but the counts are too small to claim the stacks reduce them.
-   - They drive the large indoor PSNR gains. With the affected images removed from every run of the scene: A+B ΔPSNR mean +0.071 (worst counter −0.013); A+B+C +0.034 (worst treehill −0.060). **Both still meet the tolerances.** The ΔLPIPS means barely change.
+   - That stock has them shows they can happen without B or C. It does not show that B or C leave their frequency unchanged; these counts are too small to tell either way.
+   - They drive the large indoor PSNR gains (room, kitchen, bonsai). **The verdict uses all images.** As a secondary analysis only, removing the affected images from every run of the scene gives: A+B ΔPSNR mean +0.071 (worst counter −0.013); A+B+C +0.034 (worst treehill −0.060). Both would still meet the criteria, and the ΔLPIPS means barely change.
 4. **C (bf16 SH-rest moments) on top of A+B: +2 to +6 points of speed for a small, mostly negative quality change.**
    - With one-view failures removed it is negative on 7 of 9 scenes: −0.008 to −0.068 dB, plus kitchen −0.157 with high seed variance.
    - Treehill is the clearest case: −0.068 dB on all 3 seeds, LPIPS +0.0012.
-   - This matches step 2 (−0.04 dB on garden). C is the faster choice within tolerance; A+B is the choice with no measurable quality cost.
-5. **Gaussian counts: where the difference arises is now verified.**
-   - In all 81 runs, the count at 15k equals the count at the last training step, so N is fixed after densification.
-   - The final difference comes entirely from Faster-GS's end-of-training opacity cleanup. It removes 0.4–3.5% of Gaussians in stock (room 3.5%) but only 0.1–0.7% in the selective-Adam arms.
-   - The mechanism is still a hypothesis: rows that are not updated keep their opacity instead of drifting below the floor.
-   - Counts at 15k differ slightly between stock and FasterGSPlus, by up to −1.5% on stump, because A changes the backward from step 0.
-6. **Memory:** the training-only peak (allocated, read inside the last training step) is the same for stock and A+B, 4.9–7.2 GiB by scene. C lowers it by up to 0.06 GiB.
+   - This matches step 2 (−0.04 dB on garden). That is why A+B is the conservative configuration and A+B+C the fastest one that passed.
+5. **Gaussian counts.**
+   - **Within each run** the count is constant from 15k to the last training step, in all 81 runs. N is fixed after densification.
+   - **Between arms** the counts already differ at 15k. On stump the mean is 4.309 M for stock against 4.246 M for A+B (−1.4%) and 4.238 M for A+B+C (−1.6%); treehill A+B+C is +1.2%; elsewhere the gap is under 0.5%. The arms differ before the B switch (A is active from step 0, and runs are not bit-identical), so this gap is not attributed to a cause.
+   - The end-of-training opacity cleanup then removes 0.4–3.5% of Gaussians in stock (room 3.5%) but only 0.1–0.7% in the selective-Adam arms.
+   - **The final count differences therefore reflect both the 15k population differences and the different cleanup losses.**
+   - Why selective Adam loses fewer at cleanup is still a hypothesis: rows that are not updated keep their opacity instead of drifting below the floor.
+6. **Memory is broadly unchanged.**
+   - The training-only peak is the allocated memory read inside the last training step, before the final evaluation.
+   - Individual runs peak at 4.80–7.24 GiB, depending on the scene. Garden averages about 6.46 GiB for both stock and A+B.
+   - C lowers the peak by up to 0.06 GiB.
