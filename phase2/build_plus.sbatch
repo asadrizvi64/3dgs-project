@@ -10,7 +10,10 @@
 #   switch   two short garden runs (1200 it): all flags on with SELECTIVE_FROM=600, and all flags off;
 #            checks the switch fires exactly at 600 (and never when off) and the clock reports dense/sparse correctly
 #   sanity   garden seed 0, 30k: stock FasterGS, FasterGSPlus all off, FasterGSPlus A+B+C (one node, interleaved)
+#   factorial  (step 2, not in the default STAGES) 8 arms A x B x C on/off on garden, SEEDS (default 0 1 2), 30k,
+#            interleaved per seed with the arm order rotated by seed; B = SELECTIVE_FROM=15000
 #   sbatch phase2/build_plus.sbatch      (from the repo root)
+#   STAGES=factorial sbatch --job-name=gs-phase2-factorial --time=03:30:00 phase2/build_plus.sbatch
 #SBATCH --job-name=gs-phase2-build
 #SBATCH --nodes=1
 #SBATCH --account=p_scads_mlhpc
@@ -95,6 +98,21 @@ if has sanity; then
   train stock FasterGS 0 30000 "" taming
   train plus_off FasterGSPlus 0 30000 "" taming
   train plus_abc FasterGSPlus 0 30000 "SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true" macro
+fi
+
+if has factorial; then
+  # 8 arms (A x B x C on/off) x seeds, interleaved per seed; the arm order is rotated by the seed so no arm always runs first
+  echo "########## factorial (garden, seeds ${SEEDS:-0 1 2}, 30k; train time = SEGCLOCK cum_s)"
+  ARMS=(a0b0c0 a1b0c0 a0b1c0 a0b0c1 a1b1c0 a1b0c1 a0b1c1 a1b1c1)
+  for seed in ${SEEDS:-0 1 2}; do
+    for k in 0 1 2 3 4 5 6 7; do
+      arm=${ARMS[$(( (k + 3 * seed) % 8 ))]}
+      blend=taming; [ "${arm:1:1}" = 1 ] && blend=macro
+      flags=""; [ "${arm:3:1}" = 1 ] && flags="SELECTIVE_FROM=15000"
+      [ "${arm:5:1}" = 1 ] && flags="${flags:+$flags,}SH_REST_BF16_MOMENTS=true"
+      train "f_${arm}_s$seed" FasterGSPlus "$seed" 30000 "$flags" "$blend"
+    done
+  done
 fi
 
 if [ ${#FAILED[@]} -gt 0 ]; then echo "JOB FAILED: ${FAILED[*]}"; exit 1; fi
