@@ -4,6 +4,18 @@
 
 The arm that reaches the targets fastest is **dense images + selective (visible-only) Adam** (`dense:sparse`). It reaches the dense baseline's final PSNR in about half the time on every seed and every clock, and it ends +0.05 dB higher. This is a lead for the real trainer, not yet a result there; see the caveats.
 
+## The three questions
+
+1. **Does block sampling recover comparable quality?** Yes. At equal image-equivalents every block arm ends at or above dense with the same optimizer: 27.47–27.50 vs 27.42 (dense Adam) and 27.47 (selective Adam).
+2. **Does error guidance beat random blocks under the same optimizer and LR rule?** Yes, slightly: +0.02 dB (dense Adam) and +0.025 dB (selective Adam) at 15,000 image-equivalents. The gap is the same sign on all 3 seeds and at every eval point, and it is about the size of the seed std.
+3. **Does any advantage survive the projected cost including mask construction?** No. With the scan included, the best block arm reaches the dense baseline's final PSNR in 67–137 s, against 56–82 s for dense images + selective Adam. On measured time it is further behind.
+
+**The ×0.25 learning rate is an experimental choice, not a confirmed correction.** Dense Adam updates every row's moments at every step. Selective Adam updates a row only when it is active, so 4 sampled steps are not 4 updates to a given Gaussian, and the scaling cannot make both optimizers equivalent to dense-image training. The unscaled reference arm (`err_block:selective, stock LR`) is otherwise identical to `err_block:selective`, and the two trajectories cross:
+- scaled is ahead early: 27.383 vs 27.267 at 1,500 image-equivalents;
+- unscaled is ahead from about 7,500 on and ends +0.05 dB higher (27.549 vs 27.498).
+
+So scaling helps early and hurts late. The early drop without scaling fits a step-size explanation but does not prove it. This does not change answer 3: the unscaled arm is slower to every target than dense + selective Adam.
+
 ## Setup
 
 - **Data and seeds:** Faster-GS (nerficg, lean-Adam commit 1144604), garden at 1/4 resolution, seeds 0/1/2, Capella H100 (jobs 4479587/88/89, all `JOB OK`). For each seed, a stock run saves the full parameter and Adam state at step 15,000, after densification ends at 14,900.
