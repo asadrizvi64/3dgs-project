@@ -23,6 +23,7 @@ TAG=${TAG:-}          # appended to the run name, e.g. TAG=prof for profiling ru
 LAUNCHER=${LAUNCHER:-}  # optional prefix, e.g. "nsys profile ..." or "ncu ..."
 BACKUP_INTERVAL=${BACKUP_INTERVAL:--1}  # >0: also save checkpoints/<iter>.pt every this many steps
 OPT_FLAGS=${OPT_FLAGS:-}  # extra TRAINING.OPTIMIZER keys, e.g. "SPARSE_ADAM=true,SH_REST_BF16_MOMENTS=true"
+ITERS=${ITERS:-30000}  # NUM_ITERATIONS
 SCALE=${SCALE:-0.25}   # 0.25 for outdoor scenes, 0.5 for indoor, as in 3DGS
 DATA=$(ws_find -F cat 3dgs-data) || { echo "cat workspace not visible on $(hostname); resubmit with --exclude=$(hostname)"; exit 1; }   # c20 lacks /data/cat (2026-10-27)
 NERFICG=$DATA/nerficg
