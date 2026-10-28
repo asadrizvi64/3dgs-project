@@ -187,8 +187,8 @@ nsys_window() {  # name method flags blend start: nsys capture of steps start..s
   echo "##### $name: method=$method seed=0 window=$a-$b flags=$flags blend=$blend $(date +%T)"
   env FGS_BLEND_BWD=$blend FGS_PROF_RANGE=$a,$b FGS_PROF_EXIT=$b SCENE=$BSCENE SCALE=$BSCALE SEED=0 METHOD=$method TAG=p2$name       OPT_FLAGS=$flags LAUNCHER="$NSYS profile -t cuda,nvtx --capture-range=cudaProfilerApi --capture-range-end=stop -f true -o $REP/$name"       bash "$REPO/cluster/train_fastergs.sbatch" > "$OUT/$name.log" 2>&1 || true
   [ -f "$REP/$name.nsys-rep" ] || { echo "FAILED $name: no report"; tr '\r' '\n' < "$OUT/$name.log" | grep -E "Traceback|Error" | head; FAILED+=("$name"); return; }
-  for r in cuda_gpu_kern_sum nvtx_sum nvtx_kern_sum; do
-    "$NSYS" stats --report $r --format csv --output "$OUT/$name" "$REP/$name.nsys-rep" >/dev/null 2>&1 || echo "note: nsys report $r unavailable"
+  for r in cuda_gpu_kern_sum nvtx_sum nvtx_gpu_proj_sum; do
+    "$NSYS" stats --force-export=true --report $r --format csv --output "$OUT/$name" "$REP/$name.nsys-rep" >/dev/null 2>&1 || echo "note: nsys report $r unavailable"
   done
   echo "NSYS $name $(ls "$OUT" | grep -c "^$name.*\.csv$") csv reports, rep $REP/$name.nsys-rep"
 }
