@@ -12,8 +12,11 @@
 #   sanity   garden seed 0, 30k: stock FasterGS, FasterGSPlus all off, FasterGSPlus A+B+C (one node, interleaved)
 #   factorial  (step 2, not in the default STAGES) 8 arms A x B x C on/off on garden, SEEDS (default 0 1 2), 30k,
 #            interleaved per seed with the arm order rotated by seed; B = SELECTIVE_FROM=15000
+#   bench    (step 3, not in the default STAGES) one Mip-NeRF360 scene (SCENE, scale 0.25 outdoor / 0.5 indoor), SEEDS,
+#            30k: stock FasterGS, FasterGSPlus A+B, FasterGSPlus A+B+C, interleaved per seed, arm order rotated by seed
 #   sbatch phase2/build_plus.sbatch      (from the repo root)
 #   STAGES=factorial sbatch --job-name=gs-phase2-factorial --time=03:30:00 phase2/build_plus.sbatch
+#   STAGES=bench SCENE=room sbatch --job-name=gs-bench-room --time=02:30:00 phase2/build_plus.sbatch
 #SBATCH --job-name=gs-phase2-build
 #SBATCH --nodes=1
 #SBATCH --account=p_scads_mlhpc
@@ -36,6 +39,7 @@ export PYTHONPATH=$HOME/py-extra${PYTHONPATH:+:$PYTHONPATH}
 OUT=$REPO/phase2/logs/run_${SLURM_JOB_ID:-local}; mkdir -p "$OUT"
 echo "node=$(hostname) job=${SLURM_JOB_ID:-local} gpu=$(nvidia-smi --query-gpu=name --format=csv,noheader) stages=$STAGES repo=$(git -C "$REPO" rev-parse --short HEAD)"
 FAILED=()
+BSCENE=garden; BSCALE=0.25
 has() { [[ " $STAGES " == *" $1 "* ]]; }
 
 # the stock checkout gets the same clock hook (and the B switch, off by default) so all arms are timed alike
@@ -59,13 +63,15 @@ train() {  # name method seed iters opt_flags blend [segk]
   local name=$1 method=$2 seed=$3 iters=$4 flags=$5 blend=$6 segk=${7:-$4}
   rm -f "$OUT/$name.seg"
   echo "##### $name: method=$method seed=$seed iters=$iters flags=$flags blend=$blend $(date +%T)"
-  env FGS_BLEND_BWD=$blend FGS_SEGCLOCK=$segk FGS_LOG="$OUT/$name.seg" SCENE=garden SCALE=0.25 SEED=$seed ITERS=$iters \
+  env FGS_BLEND_BWD=$blend FGS_SEGCLOCK=$segk FGS_LOG="$OUT/$name.seg" SCENE=$BSCENE SCALE=$BSCALE SEED=$seed ITERS=$iters \
       METHOD=$method TAG=p2$name OPT_FLAGS=$flags bash "$REPO/cluster/train_fastergs.sbatch" > "$OUT/$name.log" 2>&1 || true
   local RUN; RUN=$(tr '\r' '\n' < "$OUT/$name.log" | sed -n 's/^== run dir //p' | tail -1)
   cat "$OUT/$name.seg" 2>/dev/null || true
   if [ -z "$RUN" ] || [ ! -f "$DATA/nerficg/$RUN/test_$iters/metrics_8bit.txt" ]; then
     echo "FAILED $name"; tr '\r' '\n' < "$OUT/$name.log" | grep -E "Traceback|Error" | head; FAILED+=("$name"); return
   fi
+  # lowest single test image (index, PSNR) and the number of test images, to catch one-view artifacts
+  echo "PERIMG $name $(awk -F'	' '/^Image/{f=1;next} f&&$1~/^[0-9]+$/{n++; if(min==""||$2<min){min=$2;i=$1}} END{print "n_images=" n " min_image=" i " min_psnr=" min}' "$DATA/nerficg/$RUN/test_$iters/metrics_8bit.txt")"
   echo "RESULT $name $(tail -1 "$DATA/nerficg/$RUN/test_$iters/metrics_8bit.txt") $(grep -o 'N_Gaussians:[0-9]*' "$DATA/nerficg/$RUN/n_gaussians.txt") $(grep -A2 '^training_iteration:' "$DATA/nerficg/$RUN/timings.txt" | awk -F': ' '/per iteration/{print "ms_it=" $2}') $(grep allocated "$DATA/nerficg/$RUN/vram_stats.txt" | head -1 | tr -s ' \t' ' ')"
 }
 
@@ -87,6 +93,11 @@ checks = {
     'off: never switches': off_sw == [],
     'off: dense throughout': off == {300: 0, 600: 0, 900: 0, 1200: 0},
 }
+for nm, p in (('on', sys.argv[1]), ('off', sys.argv[2])):   # clock hook v4 fields
+    t = open(p).read()
+    segs = re.findall(r'^SEGCLOCK .*$', t, re.M)
+    checks[f'{nm}: v4 SEGCLOCK lines carry N and peak_alloc_gib'] = len(segs) == 4 and all(re.search(r' N=\d+ peak_alloc_gib=[\d.]+$', l) for l in segs)
+    checks[f'{nm}: one FGS_TRAIN_END line with N and peaks'] = len(re.findall(r'^FGS_TRAIN_END N=\d+ peak_alloc_gib=[\d.]+ peak_reserved_gib=[\d.]+$', t, re.M)) == 1
 for k, v in checks.items():
     print(('PASS ' if v else 'FAIL ') + k)
 sys.exit(0 if all(checks.values()) else 1)
@@ -111,6 +122,23 @@ if has factorial; then
       flags=""; [ "${arm:3:1}" = 1 ] && flags="SELECTIVE_FROM=15000"
       [ "${arm:5:1}" = 1 ] && flags="${flags:+$flags,}SH_REST_BF16_MOMENTS=true"
       train "f_${arm}_s$seed" FasterGSPlus "$seed" 30000 "$flags" "$blend"
+    done
+  done
+fi
+
+if has bench; then
+  BSCENE=${SCENE:?set SCENE for the bench stage}
+  case $BSCENE in room|counter|kitchen|bonsai) BSCALE=0.5 ;; *) BSCALE=0.25 ;; esac
+  echo "########## bench (scene $BSCENE scale $BSCALE, seeds ${SEEDS:-0 1 2}, 30k; train time = SEGCLOCK cum_s)"
+  BARMS=(stock ab abc)
+  for seed in ${SEEDS:-0 1 2}; do
+    for k in 0 1 2; do
+      arm=${BARMS[$(( (k + seed) % 3 ))]}
+      case $arm in
+        stock) train "b_${BSCENE}_stock_s$seed" FasterGS "$seed" 30000 "" taming ;;
+        ab)    train "b_${BSCENE}_ab_s$seed" FasterGSPlus "$seed" 30000 "SELECTIVE_FROM=15000" macro ;;
+        abc)   train "b_${BSCENE}_abc_s$seed" FasterGSPlus "$seed" 30000 "SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true" macro ;;
+      esac
     done
   done
 fi
