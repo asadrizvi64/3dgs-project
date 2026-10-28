@@ -172,3 +172,11 @@ Per-seed values, SSIM, ms/it, Gaussian counts and VRAM per scene are in the anal
    - The training-only peak is the allocated memory read inside the last training step, before the final evaluation.
    - Individual runs peak at 4.80–7.24 GiB, depending on the scene. Garden averages about 6.46 GiB for both stock and A+B.
    - C lowers the peak by up to 0.06 GiB.
+
+## Renders during training (stage renders, 27 runs, seed 0)
+
+Stock, A+B and A+B+C were each trained once more on every scene (seed 0), rendering and evaluating the test set every 1,000 iterations. The figures, comparison sheets (by iteration and at equal training time, full frame and zoomed) and per-stage data are in [`stages/`](stages/README.md); the full renders (35 GB) are in `~/3dgs-archive/stages/` on Capella. These runs are not benchmark values (the repeated evaluations change them, and they are one seed).
+
+- At equal training time, both stacks are at or above stock on most of the curve on every scene; the difference is largest in the second half (after B's switch at 15k) and on the outdoor scenes.
+- Outdoor scenes reach stock's final PSNR well before 30k in all arms (stump at 14k, bicycle at 18–20k); indoor scenes are still improving at 30k. This supports testing an early stop (keeping the 30k schedule) on outdoor scenes first.
+- Test PSNR collapses to about 8–10 dB right after each opacity reset (every 3,000 iterations up to 15k); those stages are left out of the figures.
