@@ -1,9 +1,11 @@
-"""Adds two env-gated hooks to Faster-GS's training_iteration (idempotent; upgrades older versions). Needs lean Adam.
+"""Adds the B switch (config key or env) and a training clock to Faster-GS's training_iteration (idempotent; upgrades older versions). Needs lean Adam.
 
     python cluster/patches/fastergs_sparse_from.py <nerficg>/src/Methods/FasterGS/Trainer.py
 
-FGS_SPARSE_FROM=n  stock (dense) Adam for iterations < n, then the FusedAdam's selective path (update only Gaussians
+TRAINING.OPTIMIZER.SELECTIVE_FROM: n   (config key; default -1 = off)
+                   stock (dense) Adam for iterations < n, then the FusedAdam's selective path (update only Gaussians
                    visible in the current view) from iteration n on.
+FGS_SPARSE_FROM=n  environment override of SELECTIVE_FROM (takes precedence when set).
 FGS_SEGCLOCK=k     pure training time: CUDA events around every training_iteration (nothing that runs between
                    iterations, such as testing or checkpointing, is counted); every k iterations the summed time is
                    written as 'SEGCLOCK step=.. seg_s=.. cum_s=..'.
@@ -14,7 +16,7 @@ import re
 import sys
 from pathlib import Path
 
-VERSION = '# >>> fgs-sparse-from v2'
+VERSION = '# >>> fgs-sparse-from v3'
 path = Path(sys.argv[1])
 src = path.read_text()
 if VERSION in src:
@@ -28,11 +30,11 @@ START = '        """Performs a training step."""\n'
 START_HOOK = START + f'''        {VERSION}
         _os = __import__('os')
         _segk = int(_os.environ.get('FGS_SEGCLOCK', '0'))
-        _sf = _os.environ.get('FGS_SPARSE_FROM')
+        _sf = int(_os.environ.get('FGS_SPARSE_FROM') or getattr(self.OPTIMIZER, 'SELECTIVE_FROM', -1))
         if not hasattr(self, '_fgs_log'):
             self._fgs_log = open(_os.environ['FGS_LOG'], 'a', buffering=1) if _os.environ.get('FGS_LOG') else __import__('sys').stdout
             self._fgs_evs, self._fgs_cum = [], 0.0
-        if _sf and iteration == int(_sf):
+        if _sf >= 0 and iteration == _sf:
             _opt = self.model.gaussians.optimizer
             __import__('sys').modules[type(_opt).__module__]._Rasterize.track_visibility = True
             _opt.sparse = True

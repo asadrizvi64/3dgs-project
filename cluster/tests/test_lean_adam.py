@@ -12,7 +12,9 @@ import math
 import sys
 
 import torch
-from FasterGSCudaBackend import _C
+import importlib, os
+BACKEND = os.environ.get('FGS_BACKEND', 'FasterGSCudaBackend')  # e.g. FasterGSPlusCudaBackend
+_C = importlib.import_module(f'{BACKEND}._C')
 
 torch.manual_seed(0)
 dev = 'cuda'
@@ -103,7 +105,8 @@ check('3d SR EMA converges (no stall)', abs(float(v_sr.float().mean()) - expecte
       f'SR mean {float(v_sr.float().mean()):.4f}, exact {expected:.4f}, round-to-nearest {float(v_rn.mean()):.4f}')
 
 # 4. visibility export from a real forward pass
-from FasterGSCudaBackend.torch_bindings.rasterization import _Rasterize, RasterizerSettings, diff_rasterize
+_rz = importlib.import_module(f'{BACKEND}.torch_bindings.rasterization')
+_Rasterize, RasterizerSettings, diff_rasterize = _rz._Rasterize, _rz.RasterizerSettings, _rz.diff_rasterize
 n = 20_000
 sign = torch.where(torch.rand(n, 1, device=dev) < 0.5, -1.0, 1.0)   # half in front, half behind (either z convention)
 means = (torch.randn(n, 3, device=dev) * torch.tensor([2.0, 2.0, 1.0], device=dev) + sign * torch.tensor([0, 0, 5.0], device=dev)).requires_grad_()
