@@ -1,4 +1,41 @@
-# Selective Adam after densification, in the real Faster-GS trainer (garden, 3 seeds)
+# Selective Adam after densification, in the real Faster-GS trainer (5 Mip-NeRF360 scenes, 3 seeds each)
+
+## Generalization: bicycle, stump, room, counter (added 2026-10-28)
+
+Same driver and code as garden (`cluster/sparse_switch.sbatch`, commit b5c2186). There was one job per scene, with stock and switch@15k interleaved per seed on that job's node:
+
+| scene | job | node | scale |
+|---|---|---|---|
+| bicycle | 4480521 | c95 | 1/4 |
+| stump | 4480522 | c60 | 1/4 |
+| room | 4480523 | c60 | 1/2 |
+| counter | 4480524 | c21 | 1/2 |
+
+All 24 runs completed. The SM clock held 1980 MHz in every run. Logs are in `<scene>/`, and job summaries in `logs/gs-switch-<scene>-<job>.out`.
+
+**Per scene: training-step time (CUDA events) and paired quality at 30k (switch − stock, per seed)**
+
+| scene | stock s | switch s | time reduction (per seed) | 2nd half | ΔPSNR (per seed) | mean ΔPSNR | ΔPSNR at 15k (pre-switch) | ΔSSIM | ΔLPIPS |
+|---|---|---|---|---|---|---|---|---|---|
+| garden (dev) | 255.8 | 230.8 | **9.8%** (9.3 / 9.7 / 10.4) | −17.3% | +0.082 / +0.101 / +0.070 | +0.084 | +0.035 | +0.0009 | −0.0006 |
+| bicycle | 252.7 | 218.5 | **13.5%** (13.2 / 13.7 / 13.6) | −22.7% | +0.079 / +0.032 / +0.075 | +0.062 | +0.010 | +0.0006 | +0.0002 |
+| stump | 201.3 | 168.6 | **16.3%** (16.7 / 15.7 / 16.5) | −28.4% | +0.077 / +0.116 / +0.086 | +0.093 | +0.038 | +0.0016 | −0.0001 |
+| room | 150.1 | 143.1 | **4.7%** (4.0 / 5.1 / 5.0) | −9.2% | +0.149 / +0.018 / −0.024 | +0.048 | −0.027 | +0.0004 | −0.0004 |
+| counter | 153.1 | 148.1 | **3.3%** (3.9 / 2.9 / 3.0) | −6.0% | −0.032 / +0.063 / +0.065 | +0.032 | −0.011 | +0.0003 | +0.0002 |
+
+Stock 30k PSNR by scene: bicycle 25.301, stump 26.614, room 31.615, counter 29.079.
+
+- **Quality gate (pre-registered in `phase2/PLAN.md`: on every scene mean ΔPSNR ≥ −0.05 dB and ΔLPIPS ≤ +0.002): passed on all 5 scenes.** No scene shows an observed loss, and 13 of 15 paired seeds are positive.
+- **Change after the switch:** the ΔPSNR from 15k to 30k (difference-in-differences) is +0.049 / +0.052 / +0.055 / +0.075 / +0.043 dB for garden / bicycle / stump / room / counter. The 15k gaps are pure run-to-run noise, since the arms are identical up to then. That this gain is positive on all 5 scenes is the strongest evidence so far of a small real quality gain (about +0.05 dB), but it is not yet proven: per-seed noise at 30k is of the same size.
+- **Speed scales with how much of the step the optimizer is.**
+  - The large outdoor scenes (4.2–4.9 M Gaussians at 1/4 resolution) save 10–16% of training (23–28% in the second half).
+  - The indoor scenes (1.0–1.3 M Gaussians at 1/2 resolution, about 1557×1038) save only 3–5%, because rendering more pixels dominates their step and dense Adam over about 1.2 M rows is cheap.
+  - **The mean over the 5 scenes is −9.5%; the median is −9.8%.**
+- **Final Gaussian count:** the switch keeps 0–4% more Gaussians (room +2–4%; stump −1.2% on one seed). The count is taken after Faster-GS's end-of-training opacity prune (`training_cleanup(min_opacity)`); during training after 15k, N is the same in both arms. Rows that selective Adam does not update keep their opacity instead of drifting under momentum, so fewer fall below the floor. This makes rendering slightly more expensive after training.
+- **For Phase 2:** B passes its gate and goes into the stack. On indoor scenes it adds little, so the stack's per-scene gain there will come mostly from the backward kernel (A).
+
+## Garden (development scene, job 4480440)
+
 
 **Result:** we ran stock Faster-GS with dense Adam up to iteration 15,000 and the lean-Adam selective path afterwards.
 

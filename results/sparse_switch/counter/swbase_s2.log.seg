@@ -1,0 +1,12 @@
+SEGCLOCK step=2500 seg_s=8.887 cum_s=8.887 sparse=0
+SEGCLOCK step=5000 seg_s=11.187 cum_s=20.074 sparse=0
+SEGCLOCK step=7500 seg_s=12.983 cum_s=33.057 sparse=0
+SEGCLOCK step=10000 seg_s=13.422 cum_s=46.480 sparse=0
+SEGCLOCK step=12500 seg_s=13.710 cum_s=60.189 sparse=0
+SEGCLOCK step=15000 seg_s=13.738 cum_s=73.927 sparse=0
+SEGCLOCK step=17500 seg_s=13.520 cum_s=87.447 sparse=0
+SEGCLOCK step=20000 seg_s=13.351 cum_s=100.798 sparse=0
+SEGCLOCK step=22500 seg_s=13.302 cum_s=114.100 sparse=0
+SEGCLOCK step=25000 seg_s=13.019 cum_s=127.119 sparse=0
+SEGCLOCK step=27500 seg_s=13.071 cum_s=140.190 sparse=0
+SEGCLOCK step=30000 seg_s=12.913 cum_s=153.104 sparse=0

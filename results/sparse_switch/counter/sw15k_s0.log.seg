@@ -1,0 +1,13 @@
+SEGCLOCK step=2500 seg_s=8.919 cum_s=8.919 sparse=0
+SEGCLOCK step=5000 seg_s=11.245 cum_s=20.164 sparse=0
+SEGCLOCK step=7500 seg_s=12.801 cum_s=32.966 sparse=0
+SEGCLOCK step=10000 seg_s=13.457 cum_s=46.423 sparse=0
+SEGCLOCK step=12500 seg_s=13.890 cum_s=60.313 sparse=0
+SEGCLOCK step=15000 seg_s=13.714 cum_s=74.027 sparse=0
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+SEGCLOCK step=17500 seg_s=12.684 cum_s=86.711 sparse=1 visfrac=0.530
+SEGCLOCK step=20000 seg_s=12.469 cum_s=99.181 sparse=1 visfrac=0.552
+SEGCLOCK step=22500 seg_s=12.352 cum_s=111.533 sparse=1 visfrac=0.343
+SEGCLOCK step=25000 seg_s=12.278 cum_s=123.811 sparse=1 visfrac=0.511
+SEGCLOCK step=27500 seg_s=12.249 cum_s=136.060 sparse=1 visfrac=0.602
+SEGCLOCK step=30000 seg_s=12.333 cum_s=148.393 sparse=1 visfrac=0.454
