@@ -18,10 +18,15 @@
 #            full test-set renders and metrics every STAGE_EVERY (default 1000) iterations, training clock at each;
 #            renders copied to $HOME/3dgs-archive/stages/<scene>/<run>/ (outside the expiring workspace),
 #            intermediate checkpoints deleted. Not for timing claims: the intermediate evaluations change the run.
+#   profile  (step 4, not in the default STAGES) one scene, seed 0, stock vs A+B+C: per arm one full 30k run with
+#            FGS_PROF=1 (STAGE fwd/bwd/opt CUDA events every 250 steps, CURVE ms/step every 500; the hooks sync the
+#            host every step, so these are not benchmark times) and two nsys captures of 50 steps at 5000 and 20000
+#            (NVTX fwd/bwd/opt); reports in $HOME/3dgs-archive/profile/<job>/, CSV summaries in phase2/logs/run_<job>/
 #   sbatch phase2/build_plus.sbatch      (from the repo root)
 #   STAGES=factorial sbatch --job-name=gs-phase2-factorial --time=03:30:00 phase2/build_plus.sbatch
 #   STAGES=bench SCENE=room sbatch --job-name=gs-bench-room --time=02:30:00 phase2/build_plus.sbatch
 #   STAGES=stages SCENE=room sbatch --job-name=gs-stages-room --time=02:30:00 phase2/build_plus.sbatch
+#   STAGES=profile SCENE=room sbatch --job-name=gs-prof-room --time=02:00:00 phase2/build_plus.sbatch
 #SBATCH --job-name=gs-phase2-build
 #SBATCH --nodes=1
 #SBATCH --account=p_scads_mlhpc
@@ -68,7 +73,7 @@ train() {  # name method seed iters opt_flags blend [segk]
   local name=$1 method=$2 seed=$3 iters=$4 flags=$5 blend=$6 segk=${7:-$4}
   rm -f "$OUT/$name.seg"
   echo "##### $name: method=$method seed=$seed iters=$iters flags=$flags blend=$blend $(date +%T)"
-  env FGS_BLEND_BWD=$blend FGS_SEGCLOCK=$segk FGS_LOG="$OUT/$name.seg" BACKUP_INTERVAL=${TRAIN_BACKUP:--1} SCENE=$BSCENE SCALE=$BSCALE SEED=$seed ITERS=$iters \
+  env ${TRAIN_ENV:-} FGS_BLEND_BWD=$blend FGS_SEGCLOCK=$segk FGS_LOG="$OUT/$name.seg" BACKUP_INTERVAL=${TRAIN_BACKUP:--1} SCENE=$BSCENE SCALE=$BSCALE SEED=$seed ITERS=$iters \
       METHOD=$method TAG=p2$name OPT_FLAGS=$flags bash "$REPO/cluster/train_fastergs.sbatch" > "$OUT/$name.log" 2>&1 || true
   local RUN; RUN=$(tr '\r' '\n' < "$OUT/$name.log" | sed -n 's/^== run dir //p' | tail -1)
   cat "$OUT/$name.seg" 2>/dev/null || true
@@ -172,6 +177,35 @@ if has stages; then
     train "r_${BSCENE}_abc_s$seed" FasterGSPlus "$seed" 30000 "SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true" macro "$TRAIN_BACKUP"
   done
   TRAIN_BACKUP=-1
+fi
+
+nsys_window() {  # name method flags blend start: nsys capture of steps start..start+50, process exits after the window
+  local name=$1 method=$2 flags=$3 blend=$4 a=$5 b=$(( $5 + 50 ))
+  local NSYS; NSYS=$(command -v nsys || true)
+  [ -n "$NSYS" ] || { echo "FAILED $name: nsys not found"; FAILED+=("$name"); return; }
+  local REP=$HOME/3dgs-archive/profile/${SLURM_JOB_ID:-local}; mkdir -p "$REP"
+  echo "##### $name: method=$method seed=0 window=$a-$b flags=$flags blend=$blend $(date +%T)"
+  env FGS_BLEND_BWD=$blend FGS_PROF_RANGE=$a,$b FGS_PROF_EXIT=$b SCENE=$BSCENE SCALE=$BSCALE SEED=0 METHOD=$method TAG=p2$name       OPT_FLAGS=$flags LAUNCHER="$NSYS profile -t cuda,nvtx --capture-range=cudaProfilerApi --capture-range-end=stop -f true -o $REP/$name"       bash "$REPO/cluster/train_fastergs.sbatch" > "$OUT/$name.log" 2>&1 || true
+  [ -f "$REP/$name.nsys-rep" ] || { echo "FAILED $name: no report"; tr '\r' '\n' < "$OUT/$name.log" | grep -E "Traceback|Error" | head; FAILED+=("$name"); return; }
+  for r in cuda_gpu_kern_sum nvtx_sum nvtx_kern_sum; do
+    "$NSYS" stats --report $r --format csv --output "$OUT/$name" "$REP/$name.nsys-rep" >/dev/null 2>&1 || echo "note: nsys report $r unavailable"
+  done
+  echo "NSYS $name $(ls "$OUT" | grep -c "^$name.*\.csv$") csv reports, rep $REP/$name.nsys-rep"
+}
+
+if has profile; then
+  BSCENE=${SCENE:?set SCENE for the profile stage}
+  case $BSCENE in room|counter|kitchen|bonsai) BSCALE=0.5 ;; *) BSCALE=0.25 ;; esac
+  module load CUDA/12.8.0 >/dev/null 2>&1 || true
+  echo "########## profile (scene $BSCENE scale $BSCALE, seed 0; stock vs A+B+C)"
+  STEPS=$(seq -s, 250 250 29750)
+  for arm in stock abc; do
+    if [ $arm = stock ]; then m=FasterGS; fl=""; bl=taming; else m=FasterGSPlus; fl="SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true"; bl=macro; fi
+    TRAIN_ENV="FGS_PROF=1 FGS_STAGE_STEPS=$STEPS FGS_CURVE_EVERY=500" train "p_${BSCENE}_${arm}_s0" $m 0 30000 "$fl" $bl 1000
+    tr '\r' '\n' < "$OUT/p_${BSCENE}_${arm}_s0.log" | grep -E '^(STAGE|CURVE) ' > "$OUT/p_${BSCENE}_${arm}_s0.prof" || true
+    echo "PROF p_${BSCENE}_${arm}_s0 $(grep -c '^STAGE' "$OUT/p_${BSCENE}_${arm}_s0.prof") STAGE lines, $(grep -c '^CURVE' "$OUT/p_${BSCENE}_${arm}_s0.prof") CURVE lines"
+    for w in 5000 20000; do nsys_window "n_${BSCENE}_${arm}_${w}" $m "$fl" $bl $w; done
+  done
 fi
 
 if [ ${#FAILED[@]} -gt 0 ]; then echo "JOB FAILED: ${FAILED[*]}"; exit 1; fi
