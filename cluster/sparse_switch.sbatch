@@ -2,7 +2,7 @@
 # Stock Faster-GS vs "dense Adam to SWITCH, then selective Adam" in the real trainer, same node, interleaved.
 #   - both arms: lean-Adam patch present; base has its flags off (= stock adam_step kernel)
 #   - test metrics every EVAL_EVERY steps (BACKUP.INTERVAL; the .pt checkpoints are deleted afterwards)
-#   - SEGCLOCK lines give pure training time at each eval step (CUDA sync at block boundaries only)
+#   - SEGCLOCK lines (logs/<run>.log.seg): summed CUDA-event time of training_iteration, excluding tests/checkpoints
 #   sbatch --export=ALL,SCENE=garden cluster/sparse_switch.sbatch      (from the repo root)
 #SBATCH --job-name=gs-switch
 #SBATCH --nodes=1
@@ -35,9 +35,11 @@ run() {  # tag seed [env...]
   local tag=$1 seed=$2; shift 2
   local L=$OUT/logs/${tag}_s${seed}.log
   echo "########## $tag seed=$seed start $(date +%T)"
-  env "$@" FGS_SEGCLOCK=$EVAL_EVERY SCENE=$SCENE SCALE=$SCALE SEED=$seed ITERS=$ITERS METHOD=FasterGS TAG=$tag BACKUP_INTERVAL=$EVAL_EVERY \
+  rm -f "$L.seg" "$L.metrics"
+  env "$@" FGS_SEGCLOCK=$EVAL_EVERY FGS_LOG="$L.seg" SCENE=$SCENE SCALE=$SCALE SEED=$seed ITERS=$ITERS METHOD=FasterGS TAG=$tag BACKUP_INTERVAL=$EVAL_EVERY \
     bash "$HERE/train_fastergs.sbatch" > "$L" 2>&1 || true
-  tr '\r' '\n' < "$L" | grep -E "FGS_SPARSE_FROM|SEGCLOCK step=($SWITCH|$ITERS)|Traceback|Error|== run dir" | grep -v "it/s" || true
+  grep -E "FGS_SPARSE_FROM|SEGCLOCK step=($SWITCH|$ITERS) " "$L.seg" || true
+  tr '\r' '\n' < "$L" | grep -E "Traceback|Error|== run dir" | grep -v "it/s" || true
   local RUN; RUN=$(tr '\r' '\n' < "$L" | sed -n 's/^== run dir //p' | tail -1)
   if [ -z "$RUN" ] || [ ! -f "$RUN/test_$ITERS/metrics_8bit.txt" ]; then echo "FAILED $tag s$seed"; FAILED+=("$tag:s$seed"); return; fi
   rm -f "$RUN"/checkpoints/*.pt
@@ -53,7 +55,7 @@ done
 
 echo "########## check"
 for seed in $SEEDS; do for tag in swbase sw15k; do
-  n=$(tr '\r' '\n' < "$OUT/logs/${tag}_s${seed}.log" | grep -c "^SEGCLOCK" || true)
+  n=$(grep -c "^SEGCLOCK" "$OUT/logs/${tag}_s${seed}.log.seg" 2>/dev/null || true); n=${n:-0}
   [ "$n" -eq $((ITERS / EVAL_EVERY)) ] || { echo "MISSING SEGCLOCK $tag s$seed ($n)"; FAILED+=("seg:$tag:s$seed"); }
 done; done
 if [ ${#FAILED[@]} -gt 0 ]; then echo "JOB FAILED: ${FAILED[*]}"; exit 1; fi

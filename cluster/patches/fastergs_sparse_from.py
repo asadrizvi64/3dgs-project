@@ -1,37 +1,46 @@
-"""Adds two env-gated hooks to Faster-GS's training_iteration (idempotent). Needs the lean-Adam patch.
+"""Adds two env-gated hooks to Faster-GS's training_iteration (idempotent; upgrades older versions). Needs lean Adam.
 
     python cluster/patches/fastergs_sparse_from.py <nerficg>/src/Methods/FasterGS/Trainer.py
 
-FGS_SPARSE_FROM=n  stock (dense) Adam for iterations < n, then switch the FusedAdam to its selective path
-                   (update only Gaussians visible in the current view) from iteration n on.
-FGS_SEGCLOCK=k     time training iterations in blocks of k with a CUDA sync only at block boundaries, and print
-                   'SEGCLOCK step=.. seg_s=.. cum_s=..' after every k steps. Testing and checkpointing happen
-                   between blocks, so cum_s is pure training time.
-Both are off by default, so normal runs are unchanged.
+FGS_SPARSE_FROM=n  stock (dense) Adam for iterations < n, then the FusedAdam's selective path (update only Gaussians
+                   visible in the current view) from iteration n on.
+FGS_SEGCLOCK=k     pure training time: CUDA events around every training_iteration (nothing that runs between
+                   iterations, such as testing or checkpointing, is counted); every k iterations the summed time is
+                   written as 'SEGCLOCK step=.. seg_s=.. cum_s=..'.
+FGS_LOG=path       file the hooks write to (stdout lines get lost in the progress-bar output); default stdout.
+All off by default, so normal runs are unchanged.
 """
+import re
 import sys
 from pathlib import Path
 
-MARK = '# >>> fgs-sparse-from'
+VERSION = '# >>> fgs-sparse-from v2'
 path = Path(sys.argv[1])
 src = path.read_text()
-if MARK in src:
+if VERSION in src:
     print('already patched:', path)
     sys.exit(0)
+# remove an older version of these hooks
+src = re.sub(r'        # >>> fgs-sparse-from.*?        # <<< fgs-sparse-from\n', '', src, flags=re.S)
+src = re.sub(r'        # >>> fgs-segclock.*?        # <<< fgs-segclock\n', '', src, flags=re.S)
 
 START = '        """Performs a training step."""\n'
-START_HOOK = START + f'''        {MARK}
-        _sf = __import__('os').environ.get('FGS_SPARSE_FROM')
+START_HOOK = START + f'''        {VERSION}
+        _os = __import__('os')
+        _segk = int(_os.environ.get('FGS_SEGCLOCK', '0'))
+        _sf = _os.environ.get('FGS_SPARSE_FROM')
+        if not hasattr(self, '_fgs_log'):
+            self._fgs_log = open(_os.environ['FGS_LOG'], 'a', buffering=1) if _os.environ.get('FGS_LOG') else __import__('sys').stdout
+            self._fgs_evs, self._fgs_cum = [], 0.0
         if _sf and iteration == int(_sf):
             _opt = self.model.gaussians.optimizer
             __import__('sys').modules[type(_opt).__module__]._Rasterize.track_visibility = True
             _opt.sparse = True
             _opt.lean = True
-            print(f'FGS_SPARSE_FROM: selective Adam from iteration {{iteration}}', flush=True)
-        _segk = int(__import__('os').environ.get('FGS_SEGCLOCK', '0'))
-        if _segk and iteration % _segk == 0:
-            torch.cuda.synchronize()
-            self._fgs_seg_t0 = __import__('time').perf_counter()
+            print(f'FGS_SPARSE_FROM: selective Adam from iteration {{iteration}}', file=self._fgs_log, flush=True)
+        if _segk:
+            _fgs_e0 = torch.cuda.Event(enable_timing=True)
+            _fgs_e0.record()
         # <<< fgs-sparse-from
 '''
 END = '''        self.model.gaussians.post_optimizer_step(inject_noise=self.USE_MCMC)
@@ -39,11 +48,19 @@ END = '''        self.model.gaussians.post_optimizer_step(inject_noise=self.USE_
             self.model.ppisp.step()
 '''
 END_HOOK = END + '''        # >>> fgs-segclock
-        if _segk and (iteration + 1) % _segk == 0:
-            torch.cuda.synchronize()
-            _dt = __import__('time').perf_counter() - self._fgs_seg_t0
-            self._fgs_cum = getattr(self, '_fgs_cum', 0.0) + _dt
-            print(f'SEGCLOCK step={iteration + 1} seg_s={_dt:.3f} cum_s={self._fgs_cum:.3f}', flush=True)
+        if _segk:
+            _fgs_e1 = torch.cuda.Event(enable_timing=True)
+            _fgs_e1.record()
+            self._fgs_evs.append((_fgs_e0, _fgs_e1))
+            if (iteration + 1) % _segk == 0:
+                torch.cuda.synchronize()
+                _dt = sum(a.elapsed_time(b) for a, b in self._fgs_evs) / 1000.0
+                self._fgs_evs.clear()
+                self._fgs_cum += _dt
+                _vis = getattr(__import__('sys').modules[type(self.model.gaussians.optimizer).__module__]._Rasterize, 'last_visibility', None)
+                _vf = f' visfrac={int(_vis.count_nonzero()) / max(_vis.numel(), 1):.3f}' if _vis is not None and self.model.gaussians.optimizer.sparse else ''
+                print(f'SEGCLOCK step={iteration + 1} seg_s={_dt:.3f} cum_s={self._fgs_cum:.3f} sparse={int(self.model.gaussians.optimizer.sparse)}{_vf}',
+                      file=self._fgs_log, flush=True)
         # <<< fgs-segclock
 '''
 assert src.count(START) == 1, 'start anchor not found exactly once'
