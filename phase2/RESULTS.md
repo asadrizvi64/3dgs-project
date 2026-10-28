@@ -85,6 +85,7 @@ The all-off arm's mean PSNR is 27.520. The time spread across seeds is ±1 s or 
    - In run a0b1c1 seed 0 (B+C, no A), test image 22 scores 20.98 dB. In the other 23 runs it scores 27.5–27.9 dB.
    - The render shows a large, faint white haze over the lower right of that view ([comparison with the B-only run of the same seed](logs/run_4482364/img22_b1c1_vs_b1c0_s0.jpg)), most likely a large low-opacity floater near that camera.
    - This one image costs the run 0.29 dB of mean PSNR. That makes "C given B" −0.096 dB, against 0.000 dB without image 22. Every other image matches the B-only run.
+   - Durable copy (outside the cat workspace, which expires 2026-11-26): `~/3dgs-archive/phase2-factorial-4482364/` on Capella. It holds the complete run folders of this run and of its paired B-only run (final checkpoint, renders, config, metrics), the final test renders and ground truth of all 24 runs, and a `manifest.sha256` (1,312 files, 4.4 GB).
    - It is 1 run out of 24 and did not recur in the other B+C seeds or in any full-stack run. One occurrence cannot show whether it is chance or a rare failure mode of B with C, so step 3 should check per-image PSNR for outliers in every run.
 6. **Gaussians and VRAM.**
    - B-on arms end with 0.2–0.5% more Gaussians after cleanup, the same direction as before. The counts at 15k and before cleanup were not recorded; clock hook v4 records them in step 3.
