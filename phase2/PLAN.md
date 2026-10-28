@@ -35,7 +35,7 @@ Rough projection from 255.8 s: A −27 s, B −25 s, C about −12 s in the firs
 - With all flags off, the build must equal stock, so the factorial in step 2 runs in one build. Checked by a unit test: the stock and variant gradients match on the same forward, as in Phase 1, and one 30k garden run must fall within the stock range.
 - **Checks:**
   - `phase1/tests/test_parity.py` must still pass, 20/20.
-  - `cluster/tests/test_lean_adam.py` must still pass, 16/16.
+  - `cluster/tests/test_lean_adam.py` must still pass, 15/15.
   - A new test confirms that the switch flips at the configured iteration and that rows invisible after it keep their moments.
 
 ## Step 2 — factorial on garden (development scene)

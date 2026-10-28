@@ -1,0 +1,5 @@
+SEGCLOCK step=300 seg_s=0.586 cum_s=0.586 sparse=0
+SEGCLOCK step=600 seg_s=0.538 cum_s=1.124 sparse=0
+FGS_SPARSE_FROM: selective Adam from iteration 600
+SEGCLOCK step=900 seg_s=0.545 cum_s=1.669 sparse=1 visfrac=0.424
+SEGCLOCK step=1200 seg_s=0.611 cum_s=2.280 sparse=1 visfrac=0.430

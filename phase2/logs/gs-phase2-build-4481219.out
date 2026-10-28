@@ -1,0 +1,47 @@
+node=c59 job=4481219 gpu=NVIDIA H100 stages=build unit switch sanity repo=702b5a7
+patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## build
+patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSPlus/Trainer.py
+patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSPlus/Trainer.py
+c78cd04 trainer patch cluster/patches/fastergs_sparse_from.py
+8eaf57d fgs-prof hooks (cluster/patches/fastergs_profiling.py)
+6109409 Rename FasterGS -> FasterGSPlus
+2e80cb8 Phase 1: macro blend backward (3dgs-project 702b5a7)
+1144604 Lean Adam: visibility-sparse update and bf16 SH-rest moments (stochastic rounding)
+c60ea26 Add absolute gradient densification from AbsGS using the selection strategy of GOF (closes #13)
+FasterGSPlusCudaBackend ok, default blend backward mode 3
+########## unit
+.PARITY mode=15 scene=garden_res n=200000 buckets=39878 abs=True pa=True max=1.192e-06 means=7.07e-07 scales=1.05e-06 rotations=1.19e-06 opacities=6.98e-07 sh0=2.92e-07 sh_rest=2.92e-07 densify0=0.00e+00 densify1=6.65e-07 densify2=1.07e-07
+...
+92 passed in 2.76s
+lean-adam PASS count: 15
+########## switch
+##### sw_on: method=FasterGSPlus seed=0 iters=1200 flags=SELECTIVE_FROM=600,SH_REST_BF16_MOMENTS=true blend=macro 12:56:53
+SEGCLOCK step=300 seg_s=0.586 cum_s=0.586 sparse=0
+SEGCLOCK step=600 seg_s=0.538 cum_s=1.124 sparse=0
+FGS_SPARSE_FROM: selective Adam from iteration 600
+SEGCLOCK step=900 seg_s=0.545 cum_s=1.669 sparse=1 visfrac=0.424
+SEGCLOCK step=1200 seg_s=0.611 cum_s=2.280 sparse=1 visfrac=0.430
+RESULT sw_on PSNR:22.828001101811726 SSIM:0.6021934698025385 LPIPS:0.4489562337597211 N_Gaussians:371929 ms_it=1.94  allocated: 2.49 GiB
+##### sw_off: method=FasterGSPlus seed=0 iters=1200 flags= blend=taming 12:57:55
+SEGCLOCK step=300 seg_s=0.646 cum_s=0.646 sparse=0
+SEGCLOCK step=600 seg_s=0.606 cum_s=1.252 sparse=0
+SEGCLOCK step=900 seg_s=0.636 cum_s=1.888 sparse=0
+SEGCLOCK step=1200 seg_s=0.730 cum_s=2.618 sparse=0
+RESULT sw_off PSNR:22.99132712682088 SSIM:0.6093981862068176 LPIPS:0.4399363336463769 N_Gaussians:391640 ms_it=2.22  allocated: 2.51 GiB
+PASS on: switch fires once, at 600
+PASS on: dense before, sparse after
+PASS off: never switches
+PASS off: dense throughout
+########## sanity (garden seed 0, 30k; train time = SEGCLOCK cum_s)
+##### stock: method=FasterGS seed=0 iters=30000 flags= blend=taming 12:58:56
+SEGCLOCK step=30000 seg_s=251.386 cum_s=251.386 sparse=0
+RESULT stock PSNR:27.498985131581623 SSIM:0.8667039449016253 LPIPS:0.12056424251447122 N_Gaussians:4152932 ms_it=8.43  allocated: 6.46 GiB
+##### plus_off: method=FasterGSPlus seed=0 iters=30000 flags= blend=taming 13:04:06
+SEGCLOCK step=30000 seg_s=251.817 cum_s=251.817 sparse=0
+RESULT plus_off PSNR:27.46078594525655 SSIM:0.8668674702445666 LPIPS:0.1208086172118783 N_Gaussians:4148882 ms_it=8.44  allocated: 6.46 GiB
+##### plus_abc: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 13:09:18
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+SEGCLOCK step=30000 seg_s=192.642 cum_s=192.642 sparse=1 visfrac=0.336
+RESULT plus_abc PSNR:27.525086482365925 SSIM:0.8674029012521108 LPIPS:0.1206269624332587 N_Gaussians:4156343 ms_it=6.47  allocated: 6.41 GiB
+JOB OK
