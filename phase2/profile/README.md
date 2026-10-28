@@ -39,13 +39,19 @@ Phase 2 step 4, jobs 4484137 (garden, node c46) and 4484138 (room, node c104), 2
 3. **Densifying phase (before 15k).**
    - This is where A+B+C spends most of its time now, because selective Adam is off there.
    - On garden, Adam is still the largest kernel group in A+B+C at 5k: 1.90 ms/step (35%), down from 2.40 ms in stock thanks to C.
-   - An unexpected result: by CUDA events, the optimizer section does not get cheaper (2.58 ms vs stock 2.38 ms on garden; 0.87 vs 0.78 ms on room). Its kernels do get cheaper, so this section now holds about 0.7 ms per step of time that is not kernel work, probably launch or host overhead in the lean-Adam path (it launches 6 kernels per step).
-   - This comparison crosses runs: the events come from the profiling runs and the kernel times from the nsys runs. It needs a direct check (an nsys timeline of the optimizer section) before it is acted on.
-4. **Time not covered by kernels.** The A+B+C step time exceeds its kernel time by about 0.75 ms per step on both scenes, which is 12% of garden's step and 18% of room's. Fewer, larger launches or CUDA graphs could recover part of it, and it matters more on the indoor scenes.
+   - By CUDA events in the profiling runs, the A+B+C optimizer section looked no cheaper than stock's while densifying (2.58 vs 2.38 ms on garden; 0.87 vs 0.78 ms on room). **That was a sampling bias, not hidden overhead** (corrected 2026-10-28 after a direct timeline check):
+     - Before 15k, A+B+C converts the bf16 SH-rest moments when densification resizes the optimizer state. That is a pair of conversion kernels costing 0.762 ms on garden and 0.238 ms on room, once per densification step (every 100 steps); stock has no such conversion.
+     - The profiling runs sampled every 250 steps, so half of the samples (multiples of 500) fall on steps right after densification and include the conversion. That inflates the sampled optimizer mean.
+     - The nsys window (5000–5050) contains one densification step: 1.900 ms of Adam work per step plus 0.762 ms once gives 1.900 + 0.762 / 50 = 1.915 ms per step, matching the window's 1.92 ms of GPU time in the optimizer range (stock: 2.41 ms).
+     - So the A+B+C optimizer is faster than stock's in every captured window; the conversions cost about 0.11 s per run on garden.
+4. **Time not covered by kernels.** In the nsys windows the GPU is idle about 0.9–1.3 ms per step (busy 74–87% of the span), in both arms and both scenes. Possible contributors, not yet separated:
+   - NeRFICG's per-step timer, which synchronizes the device after every step when timing is on (the protocol behind every benchmark number here). It keeps the CPU from queuing the next step early. Whether turning it off helps both arms equally is untested: other blocking reads (the view sampler's `.item()`, the rasterizer's count read-backs) may simply become the next synchronization point. A long host-side wait in that sync is not itself evidence of a GPU stall: the CPU can be waiting while the GPU is busy.
+   - Three blocking device-to-host copies inside the forward pass, and chains of small PyTorch kernels launched with gaps between them.
+   - The traces show no substantial gaps between the six Adam kernels, so fusing the Adam launches is a lower-priority candidate.
 
 ## What this suggests for the next levers (in order of expected payoff)
 
-1. **Launch and host overhead:** about 0.75 ms per step on both scenes, plus the optimizer section's anomaly while densifying. Candidates are fusing the six per-parameter Adam launches into one, and capturing the step in a CUDA graph. This helps indoor scenes most, and changes no maths.
+1. **Host-side idle time:** about 1 ms per step on both scenes. First a control: stock and A+B+C with the timer on and off, measuring whole-window elapsed time without profiling. Then attribute the gaps to causes, and test each fix separately under the same timing setup. Fusing the Adam launches is a lower-priority candidate (no substantial gaps between them).
 2. **Blend kernels:** the macro backward and the forward blend are about half of room's kernel time. Further work on the blend backward, or on the forward blend (7–17%), is the main lever indoors.
 3. **Densifying-phase optimizer** (outdoor): an earlier selective switch, or a cheaper dense update before 15k. Selective Adam during densification cost quality before, so this needs quality checks.
 4. **Early stop with the 30k schedule kept** (outdoor; see `../stages/README.md`): a separate lever, independent of kernel work.

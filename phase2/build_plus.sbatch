@@ -22,11 +22,16 @@
 #            FGS_PROF=1 (STAGE fwd/bwd/opt CUDA events every 250 steps, CURVE ms/step every 500; the hooks sync the
 #            host every step, so these are not benchmark times) and two nsys captures of 50 steps at 5000 and 20000
 #            (NVTX fwd/bwd/opt); reports in $HOME/3dgs-archive/profile/<job>/, CSV summaries in phase2/logs/run_<job>/
+#   timerctl (step 4b) one scene, SEEDS (default 0 1 2): stock and A+B+C, each with NeRFICG's per-step timer ON (the
+#            benchmark protocol: device sync after every step) and OFF; interleaved, order rotated by seed. Every run
+#            also logs FGS_WALL (unprofiled wall time over 0-15k and 15k-30k, device synced only at those boundaries)
+#            and a hash of the training-view sequence, so matched runs can be checked to have seen the same views
 #   sbatch phase2/build_plus.sbatch      (from the repo root)
 #   STAGES=factorial sbatch --job-name=gs-phase2-factorial --time=03:30:00 phase2/build_plus.sbatch
 #   STAGES=bench SCENE=room sbatch --job-name=gs-bench-room --time=02:30:00 phase2/build_plus.sbatch
 #   STAGES=stages SCENE=room sbatch --job-name=gs-stages-room --time=02:30:00 phase2/build_plus.sbatch
 #   STAGES=profile SCENE=room sbatch --job-name=gs-prof-room --time=02:00:00 phase2/build_plus.sbatch
+#   STAGES=timerctl SCENE=room sbatch --job-name=gs-timer-room --time=01:30:00 phase2/build_plus.sbatch
 #SBATCH --job-name=gs-phase2-build
 #SBATCH --nodes=1
 #SBATCH --account=p_scads_mlhpc
@@ -179,19 +184,57 @@ if has stages; then
   TRAIN_BACKUP=-1
 fi
 
-nsys_window() {  # name method flags blend start: nsys capture of steps start..start+50, process exits after the window
+nsys_window() {  # name method flags blend start: nsys capture of steps start..start+50; validated before it counts
   local name=$1 method=$2 flags=$3 blend=$4 a=$5 b=$(( $5 + 50 ))
   local NSYS; NSYS=$(command -v nsys || true)
   [ -n "$NSYS" ] || { echo "FAILED $name: nsys not found"; FAILED+=("$name"); return; }
   local REP=$HOME/3dgs-archive/profile/${SLURM_JOB_ID:-local}; mkdir -p "$REP"
   echo "##### $name: method=$method seed=0 window=$a-$b flags=$flags blend=$blend $(date +%T)"
-  env FGS_BLEND_BWD=$blend FGS_PROF_RANGE=$a,$b FGS_PROF_EXIT=$b SCENE=$BSCENE SCALE=$BSCALE SEED=0 METHOD=$method TAG=p2$name       OPT_FLAGS=$flags LAUNCHER="$NSYS profile -t cuda,nvtx ${NSYS_EXTRA:-}--capture-range=cudaProfilerApi --capture-range-end=stop -f true -o $REP/$name"       bash "$REPO/cluster/train_fastergs.sbatch" > "$OUT/$name.log" 2>&1 || true
-  [ -f "$REP/$name.nsys-rep" ] || { echo "FAILED $name: no report"; tr '\r' '\n' < "$OUT/$name.log" | grep -E "Traceback|Error" | head; FAILED+=("$name"); return; }
-  for r in cuda_gpu_kern_sum nvtx_sum nvtx_gpu_proj_sum; do
-    "$NSYS" stats --force-export=true --report $r --format csv --output "$OUT/$name" "$REP/$name.nsys-rep" >/dev/null 2>&1 || echo "note: nsys report $r unavailable"
-  done
-  echo "NSYS $name $(ls "$OUT" | grep -c "^$name.*\.csv$") csv reports, rep $REP/$name.nsys-rep"
+  local rc=0
+  env FGS_BLEND_BWD=$blend FGS_PROF_RANGE=$a,$b FGS_PROF_EXIT=$b SCENE=$BSCENE SCALE=$BSCALE SEED=0 METHOD=$method TAG=p2$name OPT_FLAGS=$flags LAUNCHER="$NSYS profile -t cuda,nvtx ${NSYS_EXTRA:-}--capture-range=cudaProfilerApi --capture-range-end=stop -f true -o $REP/$name" bash "$REPO/cluster/train_fastergs.sbatch" > "$OUT/$name.log" 2>&1 || rc=$?
+  local why=""
+  [ "$rc" = 0 ] || why="$why exit status $rc;"
+  # (the 'FGS_PROF_EXIT' print is not checked: stdout lines get lost in the progress-bar output; the 50-step kernel count below is the window check)
+  ! tr '\r' '\n' < "$OUT/$name.log" | grep -q "^Traceback" || why="$why Python traceback in the log;"
+  [ -f "$REP/$name.nsys-rep" ] || why="$why no report;"
+  if [ -z "$why" ]; then
+    for r in cuda_gpu_kern_sum nvtx_sum nvtx_gpu_proj_sum; do
+      "$NSYS" stats --force-export=true --report $r --format csv --output "$OUT/$name" "$REP/$name.nsys-rep" >/dev/null 2>&1 || why="$why nsys report $r failed;"
+    done
+    # the window must hold exactly 50 training steps: one forward blend kernel per step
+    local nb; nb=$(python3 -c "import csv,sys; print(sum(int(r['Instances']) for r in csv.DictReader(open(sys.argv[1])) if 'forward::blend_cu' in r['Name']))" "$OUT/${name}_cuda_gpu_kern_sum.csv" 2>/dev/null || echo 0)
+    [ "$nb" = 50 ] || why="$why forward blend launches = $nb, expected 50;"
+    if [ -n "${NSYS_EXTRA:-}" ]; then   # backtrace captures: PyTorch op ranges and Python callchains must be present
+      grep -q "aten::" "$OUT/${name}_nvtx_sum.csv" 2>/dev/null || why="$why no PyTorch (aten::) NVTX ranges;"
+      python3 - "$REP/$name.sqlite" <<'PYCHK' || why="$why no Python backtrace rows;"
+import re, sqlite3, sys
+c = sqlite3.connect(sys.argv[1])
+t = [r[0] for r in c.execute("select name from sqlite_master where type='table'") if re.search('CALLCHAIN', r[0], re.I)]
+sys.exit(0 if any(c.execute(f'select count(*) from {x}').fetchone()[0] > 0 for x in t) else 1)
+PYCHK
+    fi
+  fi
+  if [ -n "$why" ]; then
+    echo "FAILED $name:$why"; tr '\r' '\n' < "$OUT/$name.log" | grep -E "Traceback|Error" | head; FAILED+=("$name"); return
+  fi
+  echo "NSYS $name validated (50 steps, $nb forward blends) rep $REP/$name.nsys-rep"
 }
+
+if has timerctl; then
+  BSCENE=${SCENE:?set SCENE for the timerctl stage}
+  case $BSCENE in room|counter|kitchen|bonsai) BSCALE=0.5 ;; *) BSCALE=0.25 ;; esac
+  echo "########## timerctl (scene $BSCENE scale $BSCALE, seeds ${SEEDS:-0 1 2}; timer on/off x stock/A+B+C)"
+  CONFIGS=(stock_on abc_on stock_off abc_off)
+  for seed in ${SEEDS:-0 1 2}; do
+    for k in 0 1 2 3; do
+      cfg=${CONFIGS[$(( (k + seed) % 4 ))]}
+      arm=${cfg%_*}; tm=${cfg#*_}
+      off=0; [ "$tm" = off ] && off=1
+      if [ $arm = stock ]; then m=FasterGS; fl=""; bl=taming; else m=FasterGSPlus; fl="SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true"; bl=macro; fi
+      TRAIN_ENV="FGS_WALL=0,15000,30000 TIMING_OFF=$off" train "t_${BSCENE}_${arm}_${tm}_s$seed" $m "$seed" 30000 "$fl" $bl
+    done
+  done
+fi
 
 if has hostprof; then   # where the host-side gaps come from: PyTorch op ranges + Python backtraces on CUDA API calls
   BSCENE=${SCENE:?set SCENE for the hostprof stage}

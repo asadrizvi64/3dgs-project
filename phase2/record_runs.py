@@ -74,12 +74,12 @@ for path in args.logs:
         grab = lambda pat: next((m for m in (re.match(pat, l) for l in L) if m), None)
         clk = [m for m in (re.match(r'SEGCLOCK step=(\d+) \S+ cum_s=(\S+) sparse=(\d)(?: visfrac=(\S+))?(?: N=(\d+) peak_alloc_gib=(\S+))?', l) for l in L) if m]
         clk = clk[-1] if clk else None
-        res = grab(r'RESULT \S+ PSNR:(\S+) SSIM:(\S+) LPIPS:(\S+) N_Gaussians:(\d+) ms_it=(\S+)\s+allocated: ([\d.]+)')
+        res = grab(r'RESULT \S+ PSNR:(\S+) SSIM:(\S+) LPIPS:(\S+) N_Gaussians:(\d+) ms_it=(\S*)(?:\s+allocated: ([\d.]+))?')
         n15 = grab(r'FGS_N iteration=15000 N=(\d+)')
         end = grab(r'FGS_TRAIN_END N=(\d+) peak_alloc_gib=(\S+) peak_reserved_gib=(\S+)')
         per = grab(r'PERIMG \S+ n_images=(\d+) min_image=(\d+) min_psnr=(\S+)')
         failed = any(l.startswith(f'FAILED {b["name"]}') for l in L)
-        sm = re.match(r'[brp]_([a-z]+)_', b['name'])
+        sm = re.match(r'[brpt]_([a-z]+)_', b['name'])
         scene = sm.group(1) if sm else 'garden'
         rundir, clock = '', ''
         adir = os.path.join(archive, b['name'])
@@ -103,8 +103,13 @@ for path in args.logs:
                  'train time = CUDA-event clock (SEGCLOCK)']
         if failed or not res or not clk:
             notes.append('FAILED: no final metrics or no training clock record' if not failed else 'FAILED (see job log)')
-        if res:
+        if res and res.group(5):
             notes.append(f'{res.group(5)} ms/it (NeRFICG timer)')
+        if b['name'].startswith('t_'):
+            notes.append('timer-control run: NeRFICG per-step timer ' + ('OFF (no device sync after each step)' if '_off_' in b['name'] else 'ON (device sync after each step, the benchmark protocol)'))
+        walls = [m.groups() for m in (re.match(r'FGS_WALL from=(\d+) to=(\d+) s=([\d.]+) views=(\w+)', l) for l in L) if m]
+        if walls:
+            notes.append('wall clock (sync only at window ends) ' + ', '.join(f'{a}-{b2}: {t} s' for a, b2, t, _ in walls) + f'; view hash {walls[-1][3]}')
         if clk and clk.group(4):
             notes.append(f'visible fraction {clk.group(4)} at the end')
         if n15:
@@ -112,7 +117,8 @@ for path in args.logs:
         if end:
             notes.append(f'N at last step before cleanup {end.group(1)}; training-only peak {end.group(2)} GiB allocated / {end.group(3)} GiB reserved')
         elif res:
-            notes.append(f'VRAM {res.group(6)} GiB allocated, read after the final evaluation (not training-only)')
+            if res.group(6):
+                notes.append(f'VRAM {res.group(6)} GiB allocated, read after the final evaluation (not training-only)')
         if per:
             notes.append(f'lowest test image {per.group(2)} at {per.group(3)} dB ({per.group(1)} images)')
         if b['name'].startswith('p_'):
@@ -130,11 +136,11 @@ for path in args.logs:
         row = dict(date=dm.group(1) if dm else '', commit=commit, instance_type=f'ZIH Capella node {node} (job {job})',
                    scene=scene, method=describe(b['method'], b['flags'], b['blend']), seed=b['seed'],
                    train_time_s=f'{float(clk.group(2)):.1f}' if clk else '',
-                   peak_vram_gb=end.group(2) if end else (res.group(6) if res else ''),
+                   peak_vram_gb=end.group(2) if end else (res.group(6) or '' if res else ''),
                    psnr=f'{float(res.group(1)):.3f}' if res else '', ssim=f'{float(res.group(2)):.4f}' if res else '',
                    lpips=f'{float(res.group(3)):.4f}' if res else '', gaussian_count=res.group(4) if res else '',
                    notes='; '.join(notes), train_resolution=RES.get(scene, ''),
-                   role='stage-render' if b['name'].startswith('r_') else 'profile' if b['name'].startswith('p_') else 'check' if b['iters'] < 30000 else ('baseline' if b['method'] == 'FasterGS' or b['name'].endswith(('a0b0c0_s0', 'a0b0c0_s1', 'a0b0c0_s2')) else 'experiment'),
+                   role='stage-render' if b['name'].startswith('r_') else 'timer-control' if b['name'].startswith('t_') else 'profile' if b['name'].startswith('p_') else 'check' if b['iters'] < 30000 else ('baseline' if b['method'] == 'FasterGS' or b['name'].endswith(('a0b0c0_s0', 'a0b0c0_s1', 'a0b0c0_s2')) else 'experiment'),
                    **CONST)
         new_rows.append([row.get(h, '') for h in header])
         seen.add(key)

@@ -14,6 +14,11 @@ FGS_SEGCLOCK=k     pure training time: CUDA events around every training_iterati
                    peak is a training-only peak when no intermediate evaluations run. Also written: 'FGS_N iteration=15000
                    N=..' (count right after densification ends) and, at the last step, 'FGS_TRAIN_END N=.. (before the
                    end-of-training opacity cleanup) peak_alloc_gib=.. peak_reserved_gib=..'.
+FGS_WALL=a,b,..    v5: unprofiled elapsed time over whole windows. The device is synchronized only at these iteration
+                   boundaries (at the start of iteration a, ..., and after the last training step if NUM_ITERATIONS is
+                   listed); 'FGS_WALL from=a to=b s=.. views=..' gives the host wall time between consecutive
+                   boundaries, including everything between steps (callbacks, loop overhead), plus a hash of the
+                   sequence of training views used so far (global_frame_idx), to check that runs saw the same views.
 FGS_LOG=path       file the hooks write to (stdout lines get lost in the progress-bar output); default stdout.
 All off by default, so normal runs are unchanged.
 """
@@ -21,7 +26,7 @@ import re
 import sys
 from pathlib import Path
 
-VERSION = '# >>> fgs-sparse-from v4'
+VERSION = '# >>> fgs-sparse-from v5'
 path = Path(sys.argv[1])
 src = path.read_text()
 if VERSION in src:
@@ -47,6 +52,15 @@ START_HOOK = START + f'''        {VERSION}
             print(f'FGS_SPARSE_FROM: selective Adam from iteration {{iteration}}', file=self._fgs_log, flush=True)
         if _segk and iteration == 15000:
             print(f'FGS_N iteration=15000 N={{self.model.gaussians.means.shape[0]}}', file=self._fgs_log, flush=True)
+        _wall = {{int(x) for x in _os.environ['FGS_WALL'].split(',')}} if _os.environ.get('FGS_WALL') else ()
+        if not hasattr(self, '_fgs_vh'):
+            self._fgs_vh, self._fgs_wall = 0, None
+        if iteration in _wall:
+            torch.cuda.synchronize()
+            _tw = __import__('time').perf_counter()
+            if self._fgs_wall is not None:
+                print(f'FGS_WALL from={{self._fgs_wall[0]}} to={{iteration}} s={{_tw - self._fgs_wall[1]:.3f}} views={{self._fgs_vh:x}}', file=self._fgs_log, flush=True)
+            self._fgs_wall = (iteration, _tw)
         if _segk:
             _fgs_e0 = torch.cuda.Event(enable_timing=True)
             _fgs_e0.record()
@@ -57,6 +71,12 @@ END = '''        self.model.gaussians.post_optimizer_step(inject_noise=self.USE_
             self.model.ppisp.step()
 '''
 END_HOOK = END + '''        # >>> fgs-segclock
+        if _wall:
+            self._fgs_vh = (self._fgs_vh * 1000003 + int(getattr(view, 'global_frame_idx', None) or getattr(view, 'frame_idx', 0) or 0) + 1) % (1 << 61)
+            if iteration + 1 == self.NUM_ITERATIONS and self.NUM_ITERATIONS in _wall and self._fgs_wall is not None:
+                torch.cuda.synchronize()
+                _tw = __import__('time').perf_counter()
+                print(f'FGS_WALL from={self._fgs_wall[0]} to={iteration + 1} s={_tw - self._fgs_wall[1]:.3f} views={self._fgs_vh:x}', file=self._fgs_log, flush=True)
         if _segk:
             _fgs_e1 = torch.cuda.Event(enable_timing=True)
             _fgs_e1.record()

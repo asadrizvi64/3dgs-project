@@ -189,9 +189,11 @@ Details: [`profile/README.md`](profile/README.md). Stock vs A+B+C, step split by
 - **What A+B+C leaves at 20k:**
   - garden: blend backward 23%, preprocess backward 20%, Adam 25%, forward 17%, small PyTorch ops 10%;
   - room: blending is about half of kernel time.
-- **About 0.75 ms per step (12% on garden, 18% on room) is not kernel time**, likely launch or host overhead. While densifying, the optimizer section is not faster in A+B+C by CUDA events, even though its kernels are; that needs a direct check.
+- **The GPU is idle about 1 ms per step** in both arms and both scenes (nsys windows). Possible contributors are still being separated: NeRFICG's per-step timer sync, blocking reads in the forward pass, and small-kernel chains.
+- An earlier reading, that the A+B+C optimizer is no faster while densifying, was a sampling bias. Half the samples fell on steps right after densification, which pay a bf16 moment conversion (0.76 ms on garden, once per densification); the timeline shows the A+B+C optimizer faster than stock's in every window.
+- **All benchmark numbers in steps 1–3 use NeRFICG's timing protocol** (timer on, device sync after every step) in both arms.
 - **Suggested next levers, in order:**
-  1. launch/host overhead (fused Adam launch, CUDA graphs);
+  1. host-side idle time: first a timer-on/off control, then attribution, then each fix tested separately (Adam-launch fusion is low priority: no substantial gaps between those kernels);
   2. the blend kernels (indoor);
   3. the densifying-phase optimizer (outdoor);
   4. early stop (outdoor).
