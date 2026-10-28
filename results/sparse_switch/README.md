@@ -25,13 +25,21 @@ All 24 runs completed. The SM clock held 1980 MHz in every run. Logs are in `<sc
 
 Stock 30k PSNR by scene: bicycle 25.301, stump 26.614, room 31.615, counter 29.079.
 
-- **Quality gate (pre-registered in `phase2/PLAN.md`: on every scene mean ΔPSNR ≥ −0.05 dB and ΔLPIPS ≤ +0.002): passed on all 5 scenes.** No scene shows an observed loss, and 13 of 15 paired seeds are positive.
+- **Claim: faster training with quality within the predefined tolerances on five scenes.**
+  - Quality gate (pre-registered in `phase2/PLAN.md`: on every scene, mean ΔPSNR ≥ −0.05 dB and ΔLPIPS ≤ +0.002): **passed on all 5 scenes.**
+  - All 15 paired runs were faster.
+  - 13 of 15 paired seeds have higher PSNR. The two lower ones (room seed 2 −0.024 dB, counter seed 0 −0.032 dB) are within tolerance, and a few individual SSIM/LPIPS deltas are slightly worse. So this is not "no quality loss anywhere"; it is "within tolerance everywhere".
 - **Change after the switch:** the ΔPSNR from 15k to 30k (difference-in-differences) is +0.049 / +0.052 / +0.055 / +0.075 / +0.043 dB for garden / bicycle / stump / room / counter. The 15k gaps are pure run-to-run noise, since the arms are identical up to then. That this gain is positive on all 5 scenes is the strongest evidence so far of a small real quality gain (about +0.05 dB), but it is not yet proven: per-seed noise at 30k is of the same size.
-- **Speed scales with how much of the step the optimizer is.**
+- **Speed gain differs by scene; likely explanation (not yet measured): how much of the step the optimizer is.**
   - The large outdoor scenes (4.2–4.9 M Gaussians at 1/4 resolution) save 10–16% of training (23–28% in the second half).
-  - The indoor scenes (1.0–1.3 M Gaussians at 1/2 resolution, about 1557×1038) save only 3–5%, because rendering more pixels dominates their step and dense Adam over about 1.2 M rows is cheap.
+  - The indoor scenes (1.0–1.3 M Gaussians at 1/2 resolution, about 1557×1038) save only 3–5%.
+  - Hypothesis: with fewer Gaussian parameters and more pixels, rendering (especially the backward pass) is a larger share of the step and dense Adam is a smaller one, so skipping Adam rows saves less. Scene size alone does not establish this; the stage profiling planned in Phase 2 (`FGS_PROF`) must measure backward-render time versus Adam time on an indoor scene before this is stated as the cause.
   - **The mean over the 5 scenes is −9.5%; the median is −9.8%.**
-- **Final Gaussian count:** the switch keeps 0–4% more Gaussians (room +2–4%; stump −1.2% on one seed). The count is taken after Faster-GS's end-of-training opacity prune (`training_cleanup(min_opacity)`); during training after 15k, N is the same in both arms. Rows that selective Adam does not update keep their opacity instead of drifting under momentum, so fewer fall below the floor. This makes rendering slightly more expensive after training.
+- **Final Gaussian count:** the switch arm ends with 0–4% more Gaussians (room +2–4%; stump −1.2% on one seed). What is verified: the reported counts are taken after Faster-GS's end-of-training opacity prune (`training_cleanup(min_opacity)`).
+  - What is not verified: whether the difference comes from that prune. Within each run N stops changing when densification ends at 14.9k, but stock and switch runs are trained independently, so their counts at 15k need not match, and neither the 15k count nor the count just before cleanup was recorded.
+  - Hypothesis: rows that selective Adam does not update keep their opacity instead of drifting under momentum, so fewer fall below the prune floor.
+  - The v4 clock hook records N at 15k, at the last training step (before cleanup), and after cleanup (`n_gaussians.txt`), which settles this in future runs without a dedicated experiment.
+  - More Gaussians make rendering slightly more expensive after training.
 - **For Phase 2:** B passes its gate and goes into the stack. On indoor scenes it adds little, so the stack's per-scene gain there will come mostly from the backward kernel (A).
 
 ## Garden (development scene, job 4480440)

@@ -9,6 +9,11 @@ FGS_SPARSE_FROM=n  environment override of SELECTIVE_FROM (takes precedence when
 FGS_SEGCLOCK=k     pure training time: CUDA events around every training_iteration (nothing that runs between
                    iterations, such as testing or checkpointing, is counted); every k iterations the summed time is
                    written as 'SEGCLOCK step=.. seg_s=.. cum_s=..'.
+                   v4: each SEGCLOCK line also has N (Gaussians now) and peak_alloc_gib (torch peak allocated so far).
+                   The line at the last step is written inside the training step, before any final evaluation, so its
+                   peak is a training-only peak when no intermediate evaluations run. Also written: 'FGS_N iteration=15000
+                   N=..' (count right after densification ends) and, at the last step, 'FGS_TRAIN_END N=.. (before the
+                   end-of-training opacity cleanup) peak_alloc_gib=.. peak_reserved_gib=..'.
 FGS_LOG=path       file the hooks write to (stdout lines get lost in the progress-bar output); default stdout.
 All off by default, so normal runs are unchanged.
 """
@@ -16,7 +21,7 @@ import re
 import sys
 from pathlib import Path
 
-VERSION = '# >>> fgs-sparse-from v3'
+VERSION = '# >>> fgs-sparse-from v4'
 path = Path(sys.argv[1])
 src = path.read_text()
 if VERSION in src:
@@ -40,6 +45,8 @@ START_HOOK = START + f'''        {VERSION}
             _opt.sparse = True
             _opt.lean = True
             print(f'FGS_SPARSE_FROM: selective Adam from iteration {{iteration}}', file=self._fgs_log, flush=True)
+        if _segk and iteration == 15000:
+            print(f'FGS_N iteration=15000 N={{self.model.gaussians.means.shape[0]}}', file=self._fgs_log, flush=True)
         if _segk:
             _fgs_e0 = torch.cuda.Event(enable_timing=True)
             _fgs_e0.record()
@@ -61,8 +68,14 @@ END_HOOK = END + '''        # >>> fgs-segclock
                 self._fgs_cum += _dt
                 _vis = getattr(__import__('sys').modules[type(self.model.gaussians.optimizer).__module__]._Rasterize, 'last_visibility', None)
                 _vf = f' visfrac={int(_vis.count_nonzero()) / max(_vis.numel(), 1):.3f}' if _vis is not None and self.model.gaussians.optimizer.sparse else ''
-                print(f'SEGCLOCK step={iteration + 1} seg_s={_dt:.3f} cum_s={self._fgs_cum:.3f} sparse={int(self.model.gaussians.optimizer.sparse)}{_vf}',
+                _n = self.model.gaussians.means.shape[0]
+                _pk = torch.cuda.max_memory_allocated() / 1024 ** 3
+                print(f'SEGCLOCK step={iteration + 1} seg_s={_dt:.3f} cum_s={self._fgs_cum:.3f} sparse={int(self.model.gaussians.optimizer.sparse)}{_vf} N={_n} peak_alloc_gib={_pk:.2f}',
                       file=self._fgs_log, flush=True)
+            if iteration + 1 == self.NUM_ITERATIONS:
+                torch.cuda.synchronize()
+                print(f'FGS_TRAIN_END N={self.model.gaussians.means.shape[0]} peak_alloc_gib={torch.cuda.max_memory_allocated() / 1024 ** 3:.2f} '
+                      f'peak_reserved_gib={torch.cuda.max_memory_reserved() / 1024 ** 3:.2f}', file=self._fgs_log, flush=True)
         # <<< fgs-segclock
 '''
 assert src.count(START) == 1, 'start anchor not found exactly once'

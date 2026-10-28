@@ -51,14 +51,16 @@ It also gives a direct stage-timing check (FGS_PROF at steps 5k and 20k) for the
 
 ## Step 3 — the benchmark
 
+Before it starts: rebuild FasterGSPlus with clock hook v4 (`STAGES="build unit switch"`), and check that the switch runs show the `FGS_N` and `FGS_TRAIN_END` lines.
+
 - **Scenes:** all 9 Mip-NeRF360 scenes. These are bicycle, flowers, garden, stump and treehill at 1/4 resolution, and room, counter, kitchen and bonsai at 1/2. All are already on the cat workspace.
 - **Arms and jobs:** stock Faster-GS vs the full stack (and B-less if step 0 made B optional). Each scene gets 3 seeds, interleaved, in one job per scene, so a scene's pairs share a node.
 - **Report per scene:**
   - training time (CUDA events and the NeRFICG timer);
   - ms/it;
   - PSNR, SSIM and LPIPS, with paired differences per seed;
-  - final Gaussians;
-  - peak VRAM;
+  - Gaussians at 15k, at the last step before cleanup, and after cleanup (clock hook v4);
+  - training-only peak VRAM, read inside the last training step before the final evaluation (clock hook v4). The step 2 factorial still uses v3, so its VRAM is the trainer's figure read after the final evaluation;
   - total job duration, kept separate from training time.
 
   After the per-scene report, give the mean over scenes, plus the worst scene.
