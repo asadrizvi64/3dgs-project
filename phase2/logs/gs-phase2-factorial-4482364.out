@@ -1,0 +1,88 @@
+node=c19 job=4482364 gpu=NVIDIA H100 stages=factorial repo=1713f11
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## factorial (garden, seeds 0 1 2, 30k; train time = SEGCLOCK cum_s)
+##### f_a0b0c0_s0: method=FasterGSPlus seed=0 iters=30000 flags= blend=taming 16:02:06
+SEGCLOCK step=30000 seg_s=253.112 cum_s=253.112 sparse=0
+RESULT f_a0b0c0_s0 PSNR:27.51568365097046 SSIM:0.8670641059676806 LPIPS:0.12039493148525555 N_Gaussians:4148476 ms_it=8.48  allocated: 6.46 GiB
+##### f_a1b0c0_s0: method=FasterGSPlus seed=0 iters=30000 flags= blend=macro 16:07:27
+SEGCLOCK step=30000 seg_s=225.649 cum_s=225.649 sparse=0
+RESULT f_a1b0c0_s0 PSNR:27.500686566034954 SSIM:0.8667430654168129 LPIPS:0.12055470328778028 N_Gaussians:4158426 ms_it=7.57  allocated: 6.47 GiB
+##### f_a0b1c0_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000 blend=taming 16:12:14
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+SEGCLOCK step=30000 seg_s=226.640 cum_s=226.640 sparse=1 visfrac=0.336
+RESULT f_a0b1c0_s0 PSNR:27.59954810142517 SSIM:0.8681252151727676 LPIPS:0.11962329813589652 N_Gaussians:4175495 ms_it=7.60  allocated: 6.47 GiB
+##### f_a0b0c1_s0: method=FasterGSPlus seed=0 iters=30000 flags=SH_REST_BF16_MOMENTS=true blend=taming 16:17:00
+SEGCLOCK step=30000 seg_s=232.842 cum_s=232.842 sparse=0
+RESULT f_a0b0c1_s0 PSNR:27.460031032562256 SSIM:0.8666409278909365 LPIPS:0.12090520778050025 N_Gaussians:4124705 ms_it=7.81  allocated: 6.39 GiB
+##### f_a1b1c0_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 16:21:52
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+SEGCLOCK step=30000 seg_s=205.442 cum_s=205.442 sparse=1 visfrac=0.337
+RESULT f_a1b1c0_s0 PSNR:27.556222756703693 SSIM:0.8676738341649374 LPIPS:0.12015346282472213 N_Gaussians:4165635 ms_it=6.89  allocated: 6.46 GiB
+##### f_a1b0c1_s0: method=FasterGSPlus seed=0 iters=30000 flags=SH_REST_BF16_MOMENTS=true blend=macro 16:26:18
+SEGCLOCK step=30000 seg_s=207.255 cum_s=207.255 sparse=0
+RESULT f_a1b0c1_s0 PSNR:27.479645490646362 SSIM:0.8667930488785108 LPIPS:0.12082359753549099 N_Gaussians:4148476 ms_it=6.95  allocated: 6.41 GiB
+##### f_a0b1c1_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=taming 16:30:44
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+SEGCLOCK step=30000 seg_s=217.421 cum_s=217.421 sparse=1 visfrac=0.336
+RESULT f_a0b1c1_s0 PSNR:27.316867033640545 SSIM:0.8667516857385635 LPIPS:0.12093093805015087 N_Gaussians:4168377 ms_it=7.29  allocated: 6.42 GiB
+##### f_a1b1c1_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 16:35:21
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+SEGCLOCK step=30000 seg_s=190.994 cum_s=190.994 sparse=1 visfrac=0.337
+RESULT f_a1b1c1_s0 PSNR:27.483412663141888 SSIM:0.8668327207366625 LPIPS:0.12086192611604929 N_Gaussians:4151393 ms_it=6.41  allocated: 6.40 GiB
+##### f_a0b0c1_s1: method=FasterGSPlus seed=1 iters=30000 flags=SH_REST_BF16_MOMENTS=true blend=taming 16:39:32
+SEGCLOCK step=30000 seg_s=233.948 cum_s=233.948 sparse=0
+RESULT f_a0b0c1_s1 PSNR:27.421306133270264 SSIM:0.8658246820171674 LPIPS:0.12105589856704076 N_Gaussians:4176463 ms_it=7.84  allocated: 6.45 GiB
+##### f_a1b1c0_s1: method=FasterGSPlus seed=1 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 16:44:27
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+SEGCLOCK step=30000 seg_s=201.923 cum_s=201.923 sparse=1 visfrac=0.319
+RESULT f_a1b1c0_s1 PSNR:27.469562768936157 SSIM:0.8666448046763738 LPIPS:0.12055102922022343 N_Gaussians:4192659 ms_it=6.78  allocated: 6.49 GiB
+##### f_a1b0c1_s1: method=FasterGSPlus seed=1 iters=30000 flags=SH_REST_BF16_MOMENTS=true blend=macro 16:48:48
+SEGCLOCK step=30000 seg_s=210.274 cum_s=210.274 sparse=0
+RESULT f_a1b0c1_s1 PSNR:27.462332884470623 SSIM:0.8662684212128321 LPIPS:0.12034070150305827 N_Gaussians:4187734 ms_it=7.06  allocated: 6.46 GiB
+##### f_a0b1c1_s1: method=FasterGSPlus seed=1 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=taming 16:53:19
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+SEGCLOCK step=30000 seg_s=220.016 cum_s=220.016 sparse=1 visfrac=0.318
+RESULT f_a0b1c1_s1 PSNR:27.468000809351604 SSIM:0.8663941199580828 LPIPS:0.12084941752254963 N_Gaussians:4180609 ms_it=7.38  allocated: 6.45 GiB
+##### f_a1b1c1_s1: method=FasterGSPlus seed=1 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 16:58:01
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+SEGCLOCK step=30000 seg_s=191.927 cum_s=191.927 sparse=1 visfrac=0.320
+RESULT f_a1b1c1_s1 PSNR:27.43411612510681 SSIM:0.8664073596398035 LPIPS:0.12068394385278225 N_Gaussians:4175147 ms_it=6.44  allocated: 6.44 GiB
+##### f_a0b0c0_s1: method=FasterGSPlus seed=1 iters=30000 flags= blend=taming 17:02:13
+SEGCLOCK step=30000 seg_s=254.962 cum_s=254.962 sparse=0
+RESULT f_a0b0c0_s1 PSNR:27.494132200876873 SSIM:0.8668471028407415 LPIPS:0.12019988397757213 N_Gaussians:4167627 ms_it=8.55  allocated: 6.48 GiB
+##### f_a1b0c0_s1: method=FasterGSPlus seed=1 iters=30000 flags= blend=macro 17:07:28
+SEGCLOCK step=30000 seg_s=225.866 cum_s=225.866 sparse=0
+RESULT f_a1b0c0_s1 PSNR:27.47947907447815 SSIM:0.866241566836834 LPIPS:0.12031357518086831 N_Gaussians:4171600 ms_it=7.58  allocated: 6.48 GiB
+##### f_a0b1c0_s1: method=FasterGSPlus seed=1 iters=30000 flags=SELECTIVE_FROM=15000 blend=taming 17:12:15
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+SEGCLOCK step=30000 seg_s=229.385 cum_s=229.385 sparse=1 visfrac=0.319
+RESULT f_a0b1c0_s1 PSNR:27.4642227490743 SSIM:0.8663827901085218 LPIPS:0.12065650926282008 N_Gaussians:4183789 ms_it=7.69  allocated: 6.49 GiB
+##### f_a0b1c1_s2: method=FasterGSPlus seed=2 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=taming 17:17:07
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+SEGCLOCK step=30000 seg_s=215.073 cum_s=215.073 sparse=1 visfrac=0.303
+RESULT f_a0b1c1_s2 PSNR:27.56838281949361 SSIM:0.8681198904911677 LPIPS:0.12004370087136824 N_Gaussians:4161758 ms_it=7.21  allocated: 6.45 GiB
+##### f_a1b1c1_s2: method=FasterGSPlus seed=2 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 17:21:54
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+SEGCLOCK step=30000 seg_s=189.514 cum_s=189.514 sparse=1 visfrac=0.304
+RESULT f_a1b1c1_s2 PSNR:27.586689313252766 SSIM:0.86842064311107 LPIPS:0.11966568945596616 N_Gaussians:4164149 ms_it=6.36  allocated: 6.45 GiB
+##### f_a0b0c0_s2: method=FasterGSPlus seed=2 iters=30000 flags= blend=taming 17:26:04
+SEGCLOCK step=30000 seg_s=252.725 cum_s=252.725 sparse=0
+RESULT f_a0b0c0_s2 PSNR:27.549283981323242 SSIM:0.8679688945412636 LPIPS:0.11985066408912341 N_Gaussians:4152960 ms_it=8.47  allocated: 6.46 GiB
+##### f_a1b0c0_s2: method=FasterGSPlus seed=2 iters=30000 flags= blend=macro 17:31:18
+SEGCLOCK step=30000 seg_s=224.713 cum_s=224.713 sparse=0
+RESULT f_a1b0c0_s2 PSNR:27.54606342315674 SSIM:0.8676001578569412 LPIPS:0.1204781907921036 N_Gaussians:4149084 ms_it=7.54  allocated: 6.46 GiB
+##### f_a0b1c0_s2: method=FasterGSPlus seed=2 iters=30000 flags=SELECTIVE_FROM=15000 blend=taming 17:36:04
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+SEGCLOCK step=30000 seg_s=225.436 cum_s=225.436 sparse=1 visfrac=0.302
+RESULT f_a0b1c0_s2 PSNR:27.57885503768921 SSIM:0.8682076359788576 LPIPS:0.11980604846030474 N_Gaussians:4158006 ms_it=7.56  allocated: 6.45 GiB
+##### f_a0b0c1_s2: method=FasterGSPlus seed=2 iters=30000 flags=SH_REST_BF16_MOMENTS=true blend=taming 17:40:50
+SEGCLOCK step=30000 seg_s=235.235 cum_s=235.235 sparse=0
+RESULT f_a0b0c1_s2 PSNR:27.52416706085205 SSIM:0.8676003937919935 LPIPS:0.1202661261583368 N_Gaussians:4146922 ms_it=7.89  allocated: 6.45 GiB
+##### f_a1b1c0_s2: method=FasterGSPlus seed=2 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 17:45:46
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+SEGCLOCK step=30000 seg_s=203.474 cum_s=203.474 sparse=1 visfrac=0.303
+RESULT f_a1b1c0_s2 PSNR:27.598348140716553 SSIM:0.8684808984398842 LPIPS:0.11996630237748225 N_Gaussians:4165988 ms_it=6.83  allocated: 6.46 GiB
+##### f_a1b0c1_s2: method=FasterGSPlus seed=2 iters=30000 flags=SH_REST_BF16_MOMENTS=true blend=macro 17:50:10
+SEGCLOCK step=30000 seg_s=207.679 cum_s=207.679 sparse=0
+RESULT f_a1b0c1_s2 PSNR:27.548632383346558 SSIM:0.8675255303581556 LPIPS:0.12030975644787152 N_Gaussians:4146795 ms_it=6.97  allocated: 6.44 GiB
+JOB OK

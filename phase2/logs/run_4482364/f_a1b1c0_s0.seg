@@ -1,0 +1,2 @@
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+SEGCLOCK step=30000 seg_s=205.442 cum_s=205.442 sparse=1 visfrac=0.337
