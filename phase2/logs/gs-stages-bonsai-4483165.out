@@ -1,0 +1,117 @@
+node=c61 job=4483165 gpu=NVIDIA H100 stages=stages repo=e5ffa5d
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## stages (scene bonsai scale 0.5, seeds 0, renders every 1000 it; clock every 1000 it)
+##### r_bonsai_stock_s0: method=FasterGS seed=0 iters=30000 flags= blend=taming 19:14:43
+SEGCLOCK step=1000 seg_s=3.748 cum_s=3.748 sparse=0 N=322680 peak_alloc_gib=5.19
+SEGCLOCK step=2000 seg_s=3.911 cum_s=7.659 sparse=0 N=688484 peak_alloc_gib=70.47
+SEGCLOCK step=3000 seg_s=4.555 cum_s=12.214 sparse=0 N=920927 peak_alloc_gib=70.47
+SEGCLOCK step=4000 seg_s=4.174 cum_s=16.388 sparse=0 N=943422 peak_alloc_gib=70.47
+SEGCLOCK step=5000 seg_s=4.339 cum_s=20.727 sparse=0 N=1039544 peak_alloc_gib=70.47
+SEGCLOCK step=6000 seg_s=4.473 cum_s=25.200 sparse=0 N=1102990 peak_alloc_gib=70.47
+SEGCLOCK step=7000 seg_s=4.396 cum_s=29.596 sparse=0 N=1050985 peak_alloc_gib=70.47
+SEGCLOCK step=8000 seg_s=4.521 cum_s=34.117 sparse=0 N=1084943 peak_alloc_gib=70.47
+SEGCLOCK step=9000 seg_s=4.494 cum_s=38.611 sparse=0 N=1109016 peak_alloc_gib=70.47
+SEGCLOCK step=10000 seg_s=4.467 cum_s=43.079 sparse=0 N=1061647 peak_alloc_gib=70.47
+SEGCLOCK step=11000 seg_s=4.492 cum_s=47.571 sparse=0 N=1080301 peak_alloc_gib=70.47
+SEGCLOCK step=12000 seg_s=4.546 cum_s=52.117 sparse=0 N=1096173 peak_alloc_gib=70.47
+SEGCLOCK step=13000 seg_s=4.494 cum_s=56.611 sparse=0 N=1056667 peak_alloc_gib=70.47
+SEGCLOCK step=14000 seg_s=4.487 cum_s=61.099 sparse=0 N=1070992 peak_alloc_gib=70.47
+SEGCLOCK step=15000 seg_s=4.540 cum_s=65.638 sparse=0 N=1082946 peak_alloc_gib=70.47
+FGS_N iteration=15000 N=1082946
+SEGCLOCK step=16000 seg_s=4.594 cum_s=70.232 sparse=0 N=1082946 peak_alloc_gib=70.47
+SEGCLOCK step=17000 seg_s=4.538 cum_s=74.771 sparse=0 N=1082946 peak_alloc_gib=70.47
+SEGCLOCK step=18000 seg_s=4.526 cum_s=79.297 sparse=0 N=1082946 peak_alloc_gib=70.47
+SEGCLOCK step=19000 seg_s=4.457 cum_s=83.754 sparse=0 N=1082946 peak_alloc_gib=70.47
+SEGCLOCK step=20000 seg_s=4.536 cum_s=88.289 sparse=0 N=1082946 peak_alloc_gib=70.47
+SEGCLOCK step=21000 seg_s=4.539 cum_s=92.828 sparse=0 N=1082946 peak_alloc_gib=70.47
+SEGCLOCK step=22000 seg_s=4.468 cum_s=97.296 sparse=0 N=1082946 peak_alloc_gib=70.47
+SEGCLOCK step=23000 seg_s=4.425 cum_s=101.721 sparse=0 N=1082946 peak_alloc_gib=70.47
+SEGCLOCK step=24000 seg_s=4.531 cum_s=106.252 sparse=0 N=1082946 peak_alloc_gib=70.47
+SEGCLOCK step=25000 seg_s=4.421 cum_s=110.673 sparse=0 N=1082946 peak_alloc_gib=70.47
+SEGCLOCK step=26000 seg_s=4.467 cum_s=115.140 sparse=0 N=1082946 peak_alloc_gib=70.47
+SEGCLOCK step=27000 seg_s=4.453 cum_s=119.593 sparse=0 N=1082946 peak_alloc_gib=70.47
+SEGCLOCK step=28000 seg_s=4.402 cum_s=123.995 sparse=0 N=1082946 peak_alloc_gib=70.47
+SEGCLOCK step=29000 seg_s=4.396 cum_s=128.391 sparse=0 N=1082946 peak_alloc_gib=70.47
+SEGCLOCK step=30000 seg_s=4.428 cum_s=132.819 sparse=0 N=1082946 peak_alloc_gib=70.47
+FGS_TRAIN_END N=1082946 peak_alloc_gib=70.47 peak_reserved_gib=70.59
+RUNDIR r_bonsai_stock_s0 output/FasterGS/fastergs_bonsai_1144604_s0p2r_bonsai_stock_s0_2026-10-28-19-14-58
+STAGEARCHIVE r_bonsai_stock_s0 /home/syas272h/3dgs-archive/stages/bonsai/r_bonsai_stock_s0 30 stages
+PERIMG r_bonsai_stock_s0 n_images=37 min_image=9 min_psnr=24.86
+RESULT r_bonsai_stock_s0 PSNR:32.187148223052155 SSIM:0.9413026361852079 LPIPS:0.25233373730569275 N_Gaussians:1063291 ms_it=4.47  allocated: 70.47 GiB
+##### r_bonsai_ab_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 19:45:19
+SEGCLOCK step=1000 seg_s=3.366 cum_s=3.366 sparse=0 N=323132 peak_alloc_gib=5.19
+SEGCLOCK step=2000 seg_s=3.551 cum_s=6.917 sparse=0 N=690270 peak_alloc_gib=70.47
+SEGCLOCK step=3000 seg_s=4.082 cum_s=10.999 sparse=0 N=923778 peak_alloc_gib=70.47
+SEGCLOCK step=4000 seg_s=3.728 cum_s=14.727 sparse=0 N=944174 peak_alloc_gib=70.47
+SEGCLOCK step=5000 seg_s=3.873 cum_s=18.600 sparse=0 N=1039765 peak_alloc_gib=70.47
+SEGCLOCK step=6000 seg_s=3.978 cum_s=22.578 sparse=0 N=1102499 peak_alloc_gib=70.47
+SEGCLOCK step=7000 seg_s=3.871 cum_s=26.448 sparse=0 N=1049283 peak_alloc_gib=70.47
+SEGCLOCK step=8000 seg_s=3.924 cum_s=30.372 sparse=0 N=1083405 peak_alloc_gib=70.47
+SEGCLOCK step=9000 seg_s=3.944 cum_s=34.316 sparse=0 N=1107582 peak_alloc_gib=70.47
+SEGCLOCK step=10000 seg_s=3.935 cum_s=38.252 sparse=0 N=1059084 peak_alloc_gib=70.47
+SEGCLOCK step=11000 seg_s=3.953 cum_s=42.204 sparse=0 N=1078126 peak_alloc_gib=70.47
+SEGCLOCK step=12000 seg_s=3.988 cum_s=46.192 sparse=0 N=1093834 peak_alloc_gib=70.47
+SEGCLOCK step=13000 seg_s=3.980 cum_s=50.172 sparse=0 N=1055079 peak_alloc_gib=70.47
+SEGCLOCK step=14000 seg_s=4.033 cum_s=54.205 sparse=0 N=1069407 peak_alloc_gib=70.47
+SEGCLOCK step=15000 seg_s=3.962 cum_s=58.167 sparse=0 N=1081240 peak_alloc_gib=70.47
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1081240
+SEGCLOCK step=16000 seg_s=3.530 cum_s=61.698 sparse=1 visfrac=0.312 N=1081240 peak_alloc_gib=70.47
+SEGCLOCK step=17000 seg_s=3.491 cum_s=65.189 sparse=1 visfrac=0.382 N=1081240 peak_alloc_gib=70.47
+SEGCLOCK step=18000 seg_s=3.518 cum_s=68.707 sparse=1 visfrac=0.435 N=1081240 peak_alloc_gib=70.47
+SEGCLOCK step=19000 seg_s=3.476 cum_s=72.183 sparse=1 visfrac=0.408 N=1081240 peak_alloc_gib=70.47
+SEGCLOCK step=20000 seg_s=3.481 cum_s=75.664 sparse=1 visfrac=0.368 N=1081240 peak_alloc_gib=70.47
+SEGCLOCK step=21000 seg_s=3.468 cum_s=79.132 sparse=1 visfrac=0.436 N=1081240 peak_alloc_gib=70.47
+SEGCLOCK step=22000 seg_s=3.515 cum_s=82.647 sparse=1 visfrac=0.375 N=1081240 peak_alloc_gib=70.47
+SEGCLOCK step=23000 seg_s=3.478 cum_s=86.125 sparse=1 visfrac=0.406 N=1081240 peak_alloc_gib=70.47
+SEGCLOCK step=24000 seg_s=3.501 cum_s=89.626 sparse=1 visfrac=0.240 N=1081240 peak_alloc_gib=70.47
+SEGCLOCK step=25000 seg_s=3.496 cum_s=93.122 sparse=1 visfrac=0.312 N=1081240 peak_alloc_gib=70.47
+SEGCLOCK step=26000 seg_s=3.464 cum_s=96.586 sparse=1 visfrac=0.414 N=1081240 peak_alloc_gib=70.47
+SEGCLOCK step=27000 seg_s=3.506 cum_s=100.093 sparse=1 visfrac=0.436 N=1081240 peak_alloc_gib=70.47
+SEGCLOCK step=28000 seg_s=3.497 cum_s=103.589 sparse=1 visfrac=0.248 N=1081240 peak_alloc_gib=70.47
+SEGCLOCK step=29000 seg_s=3.465 cum_s=107.054 sparse=1 visfrac=0.416 N=1081240 peak_alloc_gib=70.47
+SEGCLOCK step=30000 seg_s=3.459 cum_s=110.513 sparse=1 visfrac=0.360 N=1081240 peak_alloc_gib=70.47
+FGS_TRAIN_END N=1081240 peak_alloc_gib=70.47 peak_reserved_gib=70.61
+RUNDIR r_bonsai_ab_s0 output/FasterGSPlus/fastergsplus_bonsai_e2e727b_s0p2r_bonsai_ab_s0_2026-10-28-19-45-27
+STAGEARCHIVE r_bonsai_ab_s0 /home/syas272h/3dgs-archive/stages/bonsai/r_bonsai_ab_s0 30 stages
+PERIMG r_bonsai_ab_s0 n_images=37 min_image=0 min_psnr=24.12
+RESULT r_bonsai_ab_s0 PSNR:32.336817406319284 SSIM:0.9416386936161969 LPIPS:0.2524774086636466 N_Gaussians:1078581 ms_it=3.72  allocated: 70.47 GiB
+##### r_bonsai_abc_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 20:14:46
+SEGCLOCK step=1000 seg_s=3.364 cum_s=3.364 sparse=0 N=322920 peak_alloc_gib=5.16
+SEGCLOCK step=2000 seg_s=3.484 cum_s=6.848 sparse=0 N=687228 peak_alloc_gib=70.41
+SEGCLOCK step=3000 seg_s=3.905 cum_s=10.753 sparse=0 N=922666 peak_alloc_gib=70.41
+SEGCLOCK step=4000 seg_s=3.534 cum_s=14.287 sparse=0 N=944090 peak_alloc_gib=70.41
+SEGCLOCK step=5000 seg_s=3.642 cum_s=17.930 sparse=0 N=1040919 peak_alloc_gib=70.41
+SEGCLOCK step=6000 seg_s=3.801 cum_s=21.730 sparse=0 N=1104939 peak_alloc_gib=70.41
+SEGCLOCK step=7000 seg_s=3.718 cum_s=25.448 sparse=0 N=1051258 peak_alloc_gib=70.41
+SEGCLOCK step=8000 seg_s=3.761 cum_s=29.210 sparse=0 N=1085639 peak_alloc_gib=70.41
+SEGCLOCK step=9000 seg_s=3.783 cum_s=32.993 sparse=0 N=1110193 peak_alloc_gib=70.41
+SEGCLOCK step=10000 seg_s=3.768 cum_s=36.761 sparse=0 N=1062811 peak_alloc_gib=70.41
+SEGCLOCK step=11000 seg_s=3.863 cum_s=40.624 sparse=0 N=1083205 peak_alloc_gib=70.41
+SEGCLOCK step=12000 seg_s=3.843 cum_s=44.467 sparse=0 N=1100179 peak_alloc_gib=70.41
+SEGCLOCK step=13000 seg_s=3.814 cum_s=48.281 sparse=0 N=1056309 peak_alloc_gib=70.41
+SEGCLOCK step=14000 seg_s=3.806 cum_s=52.087 sparse=0 N=1071699 peak_alloc_gib=70.41
+SEGCLOCK step=15000 seg_s=3.791 cum_s=55.878 sparse=0 N=1084160 peak_alloc_gib=70.41
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1084160
+SEGCLOCK step=16000 seg_s=3.479 cum_s=59.357 sparse=1 visfrac=0.311 N=1084160 peak_alloc_gib=70.41
+SEGCLOCK step=17000 seg_s=3.480 cum_s=62.837 sparse=1 visfrac=0.381 N=1084160 peak_alloc_gib=70.41
+SEGCLOCK step=18000 seg_s=3.461 cum_s=66.299 sparse=1 visfrac=0.433 N=1084160 peak_alloc_gib=70.41
+SEGCLOCK step=19000 seg_s=3.473 cum_s=69.772 sparse=1 visfrac=0.407 N=1084160 peak_alloc_gib=70.41
+SEGCLOCK step=20000 seg_s=3.521 cum_s=73.293 sparse=1 visfrac=0.367 N=1084160 peak_alloc_gib=70.41
+SEGCLOCK step=21000 seg_s=3.543 cum_s=76.836 sparse=1 visfrac=0.434 N=1084160 peak_alloc_gib=70.41
+SEGCLOCK step=22000 seg_s=3.538 cum_s=80.374 sparse=1 visfrac=0.375 N=1084160 peak_alloc_gib=70.41
+SEGCLOCK step=23000 seg_s=3.488 cum_s=83.862 sparse=1 visfrac=0.401 N=1084160 peak_alloc_gib=70.41
+SEGCLOCK step=24000 seg_s=3.454 cum_s=87.315 sparse=1 visfrac=0.239 N=1084160 peak_alloc_gib=70.41
+SEGCLOCK step=25000 seg_s=3.467 cum_s=90.782 sparse=1 visfrac=0.311 N=1084160 peak_alloc_gib=70.41
+SEGCLOCK step=26000 seg_s=3.539 cum_s=94.321 sparse=1 visfrac=0.415 N=1084160 peak_alloc_gib=70.41
+SEGCLOCK step=27000 seg_s=3.543 cum_s=97.864 sparse=1 visfrac=0.433 N=1084160 peak_alloc_gib=70.41
+SEGCLOCK step=28000 seg_s=3.535 cum_s=101.398 sparse=1 visfrac=0.246 N=1084160 peak_alloc_gib=70.41
+SEGCLOCK step=29000 seg_s=3.552 cum_s=104.950 sparse=1 visfrac=0.414 N=1084160 peak_alloc_gib=70.41
+SEGCLOCK step=30000 seg_s=3.544 cum_s=108.494 sparse=1 visfrac=0.359 N=1084160 peak_alloc_gib=70.41
+FGS_TRAIN_END N=1084160 peak_alloc_gib=70.41 peak_reserved_gib=70.55
+RUNDIR r_bonsai_abc_s0 output/FasterGSPlus/fastergsplus_bonsai_e2e727b_s0p2r_bonsai_abc_s0_2026-10-28-20-14-54
+STAGEARCHIVE r_bonsai_abc_s0 /home/syas272h/3dgs-archive/stages/bonsai/r_bonsai_abc_s0 30 stages
+PERIMG r_bonsai_abc_s0 n_images=37 min_image=0 min_psnr=22.33
+RESULT r_bonsai_abc_s0 PSNR:31.960626499072927 SSIM:0.9413403643144144 LPIPS:0.25255929739088623 N_Gaussians:1081104 ms_it=3.65  allocated: 70.41 GiB
+JOB OK

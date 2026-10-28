@@ -7,7 +7,7 @@ For each scene it writes (JPEG, cells downscaled to CELL_W pixels wide):
   <scene>_view<i>_by_time.jpg        rows = training-time budgets (fractions of stock's total training time),
                                      columns = the latest render each arm had reached within that budget
 Each cell is labelled with the iteration, the training time (CUDA-event clock, from the run's SEGCLOCK lines) and
-that image's PSNR at that stage. Two test views per scene: the one whose stock PSNR at 30k is the median, and the
+that image's PSNR at that stage. Stages right after an opacity reset (3k, 6k, 9k, 12k) are never shown. Two test views per scene: the one whose stock PSNR at 30k is the median, and the
 one with the largest stock gain from 7k to 30k (where training progress is most visible).
 """
 import os
@@ -19,7 +19,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 scene, arc, segdir, out = sys.argv[1:5]
 ARMS = [('stock', 'stock Faster-GS'), ('ab', 'A+B'), ('abc', 'A+B+C')]
-ITERS = [1000, 2000, 3000, 5000, 7000, 10000, 15000, 20000, 30000]
+ITERS = [1000, 2000, 4000, 7000, 10000, 15000, 20000, 25000, 30000]
+RESET = lambda it: it % 3000 == 0 and it < 15000   # stage right after an opacity reset (PSNR collapses briefly)
 FRACS = [0.05, 0.1, 0.2, 0.35, 0.5, 0.75, 1.0]
 CELL_W = 420
 os.makedirs(out, exist_ok=True)
@@ -105,7 +106,7 @@ for vi, view in enumerate(views):
         budget = f * total
         row = []
         for arm, label in ARMS:
-            done = [it for it in stages[arm] if clk[arm].get(it, 1e9) <= budget + 1e-6]
+            done = [it for it in stages[arm] if clk[arm].get(it, 1e9) <= budget + 1e-6 and not RESET(it)]
             if not done:
                 row.append(cell(Image.new('RGB', g.size, (235, 235, 235)), f'{label}: no stage within {budget:.0f} s'))
                 continue

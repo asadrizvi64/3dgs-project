@@ -1,0 +1,117 @@
+node=c57 job=4483160 gpu=NVIDIA H100 stages=stages repo=e5ffa5d
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## stages (scene stump scale 0.25, seeds 0, renders every 1000 it; clock every 1000 it)
+##### r_stump_stock_s0: method=FasterGS seed=0 iters=30000 flags= blend=taming 19:14:20
+SEGCLOCK step=1000 seg_s=1.729 cum_s=1.729 sparse=0 N=66595 peak_alloc_gib=1.49
+SEGCLOCK step=2000 seg_s=2.034 cum_s=3.763 sparse=0 N=513034 peak_alloc_gib=66.59
+SEGCLOCK step=3000 seg_s=3.157 cum_s=6.920 sparse=0 N=1422867 peak_alloc_gib=66.59
+SEGCLOCK step=4000 seg_s=4.054 cum_s=10.974 sparse=0 N=2143447 peak_alloc_gib=66.59
+SEGCLOCK step=5000 seg_s=5.221 cum_s=16.195 sparse=0 N=2854134 peak_alloc_gib=66.59
+SEGCLOCK step=6000 seg_s=5.910 cum_s=22.105 sparse=0 N=3333107 peak_alloc_gib=66.59
+SEGCLOCK step=7000 seg_s=6.391 cum_s=28.496 sparse=0 N=3532612 peak_alloc_gib=66.59
+SEGCLOCK step=8000 seg_s=6.825 cum_s=35.322 sparse=0 N=3783073 peak_alloc_gib=66.59
+SEGCLOCK step=9000 seg_s=7.070 cum_s=42.392 sparse=0 N=3970951 peak_alloc_gib=66.59
+SEGCLOCK step=10000 seg_s=7.226 cum_s=49.618 sparse=0 N=3983531 peak_alloc_gib=66.59
+SEGCLOCK step=11000 seg_s=7.331 cum_s=56.949 sparse=0 N=4105288 peak_alloc_gib=66.59
+SEGCLOCK step=12000 seg_s=7.472 cum_s=64.421 sparse=0 N=4207553 peak_alloc_gib=66.59
+SEGCLOCK step=13000 seg_s=7.475 cum_s=71.896 sparse=0 N=4161664 peak_alloc_gib=66.59
+SEGCLOCK step=14000 seg_s=7.592 cum_s=79.487 sparse=0 N=4230106 peak_alloc_gib=66.59
+SEGCLOCK step=15000 seg_s=7.610 cum_s=87.098 sparse=0 N=4288726 peak_alloc_gib=66.59
+FGS_N iteration=15000 N=4288726
+SEGCLOCK step=16000 seg_s=7.637 cum_s=94.735 sparse=0 N=4288726 peak_alloc_gib=66.59
+SEGCLOCK step=17000 seg_s=7.620 cum_s=102.355 sparse=0 N=4288726 peak_alloc_gib=66.59
+SEGCLOCK step=18000 seg_s=7.717 cum_s=110.072 sparse=0 N=4288726 peak_alloc_gib=66.59
+SEGCLOCK step=19000 seg_s=7.620 cum_s=117.692 sparse=0 N=4288726 peak_alloc_gib=66.59
+SEGCLOCK step=20000 seg_s=7.767 cum_s=125.459 sparse=0 N=4288726 peak_alloc_gib=66.59
+SEGCLOCK step=21000 seg_s=7.612 cum_s=133.071 sparse=0 N=4288726 peak_alloc_gib=66.59
+SEGCLOCK step=22000 seg_s=7.648 cum_s=140.719 sparse=0 N=4288726 peak_alloc_gib=66.59
+SEGCLOCK step=23000 seg_s=7.592 cum_s=148.312 sparse=0 N=4288726 peak_alloc_gib=66.59
+SEGCLOCK step=24000 seg_s=7.608 cum_s=155.920 sparse=0 N=4288726 peak_alloc_gib=66.59
+SEGCLOCK step=25000 seg_s=7.658 cum_s=163.579 sparse=0 N=4288726 peak_alloc_gib=66.59
+SEGCLOCK step=26000 seg_s=7.689 cum_s=171.267 sparse=0 N=4288726 peak_alloc_gib=66.59
+SEGCLOCK step=27000 seg_s=7.618 cum_s=178.886 sparse=0 N=4288726 peak_alloc_gib=66.59
+SEGCLOCK step=28000 seg_s=7.619 cum_s=186.505 sparse=0 N=4288726 peak_alloc_gib=66.59
+SEGCLOCK step=29000 seg_s=7.644 cum_s=194.148 sparse=0 N=4288726 peak_alloc_gib=66.59
+SEGCLOCK step=30000 seg_s=7.604 cum_s=201.752 sparse=0 N=4288726 peak_alloc_gib=66.59
+FGS_TRAIN_END N=4288726 peak_alloc_gib=66.59 peak_reserved_gib=66.68
+RUNDIR r_stump_stock_s0 output/FasterGS/fastergs_stump_1144604_s0p2r_stump_stock_s0_2026-10-28-19-14-28
+STAGEARCHIVE r_stump_stock_s0 /home/syas272h/3dgs-archive/stages/stump/r_stump_stock_s0 30 stages
+PERIMG r_stump_stock_s0 n_images=16 min_image=1 min_psnr=22.29
+RESULT r_stump_stock_s0 PSNR:26.692074179649353 SSIM:0.7725350819528103 LPIPS:0.24578541610389948 N_Gaussians:4256128 ms_it=6.77  allocated: 66.59 GiB
+##### r_stump_ab_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 19:29:42
+SEGCLOCK step=1000 seg_s=1.570 cum_s=1.570 sparse=0 N=66722 peak_alloc_gib=1.49
+SEGCLOCK step=2000 seg_s=1.818 cum_s=3.388 sparse=0 N=503610 peak_alloc_gib=66.59
+SEGCLOCK step=3000 seg_s=2.841 cum_s=6.229 sparse=0 N=1400870 peak_alloc_gib=66.59
+SEGCLOCK step=4000 seg_s=3.764 cum_s=9.993 sparse=0 N=2126375 peak_alloc_gib=66.59
+SEGCLOCK step=5000 seg_s=4.873 cum_s=14.866 sparse=0 N=2838324 peak_alloc_gib=66.59
+SEGCLOCK step=6000 seg_s=5.475 cum_s=20.341 sparse=0 N=3314882 peak_alloc_gib=66.59
+SEGCLOCK step=7000 seg_s=5.894 cum_s=26.235 sparse=0 N=3517528 peak_alloc_gib=66.59
+SEGCLOCK step=8000 seg_s=6.265 cum_s=32.500 sparse=0 N=3761765 peak_alloc_gib=66.59
+SEGCLOCK step=9000 seg_s=6.576 cum_s=39.076 sparse=0 N=3945934 peak_alloc_gib=66.59
+SEGCLOCK step=10000 seg_s=6.694 cum_s=45.770 sparse=0 N=3959829 peak_alloc_gib=66.59
+SEGCLOCK step=11000 seg_s=6.809 cum_s=52.579 sparse=0 N=4078115 peak_alloc_gib=66.59
+SEGCLOCK step=12000 seg_s=6.927 cum_s=59.505 sparse=0 N=4178190 peak_alloc_gib=66.59
+SEGCLOCK step=13000 seg_s=6.920 cum_s=66.425 sparse=0 N=4133919 peak_alloc_gib=66.59
+SEGCLOCK step=14000 seg_s=6.987 cum_s=73.412 sparse=0 N=4201057 peak_alloc_gib=66.59
+SEGCLOCK step=15000 seg_s=6.993 cum_s=80.405 sparse=0 N=4258024 peak_alloc_gib=66.59
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=4258024
+SEGCLOCK step=16000 seg_s=4.902 cum_s=85.306 sparse=1 visfrac=0.187 N=4258024 peak_alloc_gib=66.59
+SEGCLOCK step=17000 seg_s=4.882 cum_s=90.188 sparse=1 visfrac=0.244 N=4258024 peak_alloc_gib=66.59
+SEGCLOCK step=18000 seg_s=4.885 cum_s=95.073 sparse=1 visfrac=0.196 N=4258024 peak_alloc_gib=66.59
+SEGCLOCK step=19000 seg_s=4.870 cum_s=99.943 sparse=1 visfrac=0.091 N=4258024 peak_alloc_gib=66.59
+SEGCLOCK step=20000 seg_s=4.868 cum_s=104.811 sparse=1 visfrac=0.065 N=4258024 peak_alloc_gib=66.59
+SEGCLOCK step=21000 seg_s=4.876 cum_s=109.687 sparse=1 visfrac=0.099 N=4258024 peak_alloc_gib=66.59
+SEGCLOCK step=22000 seg_s=4.869 cum_s=114.556 sparse=1 visfrac=0.246 N=4258024 peak_alloc_gib=66.59
+SEGCLOCK step=23000 seg_s=4.872 cum_s=119.428 sparse=1 visfrac=0.067 N=4258024 peak_alloc_gib=66.59
+SEGCLOCK step=24000 seg_s=4.867 cum_s=124.295 sparse=1 visfrac=0.196 N=4258024 peak_alloc_gib=66.59
+SEGCLOCK step=25000 seg_s=4.929 cum_s=129.224 sparse=1 visfrac=0.124 N=4258024 peak_alloc_gib=66.59
+SEGCLOCK step=26000 seg_s=4.929 cum_s=134.153 sparse=1 visfrac=0.186 N=4258024 peak_alloc_gib=66.59
+SEGCLOCK step=27000 seg_s=4.864 cum_s=139.017 sparse=1 visfrac=0.206 N=4258024 peak_alloc_gib=66.59
+SEGCLOCK step=28000 seg_s=4.849 cum_s=143.866 sparse=1 visfrac=0.198 N=4258024 peak_alloc_gib=66.59
+SEGCLOCK step=29000 seg_s=4.937 cum_s=148.803 sparse=1 visfrac=0.203 N=4258024 peak_alloc_gib=66.59
+SEGCLOCK step=30000 seg_s=4.872 cum_s=153.675 sparse=1 visfrac=0.067 N=4258024 peak_alloc_gib=66.59
+FGS_TRAIN_END N=4258024 peak_alloc_gib=66.59 peak_reserved_gib=66.68
+RUNDIR r_stump_ab_s0 output/FasterGSPlus/fastergsplus_stump_e2e727b_s0p2r_stump_ab_s0_2026-10-28-19-29-50
+STAGEARCHIVE r_stump_ab_s0 /home/syas272h/3dgs-archive/stages/stump/r_stump_ab_s0 30 stages
+PERIMG r_stump_ab_s0 n_images=16 min_image=1 min_psnr=22.38
+RESULT r_stump_ab_s0 PSNR:26.69688355922699 SSIM:0.772136103361845 LPIPS:0.24633397348225117 N_Gaussians:4254474 ms_it=5.16  allocated: 66.59 GiB
+##### r_stump_abc_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 19:44:22
+SEGCLOCK step=1000 seg_s=1.579 cum_s=1.579 sparse=0 N=66624 peak_alloc_gib=1.48
+SEGCLOCK step=2000 seg_s=1.777 cum_s=3.355 sparse=0 N=517673 peak_alloc_gib=66.58
+SEGCLOCK step=3000 seg_s=2.657 cum_s=6.012 sparse=0 N=1415523 peak_alloc_gib=66.58
+SEGCLOCK step=4000 seg_s=3.446 cum_s=9.458 sparse=0 N=2141547 peak_alloc_gib=66.58
+SEGCLOCK step=5000 seg_s=4.406 cum_s=13.864 sparse=0 N=2845018 peak_alloc_gib=66.58
+SEGCLOCK step=6000 seg_s=5.043 cum_s=18.908 sparse=0 N=3319458 peak_alloc_gib=66.58
+SEGCLOCK step=7000 seg_s=5.331 cum_s=24.239 sparse=0 N=3526636 peak_alloc_gib=66.58
+SEGCLOCK step=8000 seg_s=5.638 cum_s=29.877 sparse=0 N=3774539 peak_alloc_gib=66.58
+SEGCLOCK step=9000 seg_s=6.003 cum_s=35.880 sparse=0 N=3960731 peak_alloc_gib=66.58
+SEGCLOCK step=10000 seg_s=6.106 cum_s=41.985 sparse=0 N=3980844 peak_alloc_gib=66.58
+SEGCLOCK step=11000 seg_s=6.146 cum_s=48.131 sparse=0 N=4099529 peak_alloc_gib=66.58
+SEGCLOCK step=12000 seg_s=6.287 cum_s=54.418 sparse=0 N=4199044 peak_alloc_gib=66.58
+SEGCLOCK step=13000 seg_s=6.272 cum_s=60.690 sparse=0 N=4160296 peak_alloc_gib=66.58
+SEGCLOCK step=14000 seg_s=6.405 cum_s=67.095 sparse=0 N=4226231 peak_alloc_gib=66.58
+SEGCLOCK step=15000 seg_s=6.447 cum_s=73.542 sparse=0 N=4283242 peak_alloc_gib=66.58
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=4283242
+SEGCLOCK step=16000 seg_s=4.830 cum_s=78.372 sparse=1 visfrac=0.186 N=4283242 peak_alloc_gib=66.58
+SEGCLOCK step=17000 seg_s=4.838 cum_s=83.211 sparse=1 visfrac=0.243 N=4283242 peak_alloc_gib=66.58
+SEGCLOCK step=18000 seg_s=4.878 cum_s=88.089 sparse=1 visfrac=0.195 N=4283242 peak_alloc_gib=66.58
+SEGCLOCK step=19000 seg_s=4.875 cum_s=92.964 sparse=1 visfrac=0.092 N=4283242 peak_alloc_gib=66.58
+SEGCLOCK step=20000 seg_s=4.840 cum_s=97.805 sparse=1 visfrac=0.065 N=4283242 peak_alloc_gib=66.58
+SEGCLOCK step=21000 seg_s=4.877 cum_s=102.681 sparse=1 visfrac=0.099 N=4283242 peak_alloc_gib=66.58
+SEGCLOCK step=22000 seg_s=4.877 cum_s=107.558 sparse=1 visfrac=0.242 N=4283242 peak_alloc_gib=66.58
+SEGCLOCK step=23000 seg_s=4.837 cum_s=112.395 sparse=1 visfrac=0.067 N=4283242 peak_alloc_gib=66.58
+SEGCLOCK step=24000 seg_s=4.849 cum_s=117.244 sparse=1 visfrac=0.195 N=4283242 peak_alloc_gib=66.58
+SEGCLOCK step=25000 seg_s=4.887 cum_s=122.131 sparse=1 visfrac=0.122 N=4283242 peak_alloc_gib=66.58
+SEGCLOCK step=26000 seg_s=4.869 cum_s=127.000 sparse=1 visfrac=0.185 N=4283242 peak_alloc_gib=66.58
+SEGCLOCK step=27000 seg_s=4.840 cum_s=131.839 sparse=1 visfrac=0.204 N=4283242 peak_alloc_gib=66.58
+SEGCLOCK step=28000 seg_s=4.833 cum_s=136.672 sparse=1 visfrac=0.197 N=4283242 peak_alloc_gib=66.58
+SEGCLOCK step=29000 seg_s=4.830 cum_s=141.503 sparse=1 visfrac=0.202 N=4283242 peak_alloc_gib=66.58
+SEGCLOCK step=30000 seg_s=4.830 cum_s=146.332 sparse=1 visfrac=0.067 N=4283242 peak_alloc_gib=66.58
+FGS_TRAIN_END N=4283242 peak_alloc_gib=66.58 peak_reserved_gib=66.68
+RUNDIR r_stump_abc_s0 output/FasterGSPlus/fastergsplus_stump_e2e727b_s0p2r_stump_abc_s0_2026-10-28-19-44-30
+STAGEARCHIVE r_stump_abc_s0 /home/syas272h/3dgs-archive/stages/stump/r_stump_abc_s0 30 stages
+PERIMG r_stump_abc_s0 n_images=16 min_image=1 min_psnr=22.30
+RESULT r_stump_abc_s0 PSNR:26.722137331962585 SSIM:0.7731117084622383 LPIPS:0.2449642037972808 N_Gaussians:4279962 ms_it=4.92  allocated: 66.58 GiB
+JOB OK
