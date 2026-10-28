@@ -1,0 +1,73 @@
+node=c57 job=4483036 gpu=NVIDIA H100 stages=bench repo=c23196f
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## bench (scene garden scale 0.25, seeds 0 1 2, 30k; train time = SEGCLOCK cum_s)
+##### b_garden_stock_s0: method=FasterGS seed=0 iters=30000 flags= blend=taming 18:31:58
+FGS_N iteration=15000 N=4164610
+SEGCLOCK step=30000 seg_s=251.668 cum_s=251.668 sparse=0 N=4164610 peak_alloc_gib=6.46
+FGS_TRAIN_END N=4164610 peak_alloc_gib=6.46 peak_reserved_gib=8.14
+RUNDIR b_garden_stock_s0 output/FasterGS/fastergs_garden_1144604_s0p2b_garden_stock_s0_2026-10-28-18-32-13
+PERIMG b_garden_stock_s0 n_images=24 min_image=4 min_psnr=20.58
+RESULT b_garden_stock_s0 PSNR:27.41990351676941 SSIM:0.8668941234548887 LPIPS:0.1206207222615679 N_Gaussians:4148943 ms_it=8.43  allocated: 6.46 GiB
+##### b_garden_ab_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 18:37:16
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=4151265
+SEGCLOCK step=30000 seg_s=200.437 cum_s=200.437 sparse=1 visfrac=0.337 N=4151265 peak_alloc_gib=6.44
+FGS_TRAIN_END N=4151265 peak_alloc_gib=6.44 peak_reserved_gib=8.45
+RUNDIR b_garden_ab_s0 output/FasterGSPlus/fastergsplus_garden_e2e727b_s0p2b_garden_ab_s0_2026-10-28-18-37-23
+PERIMG b_garden_ab_s0 n_images=24 min_image=4 min_psnr=20.19
+RESULT b_garden_ab_s0 PSNR:27.53636892636617 SSIM:0.8676396086812019 LPIPS:0.12040792933354776 N_Gaussians:4146806 ms_it=6.72  allocated: 6.44 GiB
+##### b_garden_abc_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 18:41:40
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=4139861
+SEGCLOCK step=30000 seg_s=189.393 cum_s=189.393 sparse=1 visfrac=0.338 N=4139861 peak_alloc_gib=6.39
+FGS_TRAIN_END N=4139861 peak_alloc_gib=6.39 peak_reserved_gib=7.98
+RUNDIR b_garden_abc_s0 output/FasterGSPlus/fastergsplus_garden_e2e727b_s0p2b_garden_abc_s0_2026-10-28-18-41-48
+PERIMG b_garden_abc_s0 n_images=24 min_image=4 min_psnr=20.56
+RESULT b_garden_abc_s0 PSNR:27.54060427347819 SSIM:0.8674701303243637 LPIPS:0.12049805062512557 N_Gaussians:4135512 ms_it=6.35  allocated: 6.39 GiB
+##### b_garden_ab_s1: method=FasterGSPlus seed=1 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 18:45:57
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=4194542
+SEGCLOCK step=30000 seg_s=200.591 cum_s=200.591 sparse=1 visfrac=0.319 N=4194542 peak_alloc_gib=6.49
+FGS_TRAIN_END N=4194542 peak_alloc_gib=6.49 peak_reserved_gib=8.33
+RUNDIR b_garden_ab_s1 output/FasterGSPlus/fastergsplus_garden_e2e727b_s1p2b_garden_ab_s1_2026-10-28-18-46-05
+PERIMG b_garden_ab_s1 n_images=24 min_image=4 min_psnr=20.52
+RESULT b_garden_ab_s1 PSNR:27.478083928426106 SSIM:0.8665653566519419 LPIPS:0.12048934182773034 N_Gaussians:4190504 ms_it=6.73  allocated: 6.49 GiB
+##### b_garden_abc_s1: method=FasterGSPlus seed=1 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 18:50:25
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=4191415
+SEGCLOCK step=30000 seg_s=190.424 cum_s=190.424 sparse=1 visfrac=0.318 N=4191415 peak_alloc_gib=6.45
+FGS_TRAIN_END N=4191415 peak_alloc_gib=6.45 peak_reserved_gib=8.10
+RUNDIR b_garden_abc_s1 output/FasterGSPlus/fastergsplus_garden_e2e727b_s1p2b_garden_abc_s1_2026-10-28-18-50-32
+PERIMG b_garden_abc_s1 n_images=24 min_image=4 min_psnr=20.77
+RESULT b_garden_abc_s1 PSNR:27.459075689315796 SSIM:0.8662699709335963 LPIPS:0.12115287935982148 N_Gaussians:4187302 ms_it=6.39  allocated: 6.45 GiB
+##### b_garden_stock_s1: method=FasterGS seed=1 iters=30000 flags= blend=taming 18:54:40
+FGS_N iteration=15000 N=4189384
+SEGCLOCK step=30000 seg_s=252.896 cum_s=252.896 sparse=0 N=4189384 peak_alloc_gib=6.49
+FGS_TRAIN_END N=4189384 peak_alloc_gib=6.49 peak_reserved_gib=8.55
+RUNDIR b_garden_stock_s1 output/FasterGS/fastergs_garden_1144604_s1p2b_garden_stock_s1_2026-10-28-18-54-48
+PERIMG b_garden_stock_s1 n_images=24 min_image=4 min_psnr=20.64
+RESULT b_garden_stock_s1 PSNR:27.455634435017902 SSIM:0.866165945927302 LPIPS:0.12044475755343835 N_Gaussians:4173120 ms_it=8.48  allocated: 6.49 GiB
+##### b_garden_abc_s2: method=FasterGSPlus seed=2 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 19:00:01
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=4161873
+SEGCLOCK step=30000 seg_s=190.221 cum_s=190.221 sparse=1 visfrac=0.303 N=4161873 peak_alloc_gib=6.45
+FGS_TRAIN_END N=4161873 peak_alloc_gib=6.45 peak_reserved_gib=8.33
+RUNDIR b_garden_abc_s2 output/FasterGSPlus/fastergsplus_garden_e2e727b_s2p2b_garden_abc_s2_2026-10-28-19-00-09
+PERIMG b_garden_abc_s2 n_images=24 min_image=4 min_psnr=20.58
+RESULT b_garden_abc_s2 PSNR:27.591550827026367 SSIM:0.8686805615822474 LPIPS:0.11960118698577087 N_Gaussians:4157965 ms_it=6.38  allocated: 6.45 GiB
+##### b_garden_stock_s2: method=FasterGS seed=2 iters=30000 flags= blend=taming 19:04:17
+FGS_N iteration=15000 N=4145380
+SEGCLOCK step=30000 seg_s=252.665 cum_s=252.665 sparse=0 N=4145380 peak_alloc_gib=6.44
+FGS_TRAIN_END N=4145380 peak_alloc_gib=6.44 peak_reserved_gib=8.00
+RUNDIR b_garden_stock_s2 output/FasterGS/fastergs_garden_1144604_s2p2b_garden_stock_s2_2026-10-28-19-04-25
+PERIMG b_garden_stock_s2 n_images=24 min_image=4 min_psnr=20.59
+RESULT b_garden_stock_s2 PSNR:27.544800837834675 SSIM:0.8673462867736816 LPIPS:0.12044619613637526 N_Gaussians:4130670 ms_it=8.47  allocated: 6.44 GiB
+##### b_garden_ab_s2: method=FasterGSPlus seed=2 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 19:09:37
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=4167040
+SEGCLOCK step=30000 seg_s=199.834 cum_s=199.834 sparse=1 visfrac=0.303 N=4167040 peak_alloc_gib=6.46
+FGS_TRAIN_END N=4167040 peak_alloc_gib=6.46 peak_reserved_gib=7.94
+RUNDIR b_garden_ab_s2 output/FasterGSPlus/fastergsplus_garden_e2e727b_s2p2b_garden_ab_s2_2026-10-28-19-09-45
+PERIMG b_garden_ab_s2 n_images=24 min_image=4 min_psnr=20.34
+RESULT b_garden_ab_s2 PSNR:27.5996728738149 SSIM:0.868353046476841 LPIPS:0.11994287744164467 N_Gaussians:4162978 ms_it=6.70  allocated: 6.46 GiB
+JOB OK

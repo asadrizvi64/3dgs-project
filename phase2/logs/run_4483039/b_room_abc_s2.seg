@@ -1,0 +1,4 @@
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1339938
+SEGCLOCK step=30000 seg_s=120.218 cum_s=120.218 sparse=1 visfrac=0.356 N=1339938 peak_alloc_gib=6.62
+FGS_TRAIN_END N=1339938 peak_alloc_gib=6.62 peak_reserved_gib=6.95

@@ -1,0 +1,73 @@
+node=c107 job=4483038 gpu=NVIDIA H100 stages=bench repo=c23196f
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## bench (scene treehill scale 0.25, seeds 0 1 2, 30k; train time = SEGCLOCK cum_s)
+##### b_treehill_stock_s0: method=FasterGS seed=0 iters=30000 flags= blend=taming 18:31:58
+FGS_N iteration=15000 N=3162446
+SEGCLOCK step=30000 seg_s=179.400 cum_s=179.400 sparse=0 N=3162446 peak_alloc_gib=4.87
+FGS_TRAIN_END N=3162446 peak_alloc_gib=4.87 peak_reserved_gib=6.23
+RUNDIR b_treehill_stock_s0 output/FasterGS/fastergs_treehill_1144604_s0p2b_treehill_stock_s0_2026-10-28-18-32-12
+PERIMG b_treehill_stock_s0 n_images=18 min_image=0 min_psnr=17.38
+RESULT b_treehill_stock_s0 PSNR:22.721617380777996 SSIM:0.6356646882163154 LPIPS:0.3698656244410409 N_Gaussians:3136575 ms_it=6.02  allocated: 4.87 GiB
+##### b_treehill_ab_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 18:36:06
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=3199814
+SEGCLOCK step=30000 seg_s=142.649 cum_s=142.649 sparse=1 visfrac=0.309 N=3199814 peak_alloc_gib=4.90
+FGS_TRAIN_END N=3199814 peak_alloc_gib=4.90 peak_reserved_gib=6.02
+RUNDIR b_treehill_ab_s0 output/FasterGSPlus/fastergsplus_treehill_e2e727b_s0p2b_treehill_ab_s0_2026-10-28-18-36-13
+PERIMG b_treehill_ab_s0 n_images=18 min_image=0 min_psnr=17.33
+RESULT b_treehill_ab_s0 PSNR:22.719212426079643 SSIM:0.635064529048072 LPIPS:0.3720594280295902 N_Gaussians:3196830 ms_it=4.79  allocated: 4.90 GiB
+##### b_treehill_abc_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 18:39:22
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=3215308
+SEGCLOCK step=30000 seg_s=135.396 cum_s=135.396 sparse=1 visfrac=0.308 N=3215308 peak_alloc_gib=4.88
+FGS_TRAIN_END N=3215308 peak_alloc_gib=4.88 peak_reserved_gib=6.17
+RUNDIR b_treehill_abc_s0 output/FasterGSPlus/fastergsplus_treehill_e2e727b_s0p2b_treehill_abc_s0_2026-10-28-18-39-29
+PERIMG b_treehill_abc_s0 n_images=18 min_image=0 min_psnr=17.30
+RESULT b_treehill_abc_s0 PSNR:22.65158536699083 SSIM:0.63436402214898 LPIPS:0.3742919580803977 N_Gaussians:3212410 ms_it=4.55  allocated: 4.88 GiB
+##### b_treehill_ab_s1: method=FasterGSPlus seed=1 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 18:42:29
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=3182687
+SEGCLOCK step=30000 seg_s=141.705 cum_s=141.705 sparse=1 visfrac=0.248 N=3182687 peak_alloc_gib=4.89
+FGS_TRAIN_END N=3182687 peak_alloc_gib=4.89 peak_reserved_gib=6.08
+RUNDIR b_treehill_ab_s1 output/FasterGSPlus/fastergsplus_treehill_e2e727b_s1p2b_treehill_ab_s1_2026-10-28-18-42-37
+PERIMG b_treehill_ab_s1 n_images=18 min_image=0 min_psnr=17.31
+RESULT b_treehill_ab_s1 PSNR:22.70755746629503 SSIM:0.6365573075082567 LPIPS:0.369434740808275 N_Gaussians:3179659 ms_it=4.76  allocated: 4.89 GiB
+##### b_treehill_abc_s1: method=FasterGSPlus seed=1 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 18:45:44
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=3185142
+SEGCLOCK step=30000 seg_s=135.418 cum_s=135.418 sparse=1 visfrac=0.252 N=3185142 peak_alloc_gib=4.88
+FGS_TRAIN_END N=3185142 peak_alloc_gib=4.88 peak_reserved_gib=5.92
+RUNDIR b_treehill_abc_s1 output/FasterGSPlus/fastergsplus_treehill_e2e727b_s1p2b_treehill_abc_s1_2026-10-28-18-45-51
+PERIMG b_treehill_abc_s1 n_images=18 min_image=0 min_psnr=17.50
+RESULT b_treehill_abc_s1 PSNR:22.641565640767414 SSIM:0.6354279286331601 LPIPS:0.3704373935858409 N_Gaussians:3182299 ms_it=4.55  allocated: 4.88 GiB
+##### b_treehill_stock_s1: method=FasterGS seed=1 iters=30000 flags= blend=taming 18:48:52
+FGS_N iteration=15000 N=3155547
+SEGCLOCK step=30000 seg_s=180.031 cum_s=180.031 sparse=0 N=3155547 peak_alloc_gib=4.85
+FGS_TRAIN_END N=3155547 peak_alloc_gib=4.85 peak_reserved_gib=6.13
+RUNDIR b_treehill_stock_s1 output/FasterGS/fastergs_treehill_1144604_s1p2b_treehill_stock_s1_2026-10-28-18-48-59
+PERIMG b_treehill_stock_s1 n_images=18 min_image=0 min_psnr=17.49
+RESULT b_treehill_stock_s1 PSNR:22.717697037590874 SSIM:0.6361894143952264 LPIPS:0.36963915328184765 N_Gaussians:3129988 ms_it=6.04  allocated: 4.85 GiB
+##### b_treehill_abc_s2: method=FasterGSPlus seed=2 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 18:52:47
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=3180357
+SEGCLOCK step=30000 seg_s=134.111 cum_s=134.111 sparse=1 visfrac=0.193 N=3180357 peak_alloc_gib=4.81
+FGS_TRAIN_END N=3180357 peak_alloc_gib=4.81 peak_reserved_gib=6.06
+RUNDIR b_treehill_abc_s2 output/FasterGSPlus/fastergsplus_treehill_e2e727b_s2p2b_treehill_abc_s2_2026-10-28-18-52-54
+PERIMG b_treehill_abc_s2 n_images=18 min_image=0 min_psnr=17.54
+RESULT b_treehill_abc_s2 PSNR:22.691295093960232 SSIM:0.635363476143943 LPIPS:0.3726510720120536 N_Gaussians:3177186 ms_it=4.51  allocated: 4.81 GiB
+##### b_treehill_stock_s2: method=FasterGS seed=2 iters=30000 flags= blend=taming 18:55:53
+FGS_N iteration=15000 N=3152495
+SEGCLOCK step=30000 seg_s=178.163 cum_s=178.163 sparse=0 N=3152495 peak_alloc_gib=4.85
+FGS_TRAIN_END N=3152495 peak_alloc_gib=4.85 peak_reserved_gib=6.00
+RUNDIR b_treehill_stock_s2 output/FasterGS/fastergs_treehill_1144604_s2p2b_treehill_stock_s2_2026-10-28-18-56-00
+PERIMG b_treehill_stock_s2 n_images=18 min_image=0 min_psnr=17.31
+RESULT b_treehill_stock_s2 PSNR:22.72435008154975 SSIM:0.6351194249259101 LPIPS:0.3706827428605821 N_Gaussians:3125606 ms_it=5.98  allocated: 4.85 GiB
+##### b_treehill_ab_s2: method=FasterGSPlus seed=2 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 18:59:45
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=3103944
+SEGCLOCK step=30000 seg_s=139.629 cum_s=139.629 sparse=1 visfrac=0.199 N=3103944 peak_alloc_gib=4.80
+FGS_TRAIN_END N=3103944 peak_alloc_gib=4.80 peak_reserved_gib=6.04
+RUNDIR b_treehill_ab_s2 output/FasterGSPlus/fastergsplus_treehill_e2e727b_s2p2b_treehill_ab_s2_2026-10-28-18-59-52
+PERIMG b_treehill_ab_s2 n_images=18 min_image=0 min_psnr=17.29
+RESULT b_treehill_ab_s2 PSNR:22.76186392042372 SSIM:0.6352280510796441 LPIPS:0.3724267648326026 N_Gaussians:3101082 ms_it=4.69  allocated: 4.80 GiB
+JOB OK

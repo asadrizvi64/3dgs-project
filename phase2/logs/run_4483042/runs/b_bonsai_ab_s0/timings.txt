@@ -1,0 +1,91 @@
+Dataset loading:
+	Total execution time: 0:00:01
+	Time per iteration [ms]: 987.52
+	Number of iterations: 1
+
+_commit_wandb:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+_log_test_metrics_wandb:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+_prepare_dataset:
+	Total execution time: 0:00:12
+	Time per iteration [ms]: 11986.31
+	Number of iterations: 1
+
+_save_final_checkpoint:
+	Total execution time: 0:00:59
+	Time per iteration [ms]: 58614.65
+	Number of iterations: 1
+
+_save_intermediate_checkpoint:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+create_sampler:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 32.71
+	Number of iterations: 1
+
+densify:
+	Total execution time: 0:00:01
+	Time per iteration [ms]: 5.94
+	Number of iterations: 144
+
+finalize:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 11.23
+	Number of iterations: 1
+
+hard_pruning:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+increase_sh_degree:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.02
+	Number of iterations: 29
+
+log_wandb:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+morton_ordering:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 3.99
+	Number of iterations: 4
+
+recompute_3d_filter:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+reset_opacities:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.08
+	Number of iterations: 4
+
+reset_opacities_extra:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 13.70
+	Number of iterations: 1
+
+setup_gaussians:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 96.53
+	Number of iterations: 1
+
+training_iteration:
+	Total execution time: 0:01:51
+	Time per iteration [ms]: 3.69
+	Number of iterations: 30000
+
+Time:111.56077499999999

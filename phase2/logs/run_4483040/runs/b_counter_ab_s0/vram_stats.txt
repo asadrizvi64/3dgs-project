@@ -1,0 +1,5 @@
+Peak VRAM usage:
+	allocated: 5.30 GiB
+	reserved: 5.54 GiB
+
+VRAM_allocated:5692116480 VRAM_reserved:5947523072

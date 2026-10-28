@@ -1,0 +1,73 @@
+node=c107 job=4483034 gpu=NVIDIA H100 stages=bench repo=c23196f
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## bench (scene bicycle scale 0.25, seeds 0 1 2, 30k; train time = SEGCLOCK cum_s)
+##### b_bicycle_stock_s0: method=FasterGS seed=0 iters=30000 flags= blend=taming 18:31:58
+FGS_N iteration=15000 N=4963813
+SEGCLOCK step=30000 seg_s=253.095 cum_s=253.095 sparse=0 N=4963813 peak_alloc_gib=7.24
+FGS_TRAIN_END N=4963813 peak_alloc_gib=7.24 peak_reserved_gib=9.28
+RUNDIR b_bicycle_stock_s0 output/FasterGS/fastergs_bicycle_1144604_s0p2b_bicycle_stock_s0_2026-10-28-18-32-12
+PERIMG b_bicycle_stock_s0 n_images=25 min_image=1 min_psnr=19.36
+RESULT b_bicycle_stock_s0 PSNR:25.32062942504883 SSIM:0.7673807978630066 LPIPS:0.2306602430343628 N_Gaussians:4885190 ms_it=8.48  allocated: 7.24 GiB
+##### b_bicycle_ab_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 18:37:29
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=4915903
+SEGCLOCK step=30000 seg_s=195.192 cum_s=195.192 sparse=1 visfrac=0.146 N=4915903 peak_alloc_gib=7.20
+FGS_TRAIN_END N=4915903 peak_alloc_gib=7.20 peak_reserved_gib=8.89
+RUNDIR b_bicycle_ab_s0 output/FasterGSPlus/fastergsplus_bicycle_e2e727b_s0p2b_bicycle_ab_s0_2026-10-28-18-37-36
+PERIMG b_bicycle_ab_s0 n_images=25 min_image=1 min_psnr=19.36
+RESULT b_bicycle_ab_s0 PSNR:25.34692695617676 SSIM:0.7675089573860169 LPIPS:0.23185548782348633 N_Gaussians:4895841 ms_it=6.55  allocated: 7.20 GiB
+##### b_bicycle_abc_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 18:41:44
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=4910727
+SEGCLOCK step=30000 seg_s=183.006 cum_s=183.006 sparse=1 visfrac=0.146 N=4910727 peak_alloc_gib=7.10
+FGS_TRAIN_END N=4910727 peak_alloc_gib=7.10 peak_reserved_gib=9.28
+RUNDIR b_bicycle_abc_s0 output/FasterGSPlus/fastergsplus_bicycle_e2e727b_s0p2b_bicycle_abc_s0_2026-10-28-18-41-52
+PERIMG b_bicycle_abc_s0 n_images=25 min_image=1 min_psnr=19.30
+RESULT b_bicycle_abc_s0 PSNR:25.32640510559082 SSIM:0.76759343624115 LPIPS:0.2312653422355652 N_Gaussians:4890911 ms_it=6.14  allocated: 7.10 GiB
+##### b_bicycle_ab_s1: method=FasterGSPlus seed=1 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 18:45:48
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=4962984
+SEGCLOCK step=30000 seg_s=196.412 cum_s=196.412 sparse=1 visfrac=0.315 N=4962984 peak_alloc_gib=7.24
+FGS_TRAIN_END N=4962984 peak_alloc_gib=7.24 peak_reserved_gib=9.00
+RUNDIR b_bicycle_ab_s1 output/FasterGSPlus/fastergsplus_bicycle_e2e727b_s1p2b_bicycle_ab_s1_2026-10-28-18-45-56
+PERIMG b_bicycle_ab_s1 n_images=25 min_image=1 min_psnr=18.82
+RESULT b_bicycle_ab_s1 PSNR:25.40517837524414 SSIM:0.7694622588157654 LPIPS:0.22949161171913146 N_Gaussians:4942950 ms_it=6.59  allocated: 7.24 GiB
+##### b_bicycle_abc_s1: method=FasterGSPlus seed=1 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 18:50:07
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=4963726
+SEGCLOCK step=30000 seg_s=184.526 cum_s=184.526 sparse=1 visfrac=0.315 N=4963726 peak_alloc_gib=7.24
+FGS_TRAIN_END N=4963726 peak_alloc_gib=7.24 peak_reserved_gib=9.55
+RUNDIR b_bicycle_abc_s1 output/FasterGSPlus/fastergsplus_bicycle_e2e727b_s1p2b_bicycle_abc_s1_2026-10-28-18-50-14
+PERIMG b_bicycle_abc_s1 n_images=25 min_image=1 min_psnr=19.41
+RESULT b_bicycle_abc_s1 PSNR:25.40876937866211 SSIM:0.7680144286155701 LPIPS:0.23095108032226563 N_Gaussians:4943665 ms_it=6.19  allocated: 7.24 GiB
+##### b_bicycle_stock_s1: method=FasterGS seed=1 iters=30000 flags= blend=taming 18:54:14
+FGS_N iteration=15000 N=4932605
+SEGCLOCK step=30000 seg_s=251.940 cum_s=251.940 sparse=0 N=4932605 peak_alloc_gib=7.22
+FGS_TRAIN_END N=4932605 peak_alloc_gib=7.22 peak_reserved_gib=9.16
+RUNDIR b_bicycle_stock_s1 output/FasterGS/fastergs_bicycle_1144604_s1p2b_bicycle_stock_s1_2026-10-28-18-54-21
+PERIMG b_bicycle_stock_s1 n_images=25 min_image=1 min_psnr=18.82
+RESULT b_bicycle_stock_s1 PSNR:25.32527717590332 SSIM:0.7684661555290222 LPIPS:0.22944439470767974 N_Gaussians:4853772 ms_it=8.44  allocated: 7.22 GiB
+##### b_bicycle_abc_s2: method=FasterGSPlus seed=2 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 18:59:28
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=4931904
+SEGCLOCK step=30000 seg_s=185.983 cum_s=185.983 sparse=1 visfrac=0.147 N=4931904 peak_alloc_gib=7.13
+FGS_TRAIN_END N=4931904 peak_alloc_gib=7.13 peak_reserved_gib=8.67
+RUNDIR b_bicycle_abc_s2 output/FasterGSPlus/fastergsplus_bicycle_e2e727b_s2p2b_bicycle_abc_s2_2026-10-28-18-59-35
+PERIMG b_bicycle_abc_s2 n_images=25 min_image=1 min_psnr=19.19
+RESULT b_bicycle_abc_s2 PSNR:25.314269790649416 SSIM:0.7679245567321777 LPIPS:0.23136832296848298 N_Gaussians:4912672 ms_it=6.24  allocated: 7.13 GiB
+##### b_bicycle_stock_s2: method=FasterGS seed=2 iters=30000 flags= blend=taming 19:03:35
+FGS_N iteration=15000 N=4909509
+SEGCLOCK step=30000 seg_s=248.900 cum_s=248.900 sparse=0 N=4909509 peak_alloc_gib=7.20
+FGS_TRAIN_END N=4909509 peak_alloc_gib=7.20 peak_reserved_gib=8.93
+RUNDIR b_bicycle_stock_s2 output/FasterGS/fastergs_bicycle_1144604_s2p2b_bicycle_stock_s2_2026-10-28-19-03-42
+PERIMG b_bicycle_stock_s2 n_images=25 min_image=1 min_psnr=19.23
+RESULT b_bicycle_stock_s2 PSNR:25.282824630737306 SSIM:0.7674874258041382 LPIPS:0.2303292363882065 N_Gaussians:4832577 ms_it=8.34  allocated: 7.20 GiB
+##### b_bicycle_ab_s2: method=FasterGSPlus seed=2 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 19:08:46
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=4921153
+SEGCLOCK step=30000 seg_s=192.680 cum_s=192.680 sparse=1 visfrac=0.147 N=4921153 peak_alloc_gib=7.21
+FGS_TRAIN_END N=4921153 peak_alloc_gib=7.21 peak_reserved_gib=9.14
+RUNDIR b_bicycle_ab_s2 output/FasterGSPlus/fastergsplus_bicycle_e2e727b_s2p2b_bicycle_ab_s2_2026-10-28-19-08-53
+PERIMG b_bicycle_ab_s2 n_images=25 min_image=1 min_psnr=19.50
+RESULT b_bicycle_ab_s2 PSNR:25.37160743713379 SSIM:0.7681633305549621 LPIPS:0.2315079712867737 N_Gaussians:4901716 ms_it=6.46  allocated: 7.21 GiB
+JOB OK

@@ -39,6 +39,7 @@ Stock 30k PSNR by scene: bicycle 25.301, stump 26.614, room 31.615, counter 29.0
   - What is not verified: whether the difference comes from that prune. Within each run N stops changing when densification ends at 14.9k, but stock and switch runs are trained independently, so their counts at 15k need not match, and neither the 15k count nor the count just before cleanup was recorded.
   - Hypothesis: rows that selective Adam does not update keep their opacity instead of drifting under momentum, so fewer fall below the prune floor.
   - The v4 clock hook records N at 15k, at the last training step (before cleanup), and after cleanup (`n_gaussians.txt`), which settles this in future runs without a dedicated experiment.
+  - **Update (Phase 2 step 3, 81 runs on 9 scenes):** the count at 15k equals the count at the last training step in every run, and the difference arises entirely in the end-of-training cleanup. Stock loses 0.4–3.5% of its Gaussians there; the selective-Adam arms lose 0.1–0.7%. See `phase2/RESULTS.md`.
   - More Gaussians make rendering slightly more expensive after training.
 - **For Phase 2:** B passes its gate and goes into the stack. On indoor scenes it adds little, so the stack's per-scene gain there will come mostly from the backward kernel (A).
 

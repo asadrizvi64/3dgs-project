@@ -1,0 +1,73 @@
+node=c139 job=4483041 gpu=NVIDIA H100 stages=bench repo=c23196f
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## bench (scene kitchen scale 0.5, seeds 0 1 2, 30k; train time = SEGCLOCK cum_s)
+##### b_kitchen_stock_s0: method=FasterGS seed=0 iters=30000 flags= blend=taming 18:32:18
+FGS_N iteration=15000 N=1608229
+SEGCLOCK step=30000 seg_s=199.352 cum_s=199.352 sparse=0 N=1608229 peak_alloc_gib=6.52
+FGS_TRAIN_END N=1608229 peak_alloc_gib=6.52 peak_reserved_gib=6.95
+RUNDIR b_kitchen_stock_s0 output/FasterGS/fastergs_kitchen_1144604_s0p2b_kitchen_stock_s0_2026-10-28-18-32-32
+PERIMG b_kitchen_stock_s0 n_images=35 min_image=4 min_psnr=20.00
+RESULT b_kitchen_stock_s0 PSNR:30.79473920549665 SSIM:0.9272976177079337 LPIPS:0.15235355538981302 N_Gaussians:1584024 ms_it=6.69  allocated: 6.52 GiB
+##### b_kitchen_ab_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 18:37:15
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1607954
+SEGCLOCK step=30000 seg_s=164.527 cum_s=164.527 sparse=1 visfrac=0.575 N=1607954 peak_alloc_gib=6.51
+FGS_TRAIN_END N=1607954 peak_alloc_gib=6.51 peak_reserved_gib=6.95
+RUNDIR b_kitchen_ab_s0 output/FasterGSPlus/fastergsplus_kitchen_e2e727b_s0p2b_kitchen_ab_s0_2026-10-28-18-37-22
+PERIMG b_kitchen_ab_s0 n_images=35 min_image=0 min_psnr=27.31
+RESULT b_kitchen_ab_s0 PSNR:31.595103018624442 SSIM:0.9295842153685433 LPIPS:0.15159778488533837 N_Gaussians:1602799 ms_it=5.53  allocated: 6.51 GiB
+##### b_kitchen_abc_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 18:41:34
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1609243
+SEGCLOCK step=30000 seg_s=157.511 cum_s=157.511 sparse=1 visfrac=0.574 N=1609243 peak_alloc_gib=6.46
+FGS_TRAIN_END N=1609243 peak_alloc_gib=6.46 peak_reserved_gib=6.93
+RUNDIR b_kitchen_abc_s0 output/FasterGSPlus/fastergsplus_kitchen_e2e727b_s0p2b_kitchen_abc_s0_2026-10-28-18-41-41
+PERIMG b_kitchen_abc_s0 n_images=35 min_image=0 min_psnr=26.75
+RESULT b_kitchen_abc_s0 PSNR:31.492557798113143 SSIM:0.9290890421186174 LPIPS:0.1520288701568331 N_Gaussians:1603810 ms_it=5.30  allocated: 6.46 GiB
+##### b_kitchen_ab_s1: method=FasterGSPlus seed=1 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 18:45:42
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1621706
+SEGCLOCK step=30000 seg_s=161.930 cum_s=161.930 sparse=1 visfrac=0.641 N=1621706 peak_alloc_gib=6.53
+FGS_TRAIN_END N=1621706 peak_alloc_gib=6.53 peak_reserved_gib=7.16
+RUNDIR b_kitchen_ab_s1 output/FasterGSPlus/fastergsplus_kitchen_e2e727b_s1p2b_kitchen_ab_s1_2026-10-28-18-45-50
+PERIMG b_kitchen_ab_s1 n_images=35 min_image=0 min_psnr=26.87
+RESULT b_kitchen_ab_s1 PSNR:31.59626998901367 SSIM:0.9290198598589215 LPIPS:0.15181384214333127 N_Gaussians:1616230 ms_it=5.44  allocated: 6.53 GiB
+##### b_kitchen_abc_s1: method=FasterGSPlus seed=1 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 18:49:57
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1613164
+SEGCLOCK step=30000 seg_s=158.960 cum_s=158.960 sparse=1 visfrac=0.644 N=1613164 peak_alloc_gib=6.50
+FGS_TRAIN_END N=1613164 peak_alloc_gib=6.50 peak_reserved_gib=7.10
+RUNDIR b_kitchen_abc_s1 output/FasterGSPlus/fastergsplus_kitchen_e2e727b_s1p2b_kitchen_abc_s1_2026-10-28-18-50-04
+PERIMG b_kitchen_abc_s1 n_images=35 min_image=4 min_psnr=20.33
+RESULT b_kitchen_abc_s1 PSNR:31.035301317487445 SSIM:0.9274259465081351 LPIPS:0.15216297379561833 N_Gaussians:1607726 ms_it=5.34  allocated: 6.50 GiB
+##### b_kitchen_stock_s1: method=FasterGS seed=1 iters=30000 flags= blend=taming 18:54:02
+FGS_N iteration=15000 N=1620856
+SEGCLOCK step=30000 seg_s=196.898 cum_s=196.898 sparse=0 N=1620856 peak_alloc_gib=6.53
+FGS_TRAIN_END N=1620856 peak_alloc_gib=6.53 peak_reserved_gib=7.26
+RUNDIR b_kitchen_stock_s1 output/FasterGS/fastergs_kitchen_1144604_s1p2b_kitchen_stock_s1_2026-10-28-18-54-09
+PERIMG b_kitchen_stock_s1 n_images=35 min_image=0 min_psnr=26.50
+RESULT b_kitchen_stock_s1 PSNR:31.364698355538504 SSIM:0.9284606065068927 LPIPS:0.15201637255293982 N_Gaussians:1596202 ms_it=6.60  allocated: 6.53 GiB
+##### b_kitchen_abc_s2: method=FasterGSPlus seed=2 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 18:58:46
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1592222
+SEGCLOCK step=30000 seg_s=158.517 cum_s=158.517 sparse=1 visfrac=0.448 N=1592222 peak_alloc_gib=6.49
+FGS_TRAIN_END N=1592222 peak_alloc_gib=6.49 peak_reserved_gib=6.87
+RUNDIR b_kitchen_abc_s2 output/FasterGSPlus/fastergsplus_kitchen_e2e727b_s2p2b_kitchen_abc_s2_2026-10-28-18-58-54
+PERIMG b_kitchen_abc_s2 n_images=35 min_image=0 min_psnr=26.66
+RESULT b_kitchen_abc_s2 PSNR:31.457942526681084 SSIM:0.9276874576296125 LPIPS:0.15265822282859257 N_Gaussians:1586740 ms_it=5.32  allocated: 6.49 GiB
+##### b_kitchen_stock_s2: method=FasterGS seed=2 iters=30000 flags= blend=taming 19:02:55
+FGS_N iteration=15000 N=1608628
+SEGCLOCK step=30000 seg_s=196.795 cum_s=196.795 sparse=0 N=1608628 peak_alloc_gib=6.52
+FGS_TRAIN_END N=1608628 peak_alloc_gib=6.52 peak_reserved_gib=6.96
+RUNDIR b_kitchen_stock_s2 output/FasterGS/fastergs_kitchen_1144604_s2p2b_kitchen_stock_s2_2026-10-28-19-03-02
+PERIMG b_kitchen_stock_s2 n_images=35 min_image=0 min_psnr=26.42
+RESULT b_kitchen_stock_s2 PSNR:31.255245481218612 SSIM:0.9275122421128409 LPIPS:0.15275080054998397 N_Gaussians:1581618 ms_it=6.60  allocated: 6.52 GiB
+##### b_kitchen_ab_s2: method=FasterGSPlus seed=2 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 19:07:45
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1628375
+SEGCLOCK step=30000 seg_s=164.890 cum_s=164.890 sparse=1 visfrac=0.439 N=1628375 peak_alloc_gib=6.54
+FGS_TRAIN_END N=1628375 peak_alloc_gib=6.54 peak_reserved_gib=7.08
+RUNDIR b_kitchen_ab_s2 output/FasterGSPlus/fastergsplus_kitchen_e2e727b_s2p2b_kitchen_ab_s2_2026-10-28-19-07-53
+PERIMG b_kitchen_ab_s2 n_images=35 min_image=0 min_psnr=26.87
+RESULT b_kitchen_ab_s2 PSNR:31.517648424421036 SSIM:0.9280484369822911 LPIPS:0.15190444311925344 N_Gaussians:1623367 ms_it=5.54  allocated: 6.54 GiB
+JOB OK

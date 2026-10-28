@@ -1,0 +1,73 @@
+node=c28 job=4483040 gpu=NVIDIA H100 stages=bench repo=c23196f
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## bench (scene counter scale 0.5, seeds 0 1 2, 30k; train time = SEGCLOCK cum_s)
+##### b_counter_stock_s0: method=FasterGS seed=0 iters=30000 flags= blend=taming 18:32:18
+FGS_N iteration=15000 N=1083224
+SEGCLOCK step=30000 seg_s=153.506 cum_s=153.506 sparse=0 N=1083224 peak_alloc_gib=5.30
+FGS_TRAIN_END N=1083224 peak_alloc_gib=5.30 peak_reserved_gib=5.68
+RUNDIR b_counter_stock_s0 output/FasterGS/fastergs_counter_1144604_s0p2b_counter_stock_s0_2026-10-28-18-32-31
+PERIMG b_counter_stock_s0 n_images=30 min_image=29 min_psnr=25.53
+RESULT b_counter_stock_s0 PSNR:29.102774492899577 SSIM:0.9094332138697306 LPIPS:0.2545258974035581 N_Gaussians:1065206 ms_it=5.16  allocated: 5.30 GiB
+##### b_counter_ab_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 18:36:22
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1087257
+SEGCLOCK step=30000 seg_s=127.069 cum_s=127.069 sparse=1 visfrac=0.567 N=1087257 peak_alloc_gib=5.30
+FGS_TRAIN_END N=1087257 peak_alloc_gib=5.30 peak_reserved_gib=5.54
+RUNDIR b_counter_ab_s0 output/FasterGSPlus/fastergsplus_counter_e2e727b_s0p2b_counter_ab_s0_2026-10-28-18-36-29
+PERIMG b_counter_ab_s0 n_images=30 min_image=29 min_psnr=25.61
+RESULT b_counter_ab_s0 PSNR:29.18701852162679 SSIM:0.9097796440124511 LPIPS:0.25430189073085785 N_Gaussians:1079658 ms_it=4.27  allocated: 5.30 GiB
+##### b_counter_abc_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 18:39:52
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1083046
+SEGCLOCK step=30000 seg_s=126.825 cum_s=126.825 sparse=1 visfrac=0.570 N=1083046 peak_alloc_gib=5.28
+FGS_TRAIN_END N=1083046 peak_alloc_gib=5.28 peak_reserved_gib=5.50
+RUNDIR b_counter_abc_s0 output/FasterGSPlus/fastergsplus_counter_e2e727b_s0p2b_counter_abc_s0_2026-10-28-18-39-59
+PERIMG b_counter_abc_s0 n_images=30 min_image=14 min_psnr=25.54
+RESULT b_counter_abc_s0 PSNR:29.097610092163087 SSIM:0.9095124522844951 LPIPS:0.2543789918224017 N_Gaussians:1075587 ms_it=4.26  allocated: 5.28 GiB
+##### b_counter_ab_s1: method=FasterGSPlus seed=1 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 18:43:20
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1076689
+SEGCLOCK step=30000 seg_s=128.012 cum_s=128.012 sparse=1 visfrac=0.413 N=1076689 peak_alloc_gib=5.29
+FGS_TRAIN_END N=1076689 peak_alloc_gib=5.29 peak_reserved_gib=5.58
+RUNDIR b_counter_ab_s1 output/FasterGSPlus/fastergsplus_counter_e2e727b_s1p2b_counter_ab_s1_2026-10-28-18-43-28
+PERIMG b_counter_ab_s1 n_images=30 min_image=29 min_psnr=25.40
+RESULT b_counter_ab_s1 PSNR:29.113779640197755 SSIM:0.9095639924208323 LPIPS:0.2541856000820796 N_Gaussians:1069272 ms_it=4.30  allocated: 5.29 GiB
+##### b_counter_abc_s1: method=FasterGSPlus seed=1 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 18:46:50
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1073281
+SEGCLOCK step=30000 seg_s=123.556 cum_s=123.556 sparse=1 visfrac=0.412 N=1073281 peak_alloc_gib=5.28
+FGS_TRAIN_END N=1073281 peak_alloc_gib=5.28 peak_reserved_gib=5.56
+RUNDIR b_counter_abc_s1 output/FasterGSPlus/fastergsplus_counter_e2e727b_s1p2b_counter_abc_s1_2026-10-28-18-46-58
+PERIMG b_counter_abc_s1 n_images=30 min_image=29 min_psnr=25.44
+RESULT b_counter_abc_s1 PSNR:29.11666342417399 SSIM:0.90954669713974 LPIPS:0.25405678153038025 N_Gaussians:1066287 ms_it=4.16  allocated: 5.28 GiB
+##### b_counter_stock_s1: method=FasterGS seed=1 iters=30000 flags= blend=taming 18:50:17
+FGS_N iteration=15000 N=1074144
+SEGCLOCK step=30000 seg_s=154.237 cum_s=154.237 sparse=0 N=1074144 peak_alloc_gib=5.29
+FGS_TRAIN_END N=1074144 peak_alloc_gib=5.29 peak_reserved_gib=5.66
+RUNDIR b_counter_stock_s1 output/FasterGS/fastergs_counter_1144604_s1p2b_counter_stock_s1_2026-10-28-18-50-24
+PERIMG b_counter_stock_s1 n_images=30 min_image=29 min_psnr=25.52
+RESULT b_counter_stock_s1 PSNR:29.211392402648926 SSIM:0.9098059594631195 LPIPS:0.2541632538040479 N_Gaussians:1056373 ms_it=5.18  allocated: 5.29 GiB
+##### b_counter_abc_s2: method=FasterGSPlus seed=2 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 18:54:14
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1070930
+SEGCLOCK step=30000 seg_s=123.325 cum_s=123.325 sparse=1 visfrac=0.510 N=1070930 peak_alloc_gib=5.28
+FGS_TRAIN_END N=1070930 peak_alloc_gib=5.28 peak_reserved_gib=5.64
+RUNDIR b_counter_abc_s2 output/FasterGSPlus/fastergsplus_counter_e2e727b_s2p2b_counter_abc_s2_2026-10-28-18-54-22
+PERIMG b_counter_abc_s2 n_images=30 min_image=29 min_psnr=25.42
+RESULT b_counter_abc_s2 PSNR:29.12523307800293 SSIM:0.909516712029775 LPIPS:0.25411141514778135 N_Gaussians:1063943 ms_it=4.15  allocated: 5.28 GiB
+##### b_counter_stock_s2: method=FasterGS seed=2 iters=30000 flags= blend=taming 18:57:38
+FGS_N iteration=15000 N=1073678
+SEGCLOCK step=30000 seg_s=152.811 cum_s=152.811 sparse=0 N=1073678 peak_alloc_gib=5.28
+FGS_TRAIN_END N=1073678 peak_alloc_gib=5.28 peak_reserved_gib=5.71
+RUNDIR b_counter_stock_s2 output/FasterGS/fastergs_counter_1144604_s2p2b_counter_stock_s2_2026-10-28-18-57-46
+PERIMG b_counter_stock_s2 n_images=30 min_image=29 min_psnr=25.48
+RESULT b_counter_stock_s2 PSNR:29.120688501993815 SSIM:0.9093646585941315 LPIPS:0.2542625372608503 N_Gaussians:1056138 ms_it=5.13  allocated: 5.28 GiB
+##### b_counter_ab_s2: method=FasterGSPlus seed=2 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 19:01:34
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1072877
+SEGCLOCK step=30000 seg_s=127.015 cum_s=127.015 sparse=1 visfrac=0.509 N=1072877 peak_alloc_gib=5.28
+FGS_TRAIN_END N=1072877 peak_alloc_gib=5.28 peak_reserved_gib=5.66
+RUNDIR b_counter_ab_s2 output/FasterGSPlus/fastergsplus_counter_e2e727b_s2p2b_counter_ab_s2_2026-10-28-19-01-42
+PERIMG b_counter_ab_s2 n_images=30 min_image=29 min_psnr=25.50
+RESULT b_counter_ab_s2 PSNR:29.096847788492838 SSIM:0.909564483165741 LPIPS:0.2539108524719874 N_Gaussians:1065592 ms_it=4.27  allocated: 5.28 GiB
+JOB OK

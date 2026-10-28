@@ -1,0 +1,73 @@
+node=c156 job=4483039 gpu=NVIDIA H100 stages=bench repo=c23196f
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## bench (scene room scale 0.5, seeds 0 1 2, 30k; train time = SEGCLOCK cum_s)
+##### b_room_stock_s0: method=FasterGS seed=0 iters=30000 flags= blend=taming 18:32:09
+FGS_N iteration=15000 N=1347207
+SEGCLOCK step=30000 seg_s=150.414 cum_s=150.414 sparse=0 N=1347207 peak_alloc_gib=6.65
+FGS_TRAIN_END N=1347207 peak_alloc_gib=6.65 peak_reserved_gib=6.98
+RUNDIR b_room_stock_s0 output/FasterGS/fastergs_room_1144604_s0p2b_room_stock_s0_2026-10-28-18-32-20
+PERIMG b_room_stock_s0 n_images=39 min_image=36 min_psnr=23.65
+RESULT b_room_stock_s0 PSNR:31.63812143374712 SSIM:0.9204150621707623 LPIPS:0.28199971600984913 N_Gaussians:1299099 ms_it=5.05  allocated: 6.65 GiB
+##### b_room_ab_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 18:36:11
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1353668
+SEGCLOCK step=30000 seg_s=124.174 cum_s=124.174 sparse=1 visfrac=0.320 N=1353668 peak_alloc_gib=6.65
+FGS_TRAIN_END N=1353668 peak_alloc_gib=6.65 peak_reserved_gib=7.02
+RUNDIR b_room_ab_s0 output/FasterGSPlus/fastergsplus_room_e2e727b_s0p2b_room_ab_s0_2026-10-28-18-36-19
+PERIMG b_room_ab_s0 n_images=39 min_image=34 min_psnr=22.66
+RESULT b_room_ab_s0 PSNR:31.66576434404422 SSIM:0.920197225533999 LPIPS:0.2829443770341384 N_Gaussians:1345559 ms_it=4.17  allocated: 6.65 GiB
+##### b_room_abc_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 18:39:42
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1350336
+SEGCLOCK step=30000 seg_s=121.446 cum_s=121.446 sparse=1 visfrac=0.321 N=1350336 peak_alloc_gib=6.62
+FGS_TRAIN_END N=1350336 peak_alloc_gib=6.62 peak_reserved_gib=7.00
+RUNDIR b_room_abc_s0 output/FasterGSPlus/fastergsplus_room_e2e727b_s0p2b_room_abc_s0_2026-10-28-18-39-50
+PERIMG b_room_abc_s0 n_images=39 min_image=34 min_psnr=22.05
+RESULT b_room_abc_s0 PSNR:31.724618569398537 SSIM:0.9209786531252738 LPIPS:0.2815583573702054 N_Gaussians:1342497 ms_it=4.08  allocated: 6.62 GiB
+##### b_room_ab_s1: method=FasterGSPlus seed=1 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 18:43:09
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1343170
+SEGCLOCK step=30000 seg_s=126.583 cum_s=126.583 sparse=1 visfrac=0.283 N=1343170 peak_alloc_gib=6.64
+FGS_TRAIN_END N=1343170 peak_alloc_gib=6.64 peak_reserved_gib=7.04
+RUNDIR b_room_ab_s1 output/FasterGSPlus/fastergsplus_room_e2e727b_s1p2b_room_ab_s1_2026-10-28-18-43-17
+PERIMG b_room_ab_s1 n_images=39 min_image=36 min_psnr=23.16
+RESULT b_room_ab_s1 PSNR:31.749887662056164 SSIM:0.921130270530016 LPIPS:0.2826509857789064 N_Gaussians:1335645 ms_it=4.26  allocated: 6.64 GiB
+##### b_room_abc_s1: method=FasterGSPlus seed=1 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 18:46:42
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1342070
+SEGCLOCK step=30000 seg_s=120.368 cum_s=120.368 sparse=1 visfrac=0.284 N=1342070 peak_alloc_gib=6.64
+FGS_TRAIN_END N=1342070 peak_alloc_gib=6.64 peak_reserved_gib=7.10
+RUNDIR b_room_abc_s1 output/FasterGSPlus/fastergsplus_room_e2e727b_s1p2b_room_abc_s1_2026-10-28-18-46-50
+PERIMG b_room_abc_s1 n_images=39 min_image=36 min_psnr=22.93
+RESULT b_room_abc_s1 PSNR:31.696080721341648 SSIM:0.9210498119011904 LPIPS:0.282629655339779 N_Gaussians:1334259 ms_it=4.05  allocated: 6.64 GiB
+##### b_room_stock_s1: method=FasterGS seed=1 iters=30000 flags= blend=taming 18:50:10
+FGS_N iteration=15000 N=1343340
+SEGCLOCK step=30000 seg_s=149.982 cum_s=149.982 sparse=0 N=1343340 peak_alloc_gib=6.65
+FGS_TRAIN_END N=1343340 peak_alloc_gib=6.65 peak_reserved_gib=7.16
+RUNDIR b_room_stock_s1 output/FasterGS/fastergs_room_1144604_s1p2b_room_stock_s1_2026-10-28-18-50-17
+PERIMG b_room_stock_s1 n_images=39 min_image=17 min_psnr=20.09
+RESULT b_room_stock_s1 PSNR:31.051133767152443 SSIM:0.9139617620370327 LPIPS:0.28545141716798145 N_Gaussians:1298086 ms_it=5.04  allocated: 6.65 GiB
+##### b_room_abc_s2: method=FasterGSPlus seed=2 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 18:54:05
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1339938
+SEGCLOCK step=30000 seg_s=120.218 cum_s=120.218 sparse=1 visfrac=0.356 N=1339938 peak_alloc_gib=6.62
+FGS_TRAIN_END N=1339938 peak_alloc_gib=6.62 peak_reserved_gib=6.95
+RUNDIR b_room_abc_s2 output/FasterGSPlus/fastergsplus_room_e2e727b_s2p2b_room_abc_s2_2026-10-28-18-54-13
+PERIMG b_room_abc_s2 n_images=39 min_image=34 min_psnr=23.07
+RESULT b_room_abc_s2 PSNR:31.788436889648438 SSIM:0.9208507033494803 LPIPS:0.28261818068149763 N_Gaussians:1331913 ms_it=4.04  allocated: 6.62 GiB
+##### b_room_stock_s2: method=FasterGS seed=2 iters=30000 flags= blend=taming 18:57:31
+FGS_N iteration=15000 N=1343235
+SEGCLOCK step=30000 seg_s=150.683 cum_s=150.683 sparse=0 N=1343235 peak_alloc_gib=6.64
+FGS_TRAIN_END N=1343235 peak_alloc_gib=6.64 peak_reserved_gib=6.98
+RUNDIR b_room_stock_s2 output/FasterGS/fastergs_room_1144604_s2p2b_room_stock_s2_2026-10-28-18-57-39
+PERIMG b_room_stock_s2 n_images=39 min_image=36 min_psnr=23.19
+RESULT b_room_stock_s2 PSNR:31.773185240916717 SSIM:0.9207406349671192 LPIPS:0.2820625962355198 N_Gaussians:1295663 ms_it=5.06  allocated: 6.64 GiB
+##### b_room_ab_s2: method=FasterGSPlus seed=2 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 19:01:28
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1330801
+SEGCLOCK step=30000 seg_s=123.303 cum_s=123.303 sparse=1 visfrac=0.360 N=1330801 peak_alloc_gib=6.63
+FGS_TRAIN_END N=1330801 peak_alloc_gib=6.63 peak_reserved_gib=6.96
+RUNDIR b_room_ab_s2 output/FasterGSPlus/fastergsplus_room_e2e727b_s2p2b_room_ab_s2_2026-10-28-19-01-35
+PERIMG b_room_ab_s2 n_images=39 min_image=36 min_psnr=23.81
+RESULT b_room_ab_s2 PSNR:31.845752911689953 SSIM:0.9207805761924157 LPIPS:0.2829336810570497 N_Gaussians:1323287 ms_it=4.15  allocated: 6.63 GiB
+JOB OK

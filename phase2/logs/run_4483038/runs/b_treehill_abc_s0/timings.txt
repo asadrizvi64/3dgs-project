@@ -1,0 +1,91 @@
+Dataset loading:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 322.07
+	Number of iterations: 1
+
+_commit_wandb:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+_log_test_metrics_wandb:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+_prepare_dataset:
+	Total execution time: 0:00:10
+	Time per iteration [ms]: 10317.96
+	Number of iterations: 1
+
+_save_final_checkpoint:
+	Total execution time: 0:00:29
+	Time per iteration [ms]: 29486.56
+	Number of iterations: 1
+
+_save_intermediate_checkpoint:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+create_sampler:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 15.17
+	Number of iterations: 1
+
+densify:
+	Total execution time: 0:00:01
+	Time per iteration [ms]: 10.28
+	Number of iterations: 144
+
+finalize:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 23.57
+	Number of iterations: 1
+
+hard_pruning:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+increase_sh_degree:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.02
+	Number of iterations: 29
+
+log_wandb:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+morton_ordering:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 7.79
+	Number of iterations: 4
+
+recompute_3d_filter:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+reset_opacities:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.10
+	Number of iterations: 4
+
+reset_opacities_extra:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 13.58
+	Number of iterations: 1
+
+setup_gaussians:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 78.26
+	Number of iterations: 1
+
+training_iteration:
+	Total execution time: 0:02:17
+	Time per iteration [ms]: 4.55
+	Number of iterations: 30000
+
+Time:138.102693

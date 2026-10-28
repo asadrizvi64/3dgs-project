@@ -1,0 +1,1 @@
+CLOCK samples_busy=114 sm_mhz_mean=1980 sm_mhz_min=1980 mem_mhz=1593 power_w_mean=389 power_w_max=460 temp_c_max=58 event_reasons={'0x0000000000000000': 114}

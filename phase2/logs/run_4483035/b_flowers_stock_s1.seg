@@ -1,0 +1,3 @@
+FGS_N iteration=15000 N=2906404
+SEGCLOCK step=30000 seg_s=178.380 cum_s=178.380 sparse=0 N=2906404 peak_alloc_gib=4.93
+FGS_TRAIN_END N=2906404 peak_alloc_gib=4.93 peak_reserved_gib=6.02

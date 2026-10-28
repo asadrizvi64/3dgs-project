@@ -1,0 +1,91 @@
+Dataset loading:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 264.30
+	Number of iterations: 1
+
+_commit_wandb:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+_log_test_metrics_wandb:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+_prepare_dataset:
+	Total execution time: 0:00:12
+	Time per iteration [ms]: 12291.89
+	Number of iterations: 1
+
+_save_final_checkpoint:
+	Total execution time: 0:00:29
+	Time per iteration [ms]: 29179.33
+	Number of iterations: 1
+
+_save_intermediate_checkpoint:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+create_sampler:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 19.88
+	Number of iterations: 1
+
+densify:
+	Total execution time: 0:00:01
+	Time per iteration [ms]: 10.23
+	Number of iterations: 144
+
+finalize:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 21.40
+	Number of iterations: 1
+
+hard_pruning:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+increase_sh_degree:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.02
+	Number of iterations: 29
+
+log_wandb:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+morton_ordering:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 7.65
+	Number of iterations: 4
+
+recompute_3d_filter:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+reset_opacities:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.10
+	Number of iterations: 4
+
+reset_opacities_extra:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 13.99
+	Number of iterations: 1
+
+setup_gaussians:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 86.72
+	Number of iterations: 1
+
+training_iteration:
+	Total execution time: 0:02:21
+	Time per iteration [ms]: 4.72
+	Number of iterations: 30000
+
+Time:142.98655

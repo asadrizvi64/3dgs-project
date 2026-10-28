@@ -114,11 +114,12 @@ for sc in scenes:
         mf = os.path.join(archives.get(sc, ''), name, 'test_30000', 'metrics_8bit.txt')
         if not os.path.exists(mf):
             errors[sc].append(f'{name}: no archived per-image metrics ({mf})'); continue
-        img = {int(m.group(1)): float(m.group(2))
-               for m in re.finditer(r'^(\d+)\t([\d.]+)', open(mf).read().split('Image', 1)[-1], re.M)}
+        rows_ = list(re.finditer(r'^(\d+)\t([\d.]+)\t([\d.]+)\t([\d.]+)', open(mf).read().split('Image', 1)[-1], re.M))
+        img = {int(m.group(1)): float(m.group(2)) for m in rows_}
         if len(img) != runs[k]['n_img']:
             errors[sc].append(f'{name}: {len(img)} per-image values, PERIMG says {runs[k]["n_img"]}')
         runs[k]['img'] = img
+        runs[k]['img_lpips'] = {int(m.group(1)): float(m.group(4)) for m in rows_}
     for k in [k for k in runs if k[0] == sc and 'img' in runs[k]]:
         for i, v in runs[k]['img'].items():
             others = [runs[j]['img'][i] for j in runs if j[0] == sc and j != k and i in runs[j].get('img', {})]
@@ -189,6 +190,39 @@ for arm in ('ab', 'abc'):
     for k, v in crit.items():
         print(f'  - {"meets" if v else "misses"} {k}' + ('' if complete else ' (partial data, not a verdict)'))
     verdicts[arm] = all(crit.values())
+
+# Sensitivity (not the verdict): one-view failures, i.e. a test image more than SEVERE dB below the same image's
+# median in the scene's other runs. Count them per arm, then drop every such image from all runs of that scene and
+# recompute the paired deltas on the remaining images.
+SEVERE = 3.0
+print(f'\n## Sensitivity: one-view failures (a test image > {SEVERE:.0f} dB below the same image in the scene\'s other runs)\n')
+severe = defaultdict(set)
+count = defaultdict(list)
+for sc in ok:
+    for k in [k for k in runs if k[0] == sc]:
+        for i, v in runs[k]['img'].items():
+            others = [runs[j]['img'][i] for j in runs if j[0] == sc and j != k]
+            if v < st.median(others) - SEVERE:
+                severe[sc].add(i)
+                count[k[1]].append(f'{sc} s{k[2]} image {i} ({v - st.median(others):+.1f} dB)')
+for arm in ARMS:
+    print(f'- {LABEL[arm]}: {len(count[arm])} failure(s) in 27 runs' + (': ' + '; '.join(count[arm]) if count[arm] else ''))
+print('\nDeltas with those images removed from every run of the scene (paired per seed, mean of 3 seeds):\n')
+print('| scene | images removed | A+B ΔPSNR | A+B ΔLPIPS | A+B+C ΔPSNR | A+B+C ΔLPIPS | C on top of A+B ΔPSNR |')
+print('|---|---|---|---|---|---|---|')
+rob = defaultdict(dict)
+for sc in ok:
+    keep = lambda k, key: st.mean(v for i, v in runs[k][key].items() if i not in severe[sc])
+    d = lambda arm, key, ref='stock': st.mean(keep((sc, arm, s), key) - keep((sc, ref, s), key) for s in S)
+    rob[sc] = {arm: (d(arm, 'img'), d(arm, 'img_lpips')) for arm in ('ab', 'abc')}
+    print(f"| {sc} | {', '.join(map(str, sorted(severe[sc]))) or '-'} | {rob[sc]['ab'][0]:+.3f} | {rob[sc]['ab'][1]:+.4f} | "
+          f"{rob[sc]['abc'][0]:+.3f} | {rob[sc]['abc'][1]:+.4f} | {d('abc', 'img', 'ab'):+.3f} |")
+for arm in ('ab', 'abc'):
+    dps = [rob[sc][arm][0] for sc in ok]
+    worst = min(ok, key=lambda sc: rob[sc][arm][0])
+    print(f'\n{LABEL[arm]} with one-view failures removed: ΔPSNR mean {st.mean(dps):+.3f}, worst {worst} {min(dps):+.3f}, '
+          f'ΔLPIPS mean {st.mean(rob[sc][arm][1] for sc in ok):+.4f}; tolerances '
+          + ('still met' if st.mean(dps) >= -0.05 and min(dps) >= -0.10 and st.mean(rob[sc][arm][1] for sc in ok) <= 0.002 else 'NOT met'))
 
 n_valid = sum(1 for k in runs if k[0] in ok)
 print()

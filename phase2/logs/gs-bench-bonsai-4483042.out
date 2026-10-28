@@ -1,0 +1,73 @@
+node=c3 job=4483042 gpu=NVIDIA H100 stages=bench repo=c23196f
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## bench (scene bonsai scale 0.5, seeds 0 1 2, 30k; train time = SEGCLOCK cum_s)
+##### b_bonsai_stock_s0: method=FasterGS seed=0 iters=30000 flags= blend=taming 18:32:38
+FGS_N iteration=15000 N=1082041
+SEGCLOCK step=30000 seg_s=132.076 cum_s=132.076 sparse=0 N=1082041 peak_alloc_gib=6.01
+FGS_TRAIN_END N=1082041 peak_alloc_gib=6.01 peak_reserved_gib=6.42
+RUNDIR b_bonsai_stock_s0 output/FasterGS/fastergs_bonsai_1144604_s0p2b_bonsai_stock_s0_2026-10-28-18-32-49
+PERIMG b_bonsai_stock_s0 n_images=37 min_image=9 min_psnr=25.00
+RESULT b_bonsai_stock_s0 PSNR:32.29928810532029 SSIM:0.9403234269167926 LPIPS:0.25285115395043345 N_Gaussians:1063334 ms_it=4.44  allocated: 6.01 GiB
+##### b_bonsai_ab_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 18:36:17
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1083491
+SEGCLOCK step=30000 seg_s=109.757 cum_s=109.757 sparse=1 visfrac=0.403 N=1083491 peak_alloc_gib=6.02
+FGS_TRAIN_END N=1083491 peak_alloc_gib=6.02 peak_reserved_gib=6.30
+RUNDIR b_bonsai_ab_s0 output/FasterGSPlus/fastergsplus_bonsai_e2e727b_s0p2b_bonsai_ab_s0_2026-10-28-18-36-24
+PERIMG b_bonsai_ab_s0 n_images=37 min_image=9 min_psnr=25.06
+RESULT b_bonsai_ab_s0 PSNR:32.380967372172584 SSIM:0.9421082348436922 LPIPS:0.2515677161313392 N_Gaussians:1080750 ms_it=3.69  allocated: 6.02 GiB
+##### b_bonsai_abc_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 18:39:29
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1081812
+SEGCLOCK step=30000 seg_s=107.273 cum_s=107.273 sparse=1 visfrac=0.405 N=1081812 peak_alloc_gib=6.00
+FGS_TRAIN_END N=1081812 peak_alloc_gib=6.00 peak_reserved_gib=6.42
+RUNDIR b_bonsai_abc_s0 output/FasterGSPlus/fastergsplus_bonsai_e2e727b_s0p2b_bonsai_abc_s0_2026-10-28-18-39-37
+PERIMG b_bonsai_abc_s0 n_images=37 min_image=9 min_psnr=25.08
+RESULT b_bonsai_abc_s0 PSNR:32.285728093740104 SSIM:0.9419075814453332 LPIPS:0.2523038963208327 N_Gaussians:1079392 ms_it=3.61  allocated: 6.00 GiB
+##### b_bonsai_ab_s1: method=FasterGSPlus seed=1 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 18:42:41
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1088401
+SEGCLOCK step=30000 seg_s=108.060 cum_s=108.060 sparse=1 visfrac=0.371 N=1088401 peak_alloc_gib=6.02
+FGS_TRAIN_END N=1088401 peak_alloc_gib=6.02 peak_reserved_gib=6.38
+RUNDIR b_bonsai_ab_s1 output/FasterGSPlus/fastergsplus_bonsai_e2e727b_s1p2b_bonsai_ab_s1_2026-10-28-18-42-48
+PERIMG b_bonsai_ab_s1 n_images=37 min_image=9 min_psnr=24.93
+RESULT b_bonsai_ab_s1 PSNR:32.11716651916504 SSIM:0.9417208481479336 LPIPS:0.25241908068592483 N_Gaussians:1085754 ms_it=3.63  allocated: 6.02 GiB
+##### b_bonsai_abc_s1: method=FasterGSPlus seed=1 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 18:45:52
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1086539
+SEGCLOCK step=30000 seg_s=107.526 cum_s=107.526 sparse=1 visfrac=0.374 N=1086539 peak_alloc_gib=6.02
+FGS_TRAIN_END N=1086539 peak_alloc_gib=6.02 peak_reserved_gib=6.30
+RUNDIR b_bonsai_abc_s1 output/FasterGSPlus/fastergsplus_bonsai_e2e727b_s1p2b_bonsai_abc_s1_2026-10-28-18-45-59
+PERIMG b_bonsai_abc_s1 n_images=37 min_image=0 min_psnr=23.84
+RESULT b_bonsai_abc_s1 PSNR:32.240747400232266 SSIM:0.9406317230817434 LPIPS:0.252728250783843 N_Gaussians:1083636 ms_it=3.62  allocated: 6.02 GiB
+##### b_bonsai_stock_s1: method=FasterGS seed=1 iters=30000 flags= blend=taming 18:49:02
+FGS_N iteration=15000 N=1088595
+SEGCLOCK step=30000 seg_s=130.364 cum_s=130.364 sparse=0 N=1088595 peak_alloc_gib=6.02
+FGS_TRAIN_END N=1088595 peak_alloc_gib=6.02 peak_reserved_gib=6.40
+RUNDIR b_bonsai_stock_s1 output/FasterGS/fastergs_bonsai_1144604_s1p2b_bonsai_stock_s1_2026-10-28-18-49-09
+PERIMG b_bonsai_stock_s1 n_images=37 min_image=34 min_psnr=23.65
+RESULT b_bonsai_stock_s1 PSNR:32.037907368428 SSIM:0.9398871805216815 LPIPS:0.2528711835274825 N_Gaussians:1068323 ms_it=4.38  allocated: 6.02 GiB
+##### b_bonsai_abc_s2: method=FasterGSPlus seed=2 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 18:52:36
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1064904
+SEGCLOCK step=30000 seg_s=106.556 cum_s=106.556 sparse=1 visfrac=0.286 N=1064904 peak_alloc_gib=5.98
+FGS_TRAIN_END N=1064904 peak_alloc_gib=5.98 peak_reserved_gib=6.28
+RUNDIR b_bonsai_abc_s2 output/FasterGSPlus/fastergsplus_bonsai_e2e727b_s2p2b_bonsai_abc_s2_2026-10-28-18-52-43
+PERIMG b_bonsai_abc_s2 n_images=37 min_image=9 min_psnr=24.95
+RESULT b_bonsai_abc_s2 PSNR:32.34830928493191 SSIM:0.9419051199345976 LPIPS:0.25172403817241257 N_Gaussians:1062320 ms_it=3.58  allocated: 5.98 GiB
+##### b_bonsai_stock_s2: method=FasterGS seed=2 iters=30000 flags= blend=taming 18:55:45
+FGS_N iteration=15000 N=1077690
+SEGCLOCK step=30000 seg_s=131.414 cum_s=131.414 sparse=0 N=1077690 peak_alloc_gib=6.01
+FGS_TRAIN_END N=1077690 peak_alloc_gib=6.01 peak_reserved_gib=6.46
+RUNDIR b_bonsai_stock_s2 output/FasterGS/fastergs_bonsai_1144604_s2p2b_bonsai_stock_s2_2026-10-28-18-55-53
+PERIMG b_bonsai_stock_s2 n_images=37 min_image=0 min_psnr=23.22
+RESULT b_bonsai_stock_s2 PSNR:32.02066674103608 SSIM:0.9395067595146798 LPIPS:0.2525835750070778 N_Gaussians:1057551 ms_it=4.42  allocated: 6.01 GiB
+##### b_bonsai_ab_s2: method=FasterGSPlus seed=2 iters=30000 flags=SELECTIVE_FROM=15000 blend=macro 18:59:20
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1069561
+SEGCLOCK step=30000 seg_s=108.647 cum_s=108.647 sparse=1 visfrac=0.285 N=1069561 peak_alloc_gib=6.00
+FGS_TRAIN_END N=1069561 peak_alloc_gib=6.00 peak_reserved_gib=6.42
+RUNDIR b_bonsai_ab_s2 output/FasterGSPlus/fastergsplus_bonsai_e2e727b_s2p2b_bonsai_ab_s2_2026-10-28-18-59-27
+PERIMG b_bonsai_ab_s2 n_images=37 min_image=0 min_psnr=24.37
+RESULT b_bonsai_ab_s2 PSNR:32.272143492827546 SSIM:0.9422195441014057 LPIPS:0.2520506841105384 N_Gaussians:1066862 ms_it=3.65  allocated: 6.00 GiB
+JOB OK

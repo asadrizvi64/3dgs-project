@@ -91,7 +91,7 @@ The all-off arm's mean PSNR is 27.520. The time spread across seeds is ±1 s or 
    - B-on arms end with 0.2–0.5% more Gaussians after cleanup, the same direction as before. The counts at 15k and before cleanup were not recorded; clock hook v4 records them in step 3.
    - Allocated VRAM is 6.43–6.47 GiB in all arms, and C saves about 0.04 GiB. This figure is read after the final evaluation, so it is not a training-only peak.
 
-### What this means for step 3
+### What this means for step 3 (written before step 3 ran)
 
 | candidate stack | garden time | garden ΔPSNR | note |
 |---|---|---|---|
@@ -99,3 +99,62 @@ The all-off arm's mean PSNR is 27.520. The time spread across seeds is ±1 s or 
 | A+B+C | −24.8% | −0.018 | within tolerance; C adds about 5 points of speed at about −0.04 dB |
 
 Whether C belongs in the stack can be decided across all 9 scenes rather than on garden alone. Stock, A+B and A+B+C, 3 seeds per scene, is 81 runs, about 7–8 GPU-hours.
+
+## Step 3: benchmark on all 9 Mip-NeRF360 scenes (jobs 4483034–4483042, 2026-10-28)
+
+The design:
+- 3 arms: stock Faster-GS (@1144604, flags off), FasterGSPlus A+B, and FasterGSPlus A+B+C, where B is selective Adam from 15k.
+- 3 seeds per arm, on all 9 scenes: outdoor at 1/4 resolution, indoor at 1/2. One job per scene, with that scene's 9 runs on one node and the arm order rotated by seed.
+- Clock hook v4, test metrics only at 30k.
+- All 81 runs were validated by [`analyze_bench.py`](analyze_bench.py). The checks covered: one clock record, a 15k and a last-step Gaussian count, the training-only VRAM peak, per-image metrics for every run, and the switch present exactly in the A+B / A+B+C runs.
+- Every run is in `experiment_log.csv` (81 rows), and its files are in `logs/run_<job>/runs/`. Full analysis output: [`logs/bench-analysis.md`](logs/bench-analysis.md).
+
+**Verdict (pre-registered criterion: median time reduction ≥ 20%, mean ΔPSNR ≥ −0.05 dB, no scene below −0.10 dB, mean ΔLPIPS ≤ +0.002): both stacks pass.**
+
+| stack | median time reduction | mean | range | paired runs faster | mean ΔPSNR | worst scene | mean ΔLPIPS |
+|---|---|---|---|---|---|---|---|
+| A+B | **20.6% (1.26×)** | 19.7% | 17.0–23.7% | 27/27 | +0.119 | counter −0.012 | +0.0000 |
+| A+B+C | **23.6% (1.31×)** | 22.8% | 18.4–28.4% | 27/27 | +0.081 | treehill −0.060 | +0.0002 |
+
+### Per scene (training time from CUDA events; deltas paired against stock per seed, mean of 3 seeds)
+
+| scene | stock s | A+B s | A+B time | A+B ΔPSNR | A+B+C s | A+B+C time | A+B+C ΔPSNR | A+B+C ΔLPIPS |
+|---|---|---|---|---|---|---|---|---|
+| bicycle | 251.3 | 194.8 | −22.5% | +0.065 | 184.5 | −26.6% | +0.040 | +0.0011 |
+| flowers | 176.4 | 139.5 | −20.9% | +0.033 | 134.7 | −23.6% | +0.020 | +0.0012 |
+| garden | 252.4 | 200.3 | −20.6% | +0.065 | 190.0 | −24.7% | +0.057 | −0.0001 |
+| stump | 202.7 | 154.5 | −23.7% | +0.073 | 145.1 | −28.4% | +0.095 | −0.0011 |
+| treehill | 179.2 | 141.3 | −21.1% | +0.008 | 135.0 | −24.7% | −0.060 | +0.0024 |
+| room | 150.4 | 124.7 | −17.1% | +0.266* | 120.7 | −19.7% | +0.249* | −0.0009 |
+| counter | 153.5 | 127.4 | −17.0% | −0.012 | 124.6 | −18.9% | −0.032 | −0.0001 |
+| kitchen | 197.7 | 163.8 | −17.1% | +0.431* | 158.3 | −19.9% | +0.190* | −0.0001 |
+| bonsai | 131.3 | 108.8 | −17.1% | +0.137* | 107.1 | −18.4% | +0.172* | −0.0005 |
+
+\*Inflated by one-view failures, mostly in stock runs (below).
+
+Per-seed values, SSIM, ms/it, Gaussian counts and VRAM per scene are in the analysis file.
+
+### Findings
+
+1. **Speed.**
+   - Every one of the 54 paired runs is faster than its stock pair.
+   - On outdoor scenes (2.9–4.9 M Gaussians) A+B saves 20.6–23.7% and A+B+C saves 23.6–28.4%.
+   - On indoor scenes (1.1–1.6 M Gaussians) A+B saves only about 17% and A+B+C 18.4–19.9%.
+   - A+B's median (20.6%) clears the 20% bar by a small margin: it is garden, the fifth of nine sorted values, and all four indoor scenes are below 20%.
+2. **Quality is within tolerance on every scene for both stacks.** A+B's worst scene is counter (−0.012 dB); A+B+C's is treehill (−0.060 dB). This is "within the pre-registered tolerances", not "no loss anywhere": some per-scene and per-seed deltas are negative.
+3. **One-view failures.** These are single test images far below the same image in the other runs.
+   - Counting images more than 3 dB below the same image's median in the scene's other runs: **stock 7 in 27 runs, A+B 2, A+B+C 1**.
+   - All are on indoor scenes except garden's image 22, the view that failed in the step 2 factorial; here it is 2.5 dB low in stock seed 0, below the 3 dB cut.
+   - Worst cases: room stock seed 1, image 17, −14.8 dB; kitchen stock seed 0, images 2 and 4, −11.6 and −10.6 dB.
+   - These failures are not caused by B or C. Stock has more of them, but the counts are too small to claim the stacks reduce them.
+   - They drive the large indoor PSNR gains. With the affected images removed from every run of the scene: A+B ΔPSNR mean +0.071 (worst counter −0.013); A+B+C +0.034 (worst treehill −0.060). **Both still meet the tolerances.** The ΔLPIPS means barely change.
+4. **C (bf16 SH-rest moments) on top of A+B: +2 to +6 points of speed for a small, mostly negative quality change.**
+   - With one-view failures removed it is negative on 7 of 9 scenes: −0.008 to −0.068 dB, plus kitchen −0.157 with high seed variance.
+   - Treehill is the clearest case: −0.068 dB on all 3 seeds, LPIPS +0.0012.
+   - This matches step 2 (−0.04 dB on garden). C is the faster choice within tolerance; A+B is the choice with no measurable quality cost.
+5. **Gaussian counts: where the difference arises is now verified.**
+   - In all 81 runs, the count at 15k equals the count at the last training step, so N is fixed after densification.
+   - The final difference comes entirely from Faster-GS's end-of-training opacity cleanup. It removes 0.4–3.5% of Gaussians in stock (room 3.5%) but only 0.1–0.7% in the selective-Adam arms.
+   - The mechanism is still a hypothesis: rows that are not updated keep their opacity instead of drifting below the floor.
+   - Counts at 15k differ slightly between stock and FasterGSPlus, by up to −1.5% on stump, because A changes the backward from step 0.
+6. **Memory:** the training-only peak (allocated, read inside the last training step) is the same for stock and A+B, 4.9–7.2 GiB by scene. C lowers it by up to 0.06 GiB.
