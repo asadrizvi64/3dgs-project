@@ -4,8 +4,8 @@ The readback patch merges the two count read-backs after preprocessing into one 
 memset stream with a GPU-side event wait, and drops the host read of the bucket count (buffers sized for an upper bound;
 both backward kernels read the real count on the GPU). None of this may change results:
   - forward images bit-identical, same instance count;
-  - bucket count: >= the reference's (exact) count, <= floor((n_instances + 31 * n_tiles) / 32), and 0 when there are no
-    instances;
+  - bucket count: >= the reference's (exact) count, <= floor((n_instances + 31 * n_tiles) / 32) with 16x12 tiles, and 0
+    when there are no instances;
   - backward (stock taming kernel, mode 0, and the macro kernel, mode 3): every gradient and densification row within
     1e-6 relative error of the reference (only atomic order differs);
   - 30 forward/backward calls in a row on different inputs, without host syncs in between, keep agreeing (no stale reuse
@@ -48,7 +48,9 @@ def inputs(scene, seed):
     g = torch.Generator(device='cuda').manual_seed(seed)
     u = lambda lo, hi, *s: lo + (hi - lo) * torch.rand(*s, generator=g, device='cuda')
     focal = 0.9 * w
-    z = u(*dp, n)
+    # distinct depths (a shuffled even grid): with tied depths the order of tied primitives after the depth sort follows
+    # preprocess's atomics, so even stock Faster-GS is not bit-reproducible and an exact image comparison would be noise
+    z = dp[0] + (dp[1] - dp[0]) * (torch.randperm(n, generator=g, device='cuda').float() + 0.5) / n
     x = (u(-0.6, 0.6, n) * w / focal) * z
     y = (u(-0.6, 0.6, n) * h / focal) * z
     o = u(*op, n, 1)
@@ -62,8 +64,11 @@ def inputs(scene, seed):
     return params, settings, grad_image
 
 
-def fwd_bwd(C, params, settings, grad_image, mode, rows, sync=True):
+def fwd_bwd(C, params, settings, grad_image, mode, rows, sync=True, backward=True):
     image, pb, tb, ib, bb, n_inst, n_buckets, sel = C.forward(*params, *settings)
+    if not backward:
+        torch.cuda.synchronize()
+        return image, n_inst, n_buckets, None, None
     di = torch.zeros(rows, params[0].shape[0], device='cuda') if rows else torch.empty(0, device='cuda')
     m, s, r, o, sh0, shr = params
     grads = C.backward(di, grad_image.reshape(image.shape), image, m, s, r, o, shr, pb, tb, ib, bb, *settings,
@@ -78,15 +83,23 @@ def fwd_bwd(C, params, settings, grad_image, mode, rows, sync=True):
 @pytest.mark.parametrize('rows', [0, 3], ids=['no_densify', 'densify_abs'])
 def test_equivalent(scene, mode, rows):
     params, settings, grad_image = inputs(scene, seed=7)
-    ref = fwd_bwd(REF, params, settings, grad_image, mode, rows)
+    # stock Faster-GS launches the taming backward with zero blocks when nothing is visible, which leaves a pending CUDA
+    # error that breaks the next call (the RB patch guards it, like the macro path already did): skip the reference's
+    # backward there and check only that the new build runs it cleanly
+    ref_bwd = not (scene[0] == 'empty' and mode == 0)
     new = fwd_bwd(NEW, params, settings, grad_image, mode, rows)
+    ref = fwd_bwd(REF, params, settings, grad_image, mode, rows, backward=ref_bwd)
     assert torch.equal(ref[0], new[0]), 'forward image differs'
     assert ref[1] == new[1], f'instances {ref[1]} vs {new[1]}'
-    n_tiles = ((scene[2] + 15) // 16) * ((scene[3] + 15) // 16)
+    n_tiles = ((scene[2] + 15) // 16) * ((scene[3] + 11) // 12)  # 16x12 tiles (rasterization_config.h)
     bound = 0 if new[1] == 0 else (new[1] + 31 * n_tiles) // 32
     assert ref[2] <= new[2] <= bound, f'buckets ref {ref[2]} new {new[2]} bound {bound}'
     if new[1] == 0:
         assert new[2] == 0
+    if not ref_bwd:
+        assert all(torch.isfinite(t).all() and not t.any() for t in new[3] if t.numel()), 'empty scene: nonzero gradients'
+        print(f'EQUIV scene={scene[0]} mode={mode} rows={rows} instances=0 (reference backward skipped)')
+        return
     errs = {f'g{i}': rel(a, b) for i, (a, b) in enumerate(zip(new[3], ref[3]))}
     errs.update({f'densify{r}': rel(new[4][r], ref[4][r]) for r in range(rows)})
     print(f'EQUIV scene={scene[0]} mode={mode} rows={rows} instances={new[1]} buckets ref={ref[2]} new={new[2]} '

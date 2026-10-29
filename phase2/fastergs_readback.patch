@@ -21,6 +21,20 @@ index 9422834..2e4037f 100644
  
          const uint tile_idx = bucket_tile_index[bucket_idx];
          const uint2 tile_range = tile_instance_ranges[tile_idx];
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/backward.cu b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/backward.cu
+index 5ea41af..62832da 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/backward.cu
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/backward.cu
+@@ -138,6 +138,9 @@ void faster_gs::rasterization::backward(
+             CHECK_CUDA(config::debug, "blend_backward_macro")
+             return;
+         }
++        // phase2 readback: a zero-block launch is an invalid configuration that leaves a pending CUDA error (stock bug; the
++        // macro path above already returns here). Only reachable when nothing is visible.
++        if (n_buckets == 0) return;
+         const auto blend_backward_kernel = grad_mean2d_abs_helper != nullptr ? kernels::backward::blend_backward_cu<true> : kernels::backward::blend_backward_cu<false>;
+         blend_backward_kernel<<<n_buckets, 32>>>(
+             tile_buffers.instance_ranges,
 diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/forward.cu b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/forward.cu
 index 530d51f..b251714 100644
 --- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/forward.cu
