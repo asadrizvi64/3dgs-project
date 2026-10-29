@@ -55,6 +55,7 @@ These match the 9-scene benchmark (garden −24.7%, room −19.7%) to within abo
   - **Unexplained:** A+B+C on room is higher with the timer off on all three seeds: +0.12 / +0.07 / +0.14 dB with all images, about +0.12 dB with views 13 and 16 removed. Garden shows nothing like it.
   - The timer changes only CPU/GPU overlap, not the computation, and runs are never bit-identical (atomics), so this may be noise that happened to line up. But three same-sign seeds are worth one check before the timer-off setting is used for quality claims: rerun A+B+C on room with the timer on and off for two more seeds, or compare the runs' parameters at 15k.
   - **For timing this does not matter;** the benchmark's quality results all use the timer-on protocol.
+  - **Status (2026-10-29): left open by decision.** Not checked further; any later quality claim made with the timer off should run that check first.
 
 ## Summary
 
