@@ -1,0 +1,6 @@
+SEGCLOCK step=300 seg_s=0.585 cum_s=0.585 sparse=0 N=138766 peak_alloc_gib=2.22
+SEGCLOCK step=600 seg_s=0.530 cum_s=1.116 sparse=0 N=138766 peak_alloc_gib=2.22
+FGS_SPARSE_FROM: selective Adam from iteration 600
+SEGCLOCK step=900 seg_s=0.550 cum_s=1.666 sparse=1 visfrac=0.424 N=218436 peak_alloc_gib=2.33
+SEGCLOCK step=1200 seg_s=0.606 cum_s=2.272 sparse=1 visfrac=0.429 N=372012 peak_alloc_gib=2.49
+FGS_TRAIN_END N=372012 peak_alloc_gib=2.49 peak_reserved_gib=2.61

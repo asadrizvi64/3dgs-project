@@ -1,0 +1,118 @@
+node=c79 job=4485371 gpu=NVIDIA H100 stages=timerctl repo=5e944e5
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## timerctl (scene room scale 0.5, seeds 0 1 2, 30000 iterations; timer on/off x stock/A+B+C)
+##### t_room_stock_on_s0: method=FasterGS seed=0 iters=30000 flags= blend=taming 00:40:07
+FGS_N iteration=15000 N=1346393
+FGS_WALL from=0 to=15000 s=71.777 views=b1cf16f65f45768
+FGS_WALL from=15000 to=30000 s=80.225 views=19a5a0a105a0bd6c
+SEGCLOCK step=30000 seg_s=149.227 cum_s=149.227 sparse=0 N=1346393 peak_alloc_gib=6.65
+FGS_TRAIN_END N=1346393 peak_alloc_gib=6.65 peak_reserved_gib=7.00
+RUNDIR t_room_stock_on_s0 output/FasterGS/fastergs_room_1144604_s0p2t_room_stock_on_s0_2026-10-29-00-40-20
+PERIMG t_room_stock_on_s0 n_images=39 min_image=34 min_psnr=23.56
+RESULT t_room_stock_on_s0 PSNR:31.7553896292662 SSIM:0.921063896937248 LPIPS:0.28160666693479586 N_Gaussians:1300385 ms_it=5.02  allocated: 6.65 GiB
+##### t_room_abc_on_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 00:44:08
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1351017
+FGS_WALL from=0 to=15000 s=59.829 views=b1cf16f65f45768
+FGS_WALL from=15000 to=30000 s=61.639 views=19a5a0a105a0bd6c
+SEGCLOCK step=30000 seg_s=119.030 cum_s=119.030 sparse=1 visfrac=0.320 N=1351017 peak_alloc_gib=6.62
+FGS_TRAIN_END N=1351017 peak_alloc_gib=6.62 peak_reserved_gib=6.96
+RUNDIR t_room_abc_on_s0 output/FasterGSPlus/fastergsplus_room_67fd35f_s0p2t_room_abc_on_s0_2026-10-29-00-44-15
+PERIMG t_room_abc_on_s0 n_images=39 min_image=34 min_psnr=22.83
+RESULT t_room_abc_on_s0 PSNR:31.700111633692032 SSIM:0.920544547912402 LPIPS:0.2822958108706352 N_Gaussians:1342513 ms_it=4.01  allocated: 6.62 GiB
+##### t_room_stock_off_s0: method=FasterGS seed=0 iters=30000 flags= blend=taming 00:47:32
+FGS_N iteration=15000 N=1359366
+FGS_WALL from=0 to=15000 s=69.855 views=b1cf16f65f45768
+FGS_WALL from=15000 to=30000 s=78.672 views=19a5a0a105a0bd6c
+SEGCLOCK step=30000 seg_s=147.536 cum_s=147.536 sparse=0 N=1359366 peak_alloc_gib=6.66
+FGS_TRAIN_END N=1359366 peak_alloc_gib=6.66 peak_reserved_gib=7.12
+RUNDIR t_room_stock_off_s0 output/FasterGS/fastergs_room_1144604_s0p2t_room_stock_off_s0_2026-10-29-00-47-39
+PERIMG t_room_stock_off_s0 n_images=39 min_image=36 min_psnr=23.65
+RESULT t_room_stock_off_s0 PSNR:31.670298600808167 SSIM:0.9203866445101224 LPIPS:0.2821442916607245 N_Gaussians:1312629 ms_it=  allocated: 6.66 GiB
+##### t_room_abc_off_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 00:51:23
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1355138
+FGS_WALL from=0 to=15000 s=58.132 views=b1cf16f65f45768
+FGS_WALL from=15000 to=30000 s=59.528 views=19a5a0a105a0bd6c
+SEGCLOCK step=30000 seg_s=116.672 cum_s=116.672 sparse=1 visfrac=0.318 N=1355138 peak_alloc_gib=6.62
+FGS_TRAIN_END N=1355138 peak_alloc_gib=6.62 peak_reserved_gib=7.08
+RUNDIR t_room_abc_off_s0 output/FasterGSPlus/fastergsplus_room_67fd35f_s0p2t_room_abc_off_s0_2026-10-29-00-51-30
+PERIMG t_room_abc_off_s0 n_images=39 min_image=36 min_psnr=23.69
+RESULT t_room_abc_off_s0 PSNR:31.81887220725035 SSIM:0.9209732122910328 LPIPS:0.2819696278908314 N_Gaussians:1347490 ms_it=  allocated: 6.62 GiB
+##### t_room_abc_on_s1: method=FasterGSPlus seed=1 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 00:54:44
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1350776
+FGS_WALL from=0 to=15000 s=59.669 views=1b1e4170af7f4cc4
+FGS_WALL from=15000 to=30000 s=61.236 views=1f36f84632307074
+SEGCLOCK step=30000 seg_s=118.483 cum_s=118.483 sparse=1 visfrac=0.281 N=1350776 peak_alloc_gib=6.64
+FGS_TRAIN_END N=1350776 peak_alloc_gib=6.64 peak_reserved_gib=6.95
+RUNDIR t_room_abc_on_s1 output/FasterGSPlus/fastergsplus_room_67fd35f_s1p2t_room_abc_on_s1_2026-10-29-00-54-51
+PERIMG t_room_abc_on_s1 n_images=39 min_image=36 min_psnr=22.99
+RESULT t_room_abc_on_s1 PSNR:31.670479896741035 SSIM:0.9207249421339768 LPIPS:0.28173692715473664 N_Gaussians:1343557 ms_it=3.99  allocated: 6.64 GiB
+##### t_room_stock_off_s1: method=FasterGS seed=1 iters=30000 flags= blend=taming 00:58:08
+FGS_N iteration=15000 N=1366415
+FGS_WALL from=0 to=15000 s=69.884 views=1b1e4170af7f4cc4
+FGS_WALL from=15000 to=30000 s=78.176 views=1f36f84632307074
+SEGCLOCK step=30000 seg_s=147.066 cum_s=147.066 sparse=0 N=1366415 peak_alloc_gib=6.67
+FGS_TRAIN_END N=1366415 peak_alloc_gib=6.67 peak_reserved_gib=7.10
+RUNDIR t_room_stock_off_s1 output/FasterGS/fastergs_room_1144604_s1p2t_room_stock_off_s1_2026-10-29-00-58-15
+PERIMG t_room_stock_off_s1 n_images=39 min_image=13 min_psnr=20.00
+RESULT t_room_stock_off_s1 PSNR:31.330281673333584 SSIM:0.9191264861669296 LPIPS:0.2828415089692825 N_Gaussians:1319623 ms_it=  allocated: 6.67 GiB
+##### t_room_abc_off_s1: method=FasterGSPlus seed=1 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 01:02:00
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1352405
+FGS_WALL from=0 to=15000 s=58.188 views=1b1e4170af7f4cc4
+FGS_WALL from=15000 to=30000 s=59.680 views=1f36f84632307074
+SEGCLOCK step=30000 seg_s=116.887 cum_s=116.887 sparse=1 visfrac=0.281 N=1352405 peak_alloc_gib=6.64
+FGS_TRAIN_END N=1352405 peak_alloc_gib=6.64 peak_reserved_gib=6.95
+RUNDIR t_room_abc_off_s1 output/FasterGSPlus/fastergsplus_room_67fd35f_s1p2t_room_abc_off_s1_2026-10-29-01-02-07
+PERIMG t_room_abc_off_s1 n_images=39 min_image=36 min_psnr=22.81
+RESULT t_room_abc_off_s1 PSNR:31.73567072550456 SSIM:0.9214342190669134 LPIPS:0.281842209589787 N_Gaussians:1344501 ms_it=  allocated: 6.64 GiB
+##### t_room_stock_on_s1: method=FasterGS seed=1 iters=30000 flags= blend=taming 01:05:21
+FGS_N iteration=15000 N=1343861
+FGS_WALL from=0 to=15000 s=71.520 views=1b1e4170af7f4cc4
+FGS_WALL from=15000 to=30000 s=79.970 views=1f36f84632307074
+SEGCLOCK step=30000 seg_s=148.870 cum_s=148.870 sparse=0 N=1343861 peak_alloc_gib=6.64
+FGS_TRAIN_END N=1343861 peak_alloc_gib=6.64 peak_reserved_gib=7.00
+RUNDIR t_room_stock_on_s1 output/FasterGS/fastergs_room_1144604_s1p2t_room_stock_on_s1_2026-10-29-01-05-28
+PERIMG t_room_stock_on_s1 n_images=39 min_image=36 min_psnr=23.78
+RESULT t_room_stock_on_s1 PSNR:31.493277623103214 SSIM:0.9204492355004336 LPIPS:0.2829215855170519 N_Gaussians:1296402 ms_it=5.00  allocated: 6.64 GiB
+##### t_room_stock_off_s2: method=FasterGS seed=2 iters=30000 flags= blend=taming 01:09:15
+FGS_N iteration=15000 N=1339889
+FGS_WALL from=0 to=15000 s=69.634 views=cdd3cda99f39de1
+FGS_WALL from=15000 to=30000 s=78.290 views=17f053e126eac37b
+SEGCLOCK step=30000 seg_s=146.933 cum_s=146.933 sparse=0 N=1339889 peak_alloc_gib=6.64
+FGS_TRAIN_END N=1339889 peak_alloc_gib=6.64 peak_reserved_gib=7.00
+RUNDIR t_room_stock_off_s2 output/FasterGS/fastergs_room_1144604_s2p2t_room_stock_off_s2_2026-10-29-01-09-22
+PERIMG t_room_stock_off_s2 n_images=39 min_image=36 min_psnr=23.91
+RESULT t_room_stock_off_s2 PSNR:31.638382740509815 SSIM:0.9204118908979954 LPIPS:0.2820728860604457 N_Gaussians:1293377 ms_it=  allocated: 6.64 GiB
+##### t_room_abc_off_s2: method=FasterGSPlus seed=2 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 01:13:05
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1350955
+FGS_WALL from=0 to=15000 s=58.388 views=cdd3cda99f39de1
+FGS_WALL from=15000 to=30000 s=59.569 views=17f053e126eac37b
+SEGCLOCK step=30000 seg_s=116.968 cum_s=116.968 sparse=1 visfrac=0.354 N=1350955 peak_alloc_gib=6.63
+FGS_TRAIN_END N=1350955 peak_alloc_gib=6.63 peak_reserved_gib=6.96
+RUNDIR t_room_abc_off_s2 output/FasterGSPlus/fastergsplus_room_67fd35f_s2p2t_room_abc_off_s2_2026-10-29-01-13-12
+PERIMG t_room_abc_off_s2 n_images=39 min_image=36 min_psnr=23.36
+RESULT t_room_abc_off_s2 PSNR:31.81435286693084 SSIM:0.9210367997487386 LPIPS:0.28256347813667393 N_Gaussians:1343151 ms_it=  allocated: 6.63 GiB
+##### t_room_stock_on_s2: method=FasterGS seed=2 iters=30000 flags= blend=taming 01:16:26
+FGS_N iteration=15000 N=1337238
+FGS_WALL from=0 to=15000 s=70.643 views=cdd3cda99f39de1
+FGS_WALL from=15000 to=30000 s=79.109 views=17f053e126eac37b
+SEGCLOCK step=30000 seg_s=147.135 cum_s=147.135 sparse=0 N=1337238 peak_alloc_gib=6.63
+FGS_TRAIN_END N=1337238 peak_alloc_gib=6.63 peak_reserved_gib=7.00
+RUNDIR t_room_stock_on_s2 output/FasterGS/fastergs_room_1144604_s2p2t_room_stock_on_s2_2026-10-29-01-16-33
+PERIMG t_room_stock_on_s2 n_images=39 min_image=36 min_psnr=24.43
+RESULT t_room_stock_on_s2 PSNR:31.745411408253204 SSIM:0.9201621214548746 LPIPS:0.28217126696537703 N_Gaussians:1292319 ms_it=4.95  allocated: 6.63 GiB
+##### t_room_abc_on_s2: method=FasterGSPlus seed=2 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 01:20:19
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1337013
+FGS_WALL from=0 to=15000 s=60.868 views=cdd3cda99f39de1
+FGS_WALL from=15000 to=30000 s=62.257 views=17f053e126eac37b
+SEGCLOCK step=30000 seg_s=120.615 cum_s=120.615 sparse=1 visfrac=0.359 N=1337013 peak_alloc_gib=6.61
+FGS_TRAIN_END N=1337013 peak_alloc_gib=6.61 peak_reserved_gib=6.95
+RUNDIR t_room_abc_on_s2 output/FasterGSPlus/fastergsplus_room_67fd35f_s2p2t_room_abc_on_s2_2026-10-29-01-20-27
+PERIMG t_room_abc_on_s2 n_images=39 min_image=36 min_psnr=23.21
+RESULT t_room_abc_on_s2 PSNR:31.675924741304836 SSIM:0.9204799807988681 LPIPS:0.28313804131287795 N_Gaussians:1329159 ms_it=4.06  allocated: 6.61 GiB
+JOB OK

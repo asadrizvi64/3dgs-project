@@ -1,0 +1,5 @@
+node=c137 job=4484716 gpu=NVIDIA H100 stages=hostprof repo=5e944e5
+patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## hostprof (scene room, A+B+C, nsys with --pytorch=autograd-nvtx --python-backtrace=cuda at 20000)
+##### h_room_abc_20000: method=FasterGSPlus seed=0 window=20000-20050 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 00:31:46
+FAILED h_room_abc_20000: no report

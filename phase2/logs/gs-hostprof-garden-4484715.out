@@ -1,0 +1,5 @@
+node=c136 job=4484715 gpu=NVIDIA H100 stages=hostprof repo=5e944e5
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## hostprof (scene garden, A+B+C, nsys with --pytorch=autograd-nvtx --python-backtrace=cuda at 20000)
+##### h_garden_abc_20000: method=FasterGSPlus seed=0 window=20000-20050 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 00:31:47
+FAILED h_garden_abc_20000: no report

@@ -1,0 +1,4 @@
+FGS_WALL from=0 to=600 s=1.310 views=132fae9a723ffc3e
+FGS_WALL from=600 to=1200 s=1.340 views=1a1404b35855ca42
+SEGCLOCK step=1200 seg_s=2.548 cum_s=2.548 sparse=0 N=391469 peak_alloc_gib=2.51
+FGS_TRAIN_END N=391469 peak_alloc_gib=2.51 peak_reserved_gib=2.63

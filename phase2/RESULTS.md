@@ -197,3 +197,12 @@ Details: [`profile/README.md`](profile/README.md). Stock vs A+B+C, step split by
   2. the blend kernels (indoor);
   3. the densifying-phase optimizer (outdoor);
   4. early stop (outdoor).
+
+## Step 4b: timer on/off control (garden and room, 3 seeds)
+
+Details: [`timerctl/README.md`](timerctl/README.md). Stock vs A+B+C, each with NeRFICG's per-step timer on (the benchmark protocol) and off; every seed's runs saw identical training views.
+
+- **A+B+C saves 23.9% of whole-run wall time on garden and 19.4% on room with the timer on**, and 24.7% / 20.5% with it off. This matches the benchmark's per-step clock to within 0.3 points.
+- **The advantage does not depend on the timer.** Turning the timer off saves 1–2% for stock and 2–3% for A+B+C (3–4 s per run). Most of the GPU idle time seen in the nsys windows (about 1 ms per step) is inside the steps and stays when the timer is off.
+- **The benchmark clock (summed per-step CUDA events) misses under 2% of a run's wall time**, so the step 3 numbers stand as measured.
+- **Quality:** on garden the timer setting changes nothing beyond seed noise. On room, stock has one single-view failure (image 13, the same view as in the benchmark), and A+B+C is about 0.12 dB higher with the timer off on all three seeds. That is unexplained and affects only timer-off quality, not any reported result.

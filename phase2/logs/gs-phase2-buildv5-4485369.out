@@ -1,0 +1,86 @@
+node=c136 job=4485369 gpu=NVIDIA H100 stages=build unit switch ctltest repo=5e944e5
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## build
+patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSPlus/Trainer.py
+patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSPlus/Trainer.py
+67fd35f trainer patch cluster/patches/fastergs_sparse_from.py
+62a247d fgs-prof hooks (cluster/patches/fastergs_profiling.py)
+163262b Rename FasterGS -> FasterGSPlus
+c1b5c24 Phase 1: macro blend backward (3dgs-project 5e944e5)
+1144604 Lean Adam: visibility-sparse update and bf16 SH-rest moments (stochastic rounding)
+c60ea26 Add absolute gradient densification from AbsGS using the selection strategy of GOF (closes #13)
+FasterGSPlusCudaBackend ok, default blend backward mode 3
+########## unit
+.PARITY mode=15 scene=garden_res n=200000 buckets=39878 abs=True pa=True max=1.152e-06 means=7.07e-07 scales=9.90e-07 rotations=1.15e-06 opacities=6.98e-07 sh0=2.91e-07 sh_rest=2.90e-07 densify0=0.00e+00 densify1=6.67e-07 densify2=1.07e-07
+...
+92 passed in 2.95s
+lean-adam PASS count: 15
+########## switch
+##### sw_on: method=FasterGSPlus seed=0 iters=1200 flags=SELECTIVE_FROM=600,SH_REST_BF16_MOMENTS=true blend=macro 00:33:54
+SEGCLOCK step=300 seg_s=0.585 cum_s=0.585 sparse=0 N=138766 peak_alloc_gib=2.22
+SEGCLOCK step=600 seg_s=0.530 cum_s=1.116 sparse=0 N=138766 peak_alloc_gib=2.22
+FGS_SPARSE_FROM: selective Adam from iteration 600
+SEGCLOCK step=900 seg_s=0.550 cum_s=1.666 sparse=1 visfrac=0.424 N=218436 peak_alloc_gib=2.33
+SEGCLOCK step=1200 seg_s=0.606 cum_s=2.272 sparse=1 visfrac=0.429 N=372012 peak_alloc_gib=2.49
+FGS_TRAIN_END N=372012 peak_alloc_gib=2.49 peak_reserved_gib=2.61
+RUNDIR sw_on output/FasterGSPlus/fastergsplus_garden_67fd35f_s0p2sw_on_2026-10-29-00-34-06
+PERIMG sw_on n_images=24 min_image=4 min_psnr=17.36
+RESULT sw_on PSNR:22.78229610125224 SSIM:0.6017287348707517 LPIPS:0.44959742700060207 N_Gaussians:372012 ms_it=1.93  allocated: 2.49 GiB
+##### sw_off: method=FasterGSPlus seed=0 iters=1200 flags= blend=taming 00:34:57
+SEGCLOCK step=300 seg_s=0.654 cum_s=0.654 sparse=0 N=138766 peak_alloc_gib=2.24
+SEGCLOCK step=600 seg_s=0.604 cum_s=1.258 sparse=0 N=138766 peak_alloc_gib=2.24
+SEGCLOCK step=900 seg_s=0.630 cum_s=1.888 sparse=0 N=220823 peak_alloc_gib=2.34
+SEGCLOCK step=1200 seg_s=0.728 cum_s=2.616 sparse=0 N=391549 peak_alloc_gib=2.51
+FGS_TRAIN_END N=391549 peak_alloc_gib=2.51 peak_reserved_gib=2.63
+RUNDIR sw_off output/FasterGSPlus/fastergsplus_garden_67fd35f_s0p2sw_off_2026-10-29-00-35-04
+PERIMG sw_off n_images=24 min_image=4 min_psnr=18.80
+RESULT sw_off PSNR:22.99414261182149 SSIM:0.6089190344015757 LPIPS:0.44017957895994186 N_Gaussians:391548 ms_it=2.22  allocated: 2.51 GiB
+PASS on: switch fires once, at 600
+PASS on: dense before, sparse after
+PASS off: never switches
+PASS off: dense throughout
+PASS on: v4 SEGCLOCK lines carry N and peak_alloc_gib
+PASS on: one FGS_TRAIN_END line with N and peaks
+PASS off: v4 SEGCLOCK lines carry N and peak_alloc_gib
+PASS off: one FGS_TRAIN_END line with N and peaks
+########## timerctl (scene garden scale 0.25, seeds 0, 1200 iterations; timer on/off x stock/A+B+C)
+##### t_garden_stock_on_s0: method=FasterGS seed=0 iters=1200 flags= blend=taming 00:35:55
+FGS_WALL from=0 to=600 s=1.361 views=132fae9a723ffc3e
+FGS_WALL from=600 to=1200 s=1.411 views=1a1404b35855ca42
+SEGCLOCK step=1200 seg_s=2.612 cum_s=2.612 sparse=0 N=390939 peak_alloc_gib=2.51
+FGS_TRAIN_END N=390939 peak_alloc_gib=2.51 peak_reserved_gib=2.65
+RUNDIR t_garden_stock_on_s0 output/FasterGS/fastergs_garden_1144604_s0p2t_garden_stock_on_s0_2026-10-29-00-36-02
+PERIMG t_garden_stock_on_s0 n_images=24 min_image=4 min_psnr=18.00
+RESULT t_garden_stock_on_s0 PSNR:22.974039634068806 SSIM:0.6087370639046034 LPIPS:0.44035736719767254 N_Gaussians:390939 ms_it=2.22  allocated: 2.51 GiB
+##### t_garden_abc_on_s0: method=FasterGSPlus seed=0 iters=1200 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 00:36:53
+FGS_WALL from=0 to=600 s=1.213 views=132fae9a723ffc3e
+FGS_WALL from=600 to=1200 s=1.221 views=1a1404b35855ca42
+SEGCLOCK step=1200 seg_s=2.285 cum_s=2.285 sparse=0 N=391914 peak_alloc_gib=2.51
+FGS_TRAIN_END N=391914 peak_alloc_gib=2.51 peak_reserved_gib=2.59
+RUNDIR t_garden_abc_on_s0 output/FasterGSPlus/fastergsplus_garden_67fd35f_s0p2t_garden_abc_on_s0_2026-10-29-00-37-01
+PERIMG t_garden_abc_on_s0 n_images=24 min_image=4 min_psnr=18.91
+RESULT t_garden_abc_on_s0 PSNR:23.007094939549763 SSIM:0.6099888359506925 LPIPS:0.43932656695445377 N_Gaussians:391914 ms_it=1.94  allocated: 2.51 GiB
+##### t_garden_stock_off_s0: method=FasterGS seed=0 iters=1200 flags= blend=taming 00:37:51
+FGS_WALL from=0 to=600 s=1.310 views=132fae9a723ffc3e
+FGS_WALL from=600 to=1200 s=1.340 views=1a1404b35855ca42
+SEGCLOCK step=1200 seg_s=2.548 cum_s=2.548 sparse=0 N=391469 peak_alloc_gib=2.51
+FGS_TRAIN_END N=391469 peak_alloc_gib=2.51 peak_reserved_gib=2.63
+RUNDIR t_garden_stock_off_s0 output/FasterGS/fastergs_garden_1144604_s0p2t_garden_stock_off_s0_2026-10-29-00-37-58
+PERIMG t_garden_stock_off_s0 n_images=24 min_image=4 min_psnr=19.13
+RESULT t_garden_stock_off_s0 PSNR:23.02522301673889 SSIM:0.609580193956693 LPIPS:0.4396268812318643 N_Gaussians:391469 ms_it=  allocated: 2.51 GiB
+##### t_garden_abc_off_s0: method=FasterGSPlus seed=0 iters=1200 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 00:38:49
+FGS_WALL from=0 to=600 s=1.149 views=132fae9a723ffc3e
+FGS_WALL from=600 to=1200 s=1.163 views=1a1404b35855ca42
+SEGCLOCK step=1200 seg_s=2.216 cum_s=2.216 sparse=0 N=392519 peak_alloc_gib=2.51
+FGS_TRAIN_END N=392519 peak_alloc_gib=2.51 peak_reserved_gib=2.59
+RUNDIR t_garden_abc_off_s0 output/FasterGSPlus/fastergsplus_garden_67fd35f_s0p2t_garden_abc_off_s0_2026-10-29-00-38-56
+PERIMG t_garden_abc_off_s0 n_images=24 min_image=4 min_psnr=18.61
+RESULT t_garden_abc_off_s0 PSNR:22.96939031283061 SSIM:0.6090306763847669 LPIPS:0.44011003772417706 N_Gaussians:392518 ms_it=  allocated: 2.51 GiB
+########## ctltest checks on /home/h4/syas272h/3dgs-project/phase2/logs/gs-phase2-buildv5-4485369.out
+PASS ctltest: analyzer validated all 4 runs
+| stock Faster-GS | ON | 2.8 (2.8) | 1.4 | 1.4 | 2.6 (2.6) | 0.2 | 2.22 | 22.974 |
+| stock Faster-GS | OFF | 2.7 (2.7) | 1.3 | 1.3 | 2.5 (2.5) | 0.1 |  | 23.025 |
+| A+B+C | ON | 2.4 (2.4) | 1.2 | 1.2 | 2.3 (2.3) | 0.1 | 1.94 | 23.007 |
+| A+B+C | OFF | 2.3 (2.3) | 1.1 | 1.2 | 2.2 (2.2) | 0.1 |  | 22.969 |
+PASS ctltest: recorder parsed 4 runs (2 timer ON, 2 timer OFF), none failed
+JOB OK

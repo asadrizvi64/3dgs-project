@@ -1,0 +1,118 @@
+node=c136 job=4485370 gpu=NVIDIA H100 stages=timerctl repo=5e944e5
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## timerctl (scene garden scale 0.25, seeds 0 1 2, 30000 iterations; timer on/off x stock/A+B+C)
+##### t_garden_stock_on_s0: method=FasterGS seed=0 iters=30000 flags= blend=taming 00:40:07
+FGS_N iteration=15000 N=4167782
+FGS_WALL from=0 to=15000 s=115.205 views=2d712d139e77ef9
+FGS_WALL from=15000 to=30000 s=140.160 views=156a548f04149127
+SEGCLOCK step=30000 seg_s=251.212 cum_s=251.212 sparse=0 N=4167782 peak_alloc_gib=6.46
+FGS_TRAIN_END N=4167782 peak_alloc_gib=6.46 peak_reserved_gib=8.02
+RUNDIR t_garden_stock_on_s0 output/FasterGS/fastergs_garden_1144604_s0p2t_garden_stock_on_s0_2026-10-29-00-40-14
+PERIMG t_garden_stock_on_s0 n_images=24 min_image=4 min_psnr=20.43
+RESULT t_garden_stock_on_s0 PSNR:27.47591296831767 SSIM:0.8670682832598686 LPIPS:0.1205275949711601 N_Gaussians:4151817 ms_it=8.42  allocated: 6.46 GiB
+##### t_garden_abc_on_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 00:45:15
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=4158335
+FGS_WALL from=0 to=15000 s=96.702 views=2d712d139e77ef9
+FGS_WALL from=15000 to=30000 s=99.356 views=156a548f04149127
+SEGCLOCK step=30000 seg_s=192.151 cum_s=192.151 sparse=1 visfrac=0.337 N=4158335 peak_alloc_gib=6.41
+FGS_TRAIN_END N=4158335 peak_alloc_gib=6.41 peak_reserved_gib=7.96
+RUNDIR t_garden_abc_on_s0 output/FasterGSPlus/fastergsplus_garden_67fd35f_s0p2t_garden_abc_on_s0_2026-10-29-00-45-23
+PERIMG t_garden_abc_on_s0 n_images=24 min_image=4 min_psnr=20.42
+RESULT t_garden_abc_on_s0 PSNR:27.53082513809204 SSIM:0.8673144529263178 LPIPS:0.12042276964833339 N_Gaussians:4154071 ms_it=6.45  allocated: 6.41 GiB
+##### t_garden_stock_off_s0: method=FasterGS seed=0 iters=30000 flags= blend=taming 00:49:23
+FGS_N iteration=15000 N=4182652
+FGS_WALL from=0 to=15000 s=113.929 views=2d712d139e77ef9
+FGS_WALL from=15000 to=30000 s=138.829 views=156a548f04149127
+SEGCLOCK step=30000 seg_s=250.554 cum_s=250.554 sparse=0 N=4182652 peak_alloc_gib=6.48
+FGS_TRAIN_END N=4182652 peak_alloc_gib=6.48 peak_reserved_gib=8.55
+RUNDIR t_garden_stock_off_s0 output/FasterGS/fastergs_garden_1144604_s0p2t_garden_stock_off_s0_2026-10-29-00-49-31
+PERIMG t_garden_stock_off_s0 n_images=24 min_image=4 min_psnr=20.65
+RESULT t_garden_stock_off_s0 PSNR:27.552635113398235 SSIM:0.8673109586040179 LPIPS:0.12032367599507172 N_Gaussians:4166758 ms_it=  allocated: 6.48 GiB
+##### t_garden_abc_off_s0: method=FasterGSPlus seed=0 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 00:54:28
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=4166768
+FGS_WALL from=0 to=15000 s=93.659 views=2d712d139e77ef9
+FGS_WALL from=15000 to=30000 s=96.640 views=156a548f04149127
+SEGCLOCK step=30000 seg_s=188.115 cum_s=188.115 sparse=1 visfrac=0.335 N=4166768 peak_alloc_gib=6.41
+FGS_TRAIN_END N=4166768 peak_alloc_gib=6.41 peak_reserved_gib=7.75
+RUNDIR t_garden_abc_off_s0 output/FasterGSPlus/fastergsplus_garden_67fd35f_s0p2t_garden_abc_off_s0_2026-10-29-00-54-36
+PERIMG t_garden_abc_off_s0 n_images=24 min_image=4 min_psnr=20.48
+RESULT t_garden_abc_off_s0 PSNR:27.537938435872395 SSIM:0.8671870157122612 LPIPS:0.1206914500022928 N_Gaussians:4162298 ms_it=  allocated: 6.41 GiB
+##### t_garden_abc_on_s1: method=FasterGSPlus seed=1 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 00:58:31
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=4195591
+FGS_WALL from=0 to=15000 s=95.356 views=178a8683df5fdb8
+FGS_WALL from=15000 to=30000 s=97.837 views=65f6325f028836a
+SEGCLOCK step=30000 seg_s=189.291 cum_s=189.291 sparse=1 visfrac=0.317 N=4195591 peak_alloc_gib=6.45
+FGS_TRAIN_END N=4195591 peak_alloc_gib=6.45 peak_reserved_gib=8.35
+RUNDIR t_garden_abc_on_s1 output/FasterGSPlus/fastergsplus_garden_67fd35f_s1p2t_garden_abc_on_s1_2026-10-29-00-58-38
+PERIMG t_garden_abc_on_s1 n_images=24 min_image=4 min_psnr=20.47
+RESULT t_garden_abc_on_s1 PSNR:27.522989829381306 SSIM:0.8670786321163177 LPIPS:0.12030008962998788 N_Gaussians:4191788 ms_it=6.35  allocated: 6.45 GiB
+##### t_garden_stock_off_s1: method=FasterGS seed=1 iters=30000 flags= blend=taming 01:02:37
+FGS_N iteration=15000 N=4193294
+FGS_WALL from=0 to=15000 s=114.336 views=178a8683df5fdb8
+FGS_WALL from=15000 to=30000 s=139.033 views=65f6325f028836a
+SEGCLOCK step=30000 seg_s=251.138 cum_s=251.138 sparse=0 N=4193294 peak_alloc_gib=6.49
+FGS_TRAIN_END N=4193294 peak_alloc_gib=6.49 peak_reserved_gib=8.49
+RUNDIR t_garden_stock_off_s1 output/FasterGS/fastergs_garden_1144604_s1p2t_garden_stock_off_s1_2026-10-29-01-02-44
+PERIMG t_garden_stock_off_s1 n_images=24 min_image=4 min_psnr=20.50
+RESULT t_garden_stock_off_s1 PSNR:27.44996412595113 SSIM:0.8661922241250674 LPIPS:0.12060409411787987 N_Gaussians:4177957 ms_it=  allocated: 6.49 GiB
+##### t_garden_abc_off_s1: method=FasterGSPlus seed=1 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 01:07:43
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=4194232
+FGS_WALL from=0 to=15000 s=94.061 views=178a8683df5fdb8
+FGS_WALL from=15000 to=30000 s=96.649 views=65f6325f028836a
+SEGCLOCK step=30000 seg_s=188.496 cum_s=188.496 sparse=1 visfrac=0.318 N=4194232 peak_alloc_gib=6.46
+FGS_TRAIN_END N=4194232 peak_alloc_gib=6.46 peak_reserved_gib=7.90
+RUNDIR t_garden_abc_off_s1 output/FasterGSPlus/fastergsplus_garden_67fd35f_s1p2t_garden_abc_off_s1_2026-10-29-01-07-50
+PERIMG t_garden_abc_off_s1 n_images=24 min_image=4 min_psnr=20.66
+RESULT t_garden_abc_off_s1 PSNR:27.494549036026 SSIM:0.8669738918542862 LPIPS:0.12031812469164531 N_Gaussians:4190298 ms_it=  allocated: 6.46 GiB
+##### t_garden_stock_on_s1: method=FasterGS seed=1 iters=30000 flags= blend=taming 01:11:47
+FGS_N iteration=15000 N=4191077
+FGS_WALL from=0 to=15000 s=116.240 views=178a8683df5fdb8
+FGS_WALL from=15000 to=30000 s=141.088 views=65f6325f028836a
+SEGCLOCK step=30000 seg_s=253.082 cum_s=253.082 sparse=0 N=4191077 peak_alloc_gib=6.49
+FGS_TRAIN_END N=4191077 peak_alloc_gib=6.49 peak_reserved_gib=8.55
+RUNDIR t_garden_stock_on_s1 output/FasterGS/fastergs_garden_1144604_s1p2t_garden_stock_on_s1_2026-10-29-01-11-54
+PERIMG t_garden_stock_on_s1 n_images=24 min_image=4 min_psnr=20.50
+RESULT t_garden_stock_on_s1 PSNR:27.462600231170654 SSIM:0.866117333372434 LPIPS:0.12069140064219634 N_Gaussians:4175190 ms_it=8.49  allocated: 6.49 GiB
+##### t_garden_stock_off_s2: method=FasterGS seed=2 iters=30000 flags= blend=taming 01:16:57
+FGS_N iteration=15000 N=4166446
+FGS_WALL from=0 to=15000 s=113.537 views=16b79b2f76d3ef42
+FGS_WALL from=15000 to=30000 s=138.296 views=94fd49726d76fa2
+SEGCLOCK step=30000 seg_s=249.618 cum_s=249.618 sparse=0 N=4166446 peak_alloc_gib=6.46
+FGS_TRAIN_END N=4166446 peak_alloc_gib=6.46 peak_reserved_gib=8.04
+RUNDIR t_garden_stock_off_s2 output/FasterGS/fastergs_garden_1144604_s2p2t_garden_stock_off_s2_2026-10-29-01-17-04
+PERIMG t_garden_stock_off_s2 n_images=24 min_image=4 min_psnr=20.74
+RESULT t_garden_stock_off_s2 PSNR:27.49062164624532 SSIM:0.8671185026566187 LPIPS:0.12034588276098172 N_Gaussians:4150794 ms_it=  allocated: 6.46 GiB
+##### t_garden_abc_off_s2: method=FasterGSPlus seed=2 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 01:22:00
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=4164348
+FGS_WALL from=0 to=15000 s=93.706 views=16b79b2f76d3ef42
+FGS_WALL from=15000 to=30000 s=96.252 views=94fd49726d76fa2
+SEGCLOCK step=30000 seg_s=187.736 cum_s=187.736 sparse=1 visfrac=0.303 N=4164348 peak_alloc_gib=6.45
+FGS_TRAIN_END N=4164348 peak_alloc_gib=6.45 peak_reserved_gib=7.73
+RUNDIR t_garden_abc_off_s2 output/FasterGSPlus/fastergsplus_garden_67fd35f_s2p2t_garden_abc_off_s2_2026-10-29-01-22-08
+PERIMG t_garden_abc_off_s2 n_images=24 min_image=4 min_psnr=20.58
+RESULT t_garden_abc_off_s2 PSNR:27.557902971903484 SSIM:0.8680661643544832 LPIPS:0.12015919853001833 N_Gaussians:4160451 ms_it=  allocated: 6.45 GiB
+##### t_garden_stock_on_s2: method=FasterGS seed=2 iters=30000 flags= blend=taming 01:26:03
+FGS_N iteration=15000 N=4166385
+FGS_WALL from=0 to=15000 s=115.033 views=16b79b2f76d3ef42
+FGS_WALL from=15000 to=30000 s=139.580 views=94fd49726d76fa2
+SEGCLOCK step=30000 seg_s=250.424 cum_s=250.424 sparse=0 N=4166385 peak_alloc_gib=6.46
+FGS_TRAIN_END N=4166385 peak_alloc_gib=6.46 peak_reserved_gib=8.51
+RUNDIR t_garden_stock_on_s2 output/FasterGS/fastergs_garden_1144604_s2p2t_garden_stock_on_s2_2026-10-29-01-26-10
+PERIMG t_garden_stock_on_s2 n_images=24 min_image=4 min_psnr=20.37
+RESULT t_garden_stock_on_s2 PSNR:27.525874217351276 SSIM:0.8676073725024859 LPIPS:0.12034359201788902 N_Gaussians:4150669 ms_it=8.40  allocated: 6.46 GiB
+##### t_garden_abc_on_s2: method=FasterGSPlus seed=2 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 01:31:10
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=4161961
+FGS_WALL from=0 to=15000 s=95.900 views=16b79b2f76d3ef42
+FGS_WALL from=15000 to=30000 s=98.543 views=94fd49726d76fa2
+SEGCLOCK step=30000 seg_s=190.531 cum_s=190.531 sparse=1 visfrac=0.303 N=4161961 peak_alloc_gib=6.44
+FGS_TRAIN_END N=4161961 peak_alloc_gib=6.44 peak_reserved_gib=7.96
+RUNDIR t_garden_abc_on_s2 output/FasterGSPlus/fastergsplus_garden_67fd35f_s2p2t_garden_abc_on_s2_2026-10-29-01-31-17
+PERIMG t_garden_abc_on_s2 n_images=24 min_image=4 min_psnr=20.41
+RESULT t_garden_abc_on_s2 PSNR:27.52507797876994 SSIM:0.8678137684861819 LPIPS:0.12054984644055367 N_Gaussians:4158041 ms_it=6.39  allocated: 6.44 GiB
+JOB OK
