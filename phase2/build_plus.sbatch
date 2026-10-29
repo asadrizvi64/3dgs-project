@@ -64,16 +64,19 @@ python "$REPO/cluster/patches/fastergs_sparse_from.py" "$DATA/nerficg/src/Method
 
 if has build; then
   echo "########## build"
-  VARIANT=FasterGSPlus TRAINER_PATCHES=cluster/patches/fastergs_sparse_from.py bash "$REPO/phase1/make_variant.sh"
+  VARIANT=${BUILD_VARIANT:-FasterGSPlus} SRC_PATCHES="${BUILD_SRC_PATCHES:-}" TRAINER_PATCHES=cluster/patches/fastergs_sparse_from.py bash "$REPO/phase1/make_variant.sh"
 fi
 
 if has unit; then
   echo "########## unit"
-  ( cd /tmp && FGS_BACKEND=FasterGSPlusCudaBackend python -m pytest -q -s -p no:cacheprovider "$REPO/phase1/tests/test_parity.py" ) \
+  ( cd /tmp && FGS_BACKEND=${BUILD_VARIANT:-FasterGSPlus}CudaBackend python -m pytest -q -s -p no:cacheprovider "$REPO/phase1/tests/test_parity.py" ) \
     > "$OUT/parity.log" 2>&1 && tail -3 "$OUT/parity.log" || { echo "FAILED parity"; tail -30 "$OUT/parity.log"; FAILED+=(parity); }
-  ( cd /tmp && FGS_BACKEND=FasterGSPlusCudaBackend python -I "$REPO/cluster/tests/test_lean_adam.py" ) \
+  ( cd /tmp && FGS_BACKEND=${BUILD_VARIANT:-FasterGSPlus}CudaBackend python -I "$REPO/cluster/tests/test_lean_adam.py" ) \
     > "$OUT/lean_adam.log" 2>&1 && grep -c "^PASS" "$OUT/lean_adam.log" | sed 's/^/lean-adam PASS count: /' || { echo "FAILED lean adam"; grep -E "FAIL|Error" "$OUT/lean_adam.log" | head; FAILED+=(lean_adam); }
   grep "^FAIL" "$OUT/lean_adam.log" && FAILED+=(lean_adam_fail_lines) || true
+  if [ "${BUILD_VARIANT:-FasterGSPlus}" != FasterGSPlus ]; then   # the variant must reproduce FasterGSPlus on identical inputs
+    ( cd /tmp && FGS_REF=FasterGSPlusCudaBackend FGS_NEW=${BUILD_VARIANT}CudaBackend python -m pytest -q -s -p no:cacheprovider "$REPO/phase2/tests/test_readback_equiv.py" )       > "$OUT/equiv.log" 2>&1 && { grep "^EQUIV" "$OUT/equiv.log" | sort -u | head -30; tail -2 "$OUT/equiv.log"; } || { echo "FAILED equivalence"; tail -40 "$OUT/equiv.log"; FAILED+=(equivalence); }
+  fi
 fi
 
 train() {  # name method seed iters opt_flags blend [segk]
@@ -254,6 +257,18 @@ ok = (len(rows) == 4 and not any('FAILED' in n for n in notes)
       and all('wall clock' in n for n in notes))
 sys.exit(0 if ok else 1)
 PYC
+fi
+
+if has rbbench; then   # A+B+C vs A+B+C with the readback patch (FasterGSPlusRB), timer ON (benchmark protocol), wall clock on
+  BSCENE=${SCENE:?set SCENE for the rbbench stage}
+  case $BSCENE in room|counter|kitchen|bonsai) BSCALE=0.5 ;; *) BSCALE=0.25 ;; esac
+  echo "########## rbbench (scene $BSCENE scale $BSCALE, seeds ${SEEDS:-0 1 2}; A+B+C vs A+B+C + readback patch)"
+  for seed in ${SEEDS:-0 1 2}; do
+    for k in 0 1; do
+      if [ $(( (k + seed) % 2 )) = 0 ]; then arm=abc; m=FasterGSPlus; else arm=abcr; m=FasterGSPlusRB; fi
+      TRAIN_ENV="FGS_WALL=0,15000,30000" train "x_${BSCENE}_${arm}_s$seed" $m "$seed" 30000 "SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true" macro
+    done
+  done
 fi
 
 if has timerctl; then

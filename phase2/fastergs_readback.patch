@@ -1,0 +1,74 @@
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh
+index 9422834..2e4037f 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh
+@@ -297,6 +297,9 @@ namespace faster_gs::rasterization::kernels::backward {
+         auto warp = cg::tiled_partition<32>(block);
+         const uint bucket_idx = block.group_index().x;
+         const uint lane_idx = warp.thread_rank();
++        // phase2 readback: the grid is sized for an upper bound; the real bucket count is the last tile offset
++        const uint n_tiles_total = grid_width * ((height + config::tile_height - 1) / config::tile_height);
++        if (bucket_idx >= tile_bucket_offsets[n_tiles_total - 1]) return;
+ 
+         const uint tile_idx = bucket_tile_index[bucket_idx];
+         const uint2 tile_instance_range = tile_instance_ranges[tile_idx];
+@@ -552,6 +555,8 @@ namespace faster_gs::rasterization::kernels::backward {
+         const uint lane_idx = threadIdx.x % 32;
+         const uint bucket_idx = blockIdx.x * n_warps + warp_idx;
+         if (bucket_idx >= n_buckets) return; // whole warp; warps never sync with each other
++        // phase2 readback: n_buckets is an upper bound; the real count is the last tile offset
++        if (bucket_idx >= tile_bucket_offsets[grid_width * ((height + config::tile_height - 1) / config::tile_height) - 1]) return;
+ 
+         const uint tile_idx = bucket_tile_index[bucket_idx];
+         const uint2 tile_range = tile_instance_ranges[tile_idx];
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/forward.cu b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/forward.cu
+index 530d51f..b251714 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/forward.cu
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/forward.cu
+@@ -96,10 +96,14 @@ std::tuple<int, int, int> faster_gs::rasterization::forward(
+     );
+     CHECK_CUDA(config::debug, "preprocess")
+ 
+-    int n_visible_primitives;
+-    cudaMemcpy(&n_visible_primitives, primitive_buffers.n_visible_primitives, sizeof(uint), cudaMemcpyDeviceToHost);
+-    int n_instances;
+-    cudaMemcpy(&n_instances, primitive_buffers.n_instances, sizeof(uint), cudaMemcpyDeviceToHost);
++    // phase2 readback: both counts in one host round trip (two async copies into pinned memory, then one sync)
++    static uint* counts_host = nullptr;
++    if (counts_host == nullptr) cudaMallocHost(&counts_host, 2 * sizeof(uint));
++    cudaMemcpyAsync(counts_host, primitive_buffers.n_visible_primitives, sizeof(uint), cudaMemcpyDeviceToHost, 0);
++    cudaMemcpyAsync(counts_host + 1, primitive_buffers.n_instances, sizeof(uint), cudaMemcpyDeviceToHost, 0);
++    cudaStreamSynchronize(0);
++    int n_visible_primitives = static_cast<int>(counts_host[0]);
++    int n_instances = static_cast<int>(counts_host[1]);
+ 
+     cub::DeviceRadixSort::SortPairs(
+         primitive_buffers.cub_workspace,
+@@ -204,7 +208,14 @@ void faster_gs::rasterization::diff_rasterize(
+ 
+     instance_primitive_indices_selector = instance_buffers.primitive_indices.selector;
+ 
+-    if constexpr (!config::debug) cudaStreamSynchronize(memset_stream);
++    // phase2 readback: the main stream waits for the memsets on the GPU instead of the host blocking on them
++    // (memset_stream is a blocking stream, so it is also ordered after earlier work on the legacy default stream)
++    if constexpr (!config::debug) {
++        static cudaEvent_t memset_done = nullptr;
++        if (memset_done == nullptr) cudaEventCreateWithFlags(&memset_done, cudaEventDisableTiming);
++        cudaEventRecord(memset_done, memset_stream);
++        cudaStreamWaitEvent(0, memset_done, 0);
++    }
+ 
+     if (n_instances > 0) {
+         kernels::forward::extract_instance_ranges_cu<KeyT><<<div_round_up(n_instances, config::block_size_extract_instance_ranges), config::block_size_extract_instance_ranges>>>(
+@@ -231,7 +242,10 @@ void faster_gs::rasterization::diff_rasterize(
+     );
+     CHECK_CUDA(config::debug, "cub::DeviceScan::InclusiveSum (tile_buffers.n_buckets)")
+ 
+-    cudaMemcpy(&n_buckets, tile_buffers.buckets_offset + n_tiles - 1, sizeof(uint), cudaMemcpyDeviceToHost);
++    // phase2 readback: no host read of the bucket count. A tile with k instances has ceil(k / 32) buckets, so the total
++    // is at most floor((n_instances + 31 * n_tiles) / 32); the buffers are sized for that bound and the real count stays on
++    // the GPU (tile_buffers.buckets_offset[n_tiles - 1]), where blend and both backward kernels read it.
++    n_buckets = n_instances == 0 ? 0 : static_cast<int>((static_cast<long long>(n_instances) + 31LL * n_tiles) / 32);
+ 
+     char* bucket_buffers_blob = resize_bucket_buffers(required<BucketBuffers>(n_buckets));
+     BucketBuffers bucket_buffers = BucketBuffers::from_blob(bucket_buffers_blob, n_buckets);

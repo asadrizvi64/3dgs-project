@@ -43,7 +43,9 @@ def describe(method, flags, blend):
     m = re.search(r'SELECTIVE_FROM=(\d+)', flags)
     parts.append(f'B selective Adam from {m.group(1)}' if m else 'dense Adam')
     parts.append('C bf16 SH-rest moments' if 'SH_REST_BF16_MOMENTS=true' in flags else 'fp32 moments')
-    return f'FasterGSPlus ({", ".join(parts)})'
+    if method == 'FasterGSPlusRB':
+        parts.append('fewer host read-backs (phase2/fastergs_readback.patch)')
+    return f'{method} ({", ".join(parts)})'
 
 
 new_rows = []
@@ -79,7 +81,7 @@ for path in args.logs:
         end = grab(r'FGS_TRAIN_END N=(\d+) peak_alloc_gib=(\S+) peak_reserved_gib=(\S+)')
         per = grab(r'PERIMG \S+ n_images=(\d+) min_image=(\d+) min_psnr=(\S+)')
         failed = any(l.startswith(f'FAILED {b["name"]}') for l in L)
-        sm = re.match(r'[brpt]_([a-z]+)_', b['name'])
+        sm = re.match(r'[brptx]_([a-z]+)_', b['name'])
         scene = sm.group(1) if sm else 'garden'
         rundir, clock = '', ''
         adir = os.path.join(archive, b['name'])
@@ -130,9 +132,9 @@ for path in args.logs:
         if rundir:
             notes.append(f'run dir {rundir}')
         notes.append('LPIPS is VGG')
-        hook = 'v4' if (clk and clk.group(5)) else 'v3'
+        hook = 'v5' if walls else ('v4 or later' if (clk and clk.group(5)) else 'v3')
         commit = (f'FasterGS@1144604 + sparse_from {hook} hooks' if b['method'] == 'FasterGS'
-                  else f'FasterGSPlus (1144604 + phase1 macro + sparse_from {hook})') + f'; 3dgs-project {repo}'
+                  else f'{b["method"]} (1144604 + phase1 macro' + (' + phase2 readback patch' if b['method'] == 'FasterGSPlusRB' else '') + f' + sparse_from {hook})') + f'; 3dgs-project {repo}'
         row = dict(date=dm.group(1) if dm else '', commit=commit, instance_type=f'ZIH Capella node {node} (job {job})',
                    scene=scene, method=describe(b['method'], b['flags'], b['blend']), seed=b['seed'],
                    train_time_s=f'{float(clk.group(2)):.1f}' if clk else '',

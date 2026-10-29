@@ -18,6 +18,7 @@ SRC=$METHODS/FasterGS
 VARIANT=${VARIANT:-FasterGSMacro}
 VLOW=$(echo "$VARIANT" | tr 'A-Z' 'a-z')
 TRAINER_PATCHES=${TRAINER_PATCHES:-}
+SRC_PATCHES=${SRC_PATCHES:-}   # e.g. phase2/fastergs_readback.patch
 DST=$METHODS/$VARIANT
 BASE=${BASE:-1144604}
 BUILD=${BUILD:-1}
@@ -35,6 +36,10 @@ git checkout -q -b phase1-macro "$BASE"
 git apply "$REPO/phase1/fastergs_macro.patch"
 REV=$(cat "$REPO/.phase1-rev" 2>/dev/null || git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo unknown)
 git commit -qam "Phase 1: macro blend backward (3dgs-project $REV)"
+for sp in ${SRC_PATCHES:-}; do   # repo-relative source patches on top of the macro patch (FasterGS names, before the rename)
+  git apply "$REPO/$sp"
+  git commit -qam "source patch $sp"
+done
 
 git mv FasterGSCudaBackend/FasterGSCudaBackend FasterGSCudaBackend/${VARIANT}CudaBackend
 git mv FasterGSCudaBackend ${VARIANT}CudaBackend
