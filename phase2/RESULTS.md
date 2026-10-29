@@ -85,7 +85,7 @@ The all-off arm's mean PSNR is 27.520. The time spread across seeds is ±1 s or 
    - In run a0b1c1 seed 0 (B+C, no A), test image 22 scores 20.98 dB. In the other 23 runs it scores 27.5–27.9 dB.
    - The render shows a large, faint white haze over the lower right of that view ([comparison with the B-only run of the same seed](logs/run_4482364/img22_b1c1_vs_b1c0_s0.jpg)), most likely a large low-opacity floater near that camera.
    - This one image costs the run 0.29 dB of mean PSNR. That makes "C given B" −0.096 dB, against 0.000 dB without image 22. Every other image matches the B-only run.
-   - Durable copy (outside the cat workspace, which expires 2026-11-26): `~/3dgs-archive/phase2-factorial-4482364/` on Capella. It holds the complete run folders of this run and of its paired B-only run (final checkpoint, renders, config, metrics), the final test renders and ground truth of all 24 runs, and a `manifest.sha256` (1,312 files, 4.4 GB).
+   - Durable copy (outside the cat workspace, which expires 2026-11-26): `/projects/p_scads_mlhpc/syas272h/3dgs-archive/phase2-factorial-4482364/` on Capella (moved from `~/3dgs-archive` on 2026-10-29: home has a 50 GB quota). It holds the complete run folders of this run and of its paired B-only run (final checkpoint, renders, config, metrics), the final test renders and ground truth of all 24 runs, and a `manifest.sha256` (1,312 files, 4.4 GB).
    - It is 1 run out of 24 and did not recur in the other B+C seeds or in any full-stack run. One occurrence cannot show whether it is chance or a rare failure mode of B with C, so step 3 should check per-image PSNR for outliers in every run.
 6. **Gaussians and VRAM.**
    - B-on arms end with 0.2–0.5% more Gaussians after cleanup, the same direction as before. The counts at 15k and before cleanup were not recorded; clock hook v4 records them in step 3.
@@ -175,7 +175,7 @@ Per-seed values, SSIM, ms/it, Gaussian counts and VRAM per scene are in the anal
 
 ## Renders during training (stage renders, 27 runs, seed 0)
 
-Stock, A+B and A+B+C were each trained once more on every scene (seed 0), rendering and evaluating the test set every 1,000 iterations. The figures, comparison sheets (by iteration and at equal training time, full frame and zoomed) and per-stage data are in [`stages/`](stages/README.md); the full renders (35 GB) are in `~/3dgs-archive/stages/` on Capella. These runs are not benchmark values (the repeated evaluations change them, and they are one seed).
+Stock, A+B and A+B+C were each trained once more on every scene (seed 0), rendering and evaluating the test set every 1,000 iterations. The figures, comparison sheets (by iteration and at equal training time, full frame and zoomed) and per-stage data are in [`stages/`](stages/README.md); the full renders (35 GB) are in `/projects/p_scads_mlhpc/syas272h/3dgs-archive/stages/` on Capella. These runs are not benchmark values (the repeated evaluations change them, and they are one seed).
 
 - At equal training time, both stacks are at or above stock over most of training on 8 of 9 scenes. On treehill both fall slightly behind stock in the last third (about 0.05–0.15 dB on this seed), consistent with treehill being the weakest benchmark scene.
 - Outdoor scenes reach stock's final PSNR well before 30k in all arms (stump at 14k, bicycle at 18–20k); indoor scenes are still improving at 30k. This supports testing an early stop (keeping the 30k schedule) on outdoor scenes first.

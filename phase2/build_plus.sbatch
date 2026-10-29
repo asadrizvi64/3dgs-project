@@ -16,12 +16,12 @@
 #            30k: stock FasterGS, FasterGSPlus A+B, FasterGSPlus A+B+C, interleaved per seed, arm order rotated by seed
 #   stages   (renders during training, not in the default STAGES) one scene, seed SEEDS (default 0), stock / A+B / A+B+C:
 #            full test-set renders and metrics every STAGE_EVERY (default 1000) iterations, training clock at each;
-#            renders copied to $HOME/3dgs-archive/stages/<scene>/<run>/ (outside the expiring workspace),
+#            renders copied to $ARCHIVE/stages/<scene>/<run>/ (outside the expiring workspace),
 #            intermediate checkpoints deleted. Not for timing claims: the intermediate evaluations change the run.
 #   profile  (step 4, not in the default STAGES) one scene, seed 0, stock vs A+B+C: per arm one full 30k run with
 #            FGS_PROF=1 (STAGE fwd/bwd/opt CUDA events every 250 steps, CURVE ms/step every 500; the hooks sync the
 #            host every step, so these are not benchmark times) and two nsys captures of 50 steps at 5000 and 20000
-#            (NVTX fwd/bwd/opt); reports in $HOME/3dgs-archive/profile/<job>/, CSV summaries in phase2/logs/run_<job>/
+#            (NVTX fwd/bwd/opt); reports in $ARCHIVE/profile/<job>/, CSV summaries in phase2/logs/run_<job>/
 #   ctltest  (with build/unit/switch) the timer-control path at 1200 iterations on garden seed 0, whose real output must
 #            pass analyze_timerctl.py and record_runs.py before the full timerctl runs are trusted
 #   timerctl (step 4b) one scene, SEEDS (default 0 1 2): stock and A+B+C, each with NeRFICG's per-step timer ON (the
@@ -48,6 +48,7 @@ set -euo pipefail
 STAGES=${STAGES:-"build unit switch sanity"}
 REPO=${SLURM_SUBMIT_DIR:-$PWD}
 DATA=$(ws_find -F cat 3dgs-data) || { echo "cat workspace not visible on $(hostname)"; exit 1; }
+ARCHIVE=${ARCHIVE:-/projects/p_scads_mlhpc/syas272h/3dgs-archive}   # durable results (project storage; moved out of $HOME 2026-10-29, which has a 50 GB quota)
 export DATA
 module load GCC/13.3.0 CUDA/12.8.0 Python/3.12.3 >/dev/null 2>&1
 source "$DATA/fastergs-venv/bin/activate"
@@ -94,7 +95,7 @@ train() {  # name method seed iters opt_flags blend [segk]
     ( cd "$DATA/nerficg/$RUN" && cp --parents -t "$OUT/runs/$name" training_config.yaml timings.txt n_gaussians.txt vram_stats.txt \
         gpu_clock_summary.txt gpu_clock_log.csv test_*/metrics_8bit.txt 2>/dev/null ) || true
     if [ "${TRAIN_BACKUP:--1}" -gt 0 ]; then   # stage-render runs: keep every stage's renders outside the workspace
-      local ARC=$HOME/3dgs-archive/stages/$BSCENE/$name
+      local ARC=$ARCHIVE/stages/$BSCENE/$name
       mkdir -p "$ARC"; echo "$RUN" > "$ARC/rundir.txt"
       rsync -a --include='test_30000/rgb_gt/' --include='test_30000/rgb_gt/**' --exclude='test_*/rgb_gt/' --include='test_*/' --include='test_*/**' --include='training_config.yaml' --include='timings.txt'           --include='n_gaussians.txt' --exclude='*' "$DATA/nerficg/$RUN/" "$ARC/" && echo "STAGEARCHIVE $name $ARC $(ls -d "$ARC"/test_* | wc -l) stages"
       find "$DATA/nerficg/$RUN/checkpoints" -name '*.pt' ! -name 'final.pt' -delete 2>/dev/null || true
@@ -195,7 +196,7 @@ nsys_window() {  # name method flags blend start: nsys capture of steps start..s
   local name=$1 method=$2 flags=$3 blend=$4 a=$5 b=$(( $5 + 50 ))
   local NSYS; NSYS=$(command -v nsys || true)
   [ -n "$NSYS" ] || { echo "FAILED $name: nsys not found"; FAILED+=("$name"); return; }
-  local REP=$HOME/3dgs-archive/profile/${SLURM_JOB_ID:-local}; mkdir -p "$REP"
+  local REP=$ARCHIVE/profile/${SLURM_JOB_ID:-local}; mkdir -p "$REP"
   echo "##### $name: method=$method seed=0 window=$a-$b flags=$flags blend=$blend $(date +%T)"
   local rc=0
   env FGS_BLEND_BWD=$blend FGS_PROF_RANGE=$a,$b FGS_PROF_EXIT=$b SCENE=$BSCENE SCALE=$BSCALE SEED=0 METHOD=$method TAG=p2$name OPT_FLAGS=$flags LAUNCHER="$NSYS profile -t cuda,nvtx ${NSYS_EXTRA:-}--capture-range=cudaProfilerApi --capture-range-end=stop -f true -o $REP/$name" bash "$REPO/cluster/train_fastergs.sbatch" > "$OUT/$name.log" 2>&1 || rc=$?

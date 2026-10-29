@@ -1,6 +1,6 @@
 """Comparison sheets from the stage-render runs (phase2/build_plus.sbatch STAGES=stages): renders during training.
 
-    python phase2/stage_sheets.py <scene> <stage archive: ~/3dgs-archive/stages/<scene>> <seg dir: phase2/logs/run_<job>> <out dir>
+    python phase2/stage_sheets.py <scene> <stage archive: /projects/p_scads_mlhpc/syas272h/3dgs-archive/stages/<scene>> <seg dir: phase2/logs/run_<job>> <out dir>
 
 For each scene it writes (JPEG, cells downscaled to CELL_W pixels wide):
   <scene>_view<i>_by_iteration.jpg   rows = iterations (ITERS), columns = stock | A+B | A+B+C | ground truth

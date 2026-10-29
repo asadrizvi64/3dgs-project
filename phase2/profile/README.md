@@ -11,7 +11,7 @@ Phase 2 step 4, jobs 4484137 (garden, node c46) and 4484138 (room, node c104), 2
 - **Kernels:** two `nsys` captures per arm, 50 steps each: at 5k (densifying, dense Adam in both arms) and at 20k (after A+B+C has switched to selective Adam).
   - Kernels are grouped by name.
   - Kernel time excludes launch gaps, so it is below the step time.
-  - The captures (`.nsys-rep`) are on Capella in `~/3dgs-archive/profile/<job>/`. These runs stop after the window, so they have no quality results and are not in the CSV.
+  - The captures (`.nsys-rep`) are on Capella in `/projects/p_scads_mlhpc/syas272h/3dgs-archive/profile/<job>/`. These runs stop after the window, so they have no quality results and are not in the CSV.
 - **Scope:** one seed and two scenes. The numbers explain the benchmark; they are not themselves benchmark values.
 
 ![step split](stage_split.png)

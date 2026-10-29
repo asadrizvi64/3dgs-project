@@ -18,7 +18,7 @@ Jobs 4483157–4483165, 2026-10-28, built from [`../build_plus.sbatch`](../build
 
 There are two test views per scene: view 0 is the one with the median stock PSNR at 30k, and view 1 the one with the largest stock gain from 7k to 30k.
 
-The full renders, all 30 stages and every test view (35 GB), are on Capella in `~/3dgs-archive/stages/<scene>/r_<scene>_<arm>_s0/test_<iteration>/rgb/`, outside the expiring workspace. Built by [`../stage_curves.py`](../stage_curves.py) and [`../stage_sheets.py`](../stage_sheets.py).
+The full renders, all 30 stages and every test view (35 GB), are on Capella in `/projects/p_scads_mlhpc/syas272h/3dgs-archive/stages/<scene>/r_<scene>_<arm>_s0/test_<iteration>/rgb/`, outside the expiring workspace. Built by [`../stage_curves.py`](../stage_curves.py) and [`../stage_sheets.py`](../stage_sheets.py).
 
 ## When each arm first reaches stock's final quality (seed 0, indicative only)
 
