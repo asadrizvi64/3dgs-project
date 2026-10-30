@@ -1,7 +1,9 @@
-# Alternative track R: better-positioned Gaussians from depth reinitialization (draft, 2026-10-29)
+# Alternative track R: better-positioned Gaussians from depth reinitialization (revised 2026-10-29)
 
-**Status:** hypothesis test only. This track is separate from Phase 3 and must not change it.
-Combining with the Phase 2 gains (A, B, C) comes after the hypothesis passes (stage R5), never before.
+**Status:**
+- Hypothesis test only, separate from Phase 3. Combining with the Phase 2 gains (A, B, C) comes after the hypothesis passes (stage R5), never before.
+- **R0 and R1 tooling is written and tested on the CPU** (see "Tools"). The CUDA build, the GPU checks and the runs themselves have not run yet.
+- R2 is conditional on R1.
 
 **Question.** Does starting training from better-positioned Gaussians save enough later work to pay for its own cost, while keeping rendering quality?
 
@@ -11,216 +13,245 @@ Combining with the Phase 2 gains (A, B, C) comes after the hypothesis passes (st
 T_warm-up(0..k) + T_reinit + T_train(k..target)  <  T_reference(0..target)
 ```
 
-Both sides use the same quality target, the same crossing rule, the same clock and the same seeds. The quality target covers PSNR, SSIM, LPIPS and per-view checks, not PSNR alone.
+Both sides use the same quality target, the same candidate-and-confirmation rule, the same clock and the same seeds. If the better start cannot save enough later work to recover its own cost while preserving quality, the track stops before any nine-scene campaign.
+
+## Decisions (2026-10-29)
+
+| decision | choice |
+|---|---|
+| scenes | garden and room |
+| intervention step | the earliest passing value of 2000 or 5000, **per scene**; both audits are recorded |
+| quality | **no worsening** of the 3-seed mean PSNR, SSIM or LPIPS (pilot criterion, below); seed variability is reported but never used as an allowance |
+| filtering | filtered first; unfiltered later, as the comparison (R3) |
+| arms | all four (R2) |
+| budget | about 8 GPU-hours as a ceiling; R2 runs only if R1 passes |
 
 ## Keeping this off the main track
 
-- **Own files:** everything lives in `alt_reinit/` (plan, patches, job script, tools, analysis, logs). Nothing in `phase0/`, `phase1/`, `phase2/`, `cluster/patches/` or the FasterGSPlus build is edited.
-- **Own build:** variant `FasterGSReinit`, cloned directly from Faster-GS @1144604 (c60ea26 + lean Adam, options off; `results/optim` showed this equals stock). There is no macro patch and no FasterGSPlus code in it, so A, B and C cannot be switched on by accident.
-- **Reused read-only:**
-  - `cluster/patches/fastergs_sparse_from.py` v5, for the CUDA-event clock (`FGS_SEGCLOCK`) and `FGS_WALL`, with `SELECTIVE_FROM` unset;
-  - `cluster/patches/fastergs_save_state.py`, for warm-up states;
-  - `phase2/record_runs.py`, for `experiment_log.csv` rows with role `alt-reinit-<stage>`.
-- **Own budget:** at most about 8 GPU-hours before any decision to go beyond garden and room. There is a stop rule after R2 (below).
+- **Own files:** everything lives in `alt_reinit/`: plan, patch, driver, job script, analyzer, recorder, tests, logs. Nothing in `phase0/`–`phase2/`, `cluster/patches/` or the FasterGSPlus build is edited.
+- **Own build:** variant `FasterGSReinit`, cloned directly from Faster-GS @1144604 (c60ea26 plus lean Adam with its options off; `results/optim` showed this equals stock). No macro patch, no FasterGSPlus code.
+- **Shared files are only read:**
+  - `cluster/train_fastergs.sbatch` (the runner);
+  - `cluster/patches/fastergs_sparse_from.py` v5 (clock) and `fastergs_save_state.py`, both applied to the variant's own copy;
+  - the stock FasterGS checkout. The job checks that it carries the v5 clock hook and never patches it.
+- **Own recorder:** `alt_reinit/record_runs.py` writes roles `alt-reinit-check`, `-audit`, `-compare`, `-confirm`. `phase2/record_runs.py` could not be reused: it cannot emit these roles, labels short runs `check`, and describes non-FasterGS methods as "phase1 macro".
 
-## Why this test, and what it does not assume
+## What this plan does not claim
 
-The idea is that training spends many iterations discovering geometry. If better-positioned Gaussians are placed early, fewer iterations may be needed. The closest published support is EDGS (CVPR 2026):
-- dense correspondences are triangulated across image pairs, and training starts from them with densification disabled;
-- on Mip-NeRF360, its 10k-step model scores 27.54 / 0.834 / 0.154 against 27.49 / 0.816 / 0.215 for its retrained 30k 3DGS baseline;
-- its initialization takes about 120 s on an A100, inside a 26-minute vanilla-3DGS regime.
-
-None of this shows that a cheaper initialization from the model's own depth works equally well, or that it pays for itself inside Faster-GS (150–255 s per 30k run here).
-
-**What this plan does not claim:**
-
-- **Agreement between the model's own depth maps does not show the geometry is correct.** An early model can put a wall slightly in front of the real one, and several cameras will agree on that wrong wall. The geometric filter below is a cleaning step, and its statistics are diagnostics. The judge is held-out rendering quality, backed by checks against the training photos themselves.
+- **Agreement between the model's own depth maps does not show the geometry is correct.** Several cameras will agree on an invented wall slightly in front of the real one (`tests/test_core_cpu.py::test_consistent_wrong_surface_passes` builds exactly this case). The filter is a cleaning step, and its statistics are diagnostics. The judge is held-out rendering quality, backed by evidence from the training photos (patch ZNCC) and from COLMAP's feature-matched points.
 - **Agreement with the 30k model's depth is agreement with another reconstruction, not accuracy.** It is reported under that name.
-- **There is no fixed time budget for the reinitialization.** The budget is whatever the measured reference leaves: `T_reference(0..target) − T_warm-up − T_reinit` must cover the remaining training. Projections from Phase 2 ms/step are not used. Reinitialized Gaussians can differ in size, overlap and visibility, so their step cost is measured, not assumed.
+- **Expected depth is not a surface point.** Mixing surfaces at 1 m and 3 m gives about 2 m even when the pixel is nearly opaque. The render therefore also gives the weighted depth variance (third colour channel z²), and such mixtures are rejected. A low variance still does not show the depth is correct. Each Gaussian also contributes its *centre* depth over its whole footprint, so a large Gaussian on a slanted surface gives an offset depth with zero variance. R1 measures how much this matters at k.
+- **No fixed time budget.** The budget is whatever the measured reference leaves. Projections from Phase 2 ms/step are not used: reinitialized Gaussians can differ in size, overlap and visibility, so their step cost is measured.
 - **Novelty is narrow.** Each part is established:
   - EDGS: dense triangulated initialization, no densification;
-  - Mini-Splatting2: depth reinitialization at 2k, without a multi-view check;
+  - Mini-Splatting2: depth reinitialization at 2k, no multi-view check;
   - MVS-Splatting: initialization from fused MVS depth;
   - MVG-Splatting: multi-view geometric consistency of rendered depth, used to guide densification.
 
-  What could be new here is a controlled answer to whether self-bootstrapped reinitialization pays for itself in a fast trainer once every cost is counted.
+  The possible contribution is a controlled answer to whether self-bootstrapped reinitialization pays for itself inside a fast trainer once every cost is counted.
 
 ## Fixed for every arm (the hypothesis test)
 
-- Stock Faster-GS behaviour:
-  - stock blend backward (no A);
-  - dense Adam throughout (no B);
-  - **fp32 Adam moments** (no C; C showed a small, consistent quality cost in Phase 2).
-- Same 30k learning-rate schedule (`LEARNING_RATE_MEANS_MAX_STEPS: 30000`) in every arm, including runs that stop early. Shortening the schedule is a later, separate question.
-- Same SH-degree schedule, Morton ordering, final opacity cleanup and NeRFICG timer protocol (timer ON) as the Phase 2 benchmark.
-- Garden (1/4 resolution) and room (1/2 resolution). Seeds 0, 1, 2. One job per scene, so a scene's runs share a node, interleaved with the arm order rotated by seed.
+- Stock Faster-GS behaviour: stock blend backward (no A), dense Adam throughout (no B), **fp32 Adam moments** (no C; C showed a small, consistent quality cost in Phase 2).
+- The same 30k learning-rate schedule in every arm, including runs that stop early.
+- The same SH-degree schedule, Morton ordering, final opacity cleanup and NeRFICG timer protocol (timer ON) as the Phase 2 benchmark.
+- Garden (1/4 resolution) and room (1/2). Seeds 0, 1, 2; one job per scene, interleaved, arm order rotated by seed.
 
-## Clock and crossing rule (identical for all arms)
+## Clock
 
-**Training clock.** CUDA events around every `training_iteration` (SEGCLOCK). The track's own patch adds CUDA-event timing of every training callback that runs between steps:
-- `densify`;
-- `reset_opacities`;
-- `morton_ordering`;
-- the reinitialization, which includes depth rendering, neighbour selection, filtering, deduplication, k-nearest-neighbour (kNN) scales, parameter and optimizer-state rebuild, and Morton ordering.
+**Track clock = training steps + the method's between-step callbacks.**
+- **Steps:** SEGCLOCK, CUDA events around every `training_iteration`.
+- **Callbacks:** CBCLOCK, synchronized wall time per call of `densify`, `morton_ordering`, `reset_opacities`, `increase_sh_degree` and, in apply runs, `reinit_gaussians`. It is installed at the first training step, because NeRFICG assigns callback timers when training starts. Morton ordering at iteration 0, identical in every arm, falls before that and is not counted.
+- **Excluded:** evaluations, checkpoints, and the audit's dry-run reinit.
 
-The warm-up 0..k is on the same clock. Test evaluations are outside it.
+The reinit cost includes depth rendering for every training view, candidates, neighbour selection, filtering, deduplication, selection, kNN scales, the optimizer-state rebuild and Morton ordering. That is the `REINIT ... t_total` line, with every part listed.
 
-**Evaluations.** Full test set every 500 steps from k to 30k (and at k, before the intervention), with PSNR, SSIM, LPIPS (VGG, NeRFICG's metric) and per-image PSNR. The arms are identical up to k. Their quality at k is run-to-run noise and is recorded, so later gaps can be read as differences-in-differences (as in `results/sparse_switch`).
+## Quality target and stopping rule (pilot criterion)
 
-**Quality target**, per scene, from this job's own reference runs:
-- PSNR at or above the reference's 3-seed mean 30k PSNR;
-- SSIM no lower than the reference mean minus ε_SSIM;
-- LPIPS no higher than the reference mean plus ε_LPIPS;
-- proposed ε: the reference's own seed-to-seed standard deviation at 30k, measured in this job (decision 3).
+- **Target, per scene,** from this job's own reference runs, the 3-seed means at 30k:
+  - PSNR at or above the reference mean;
+  - SSIM at or above the reference mean;
+  - LPIPS at or below the reference mean.
 
-**Crossing.** The first evaluation step at which the 3-seed mean curve meets all three conditions, and still meets them at the next evaluation. The time to target is the mean training clock at that step.
-- The reference's mean curve meets its own target by 30k at the latest.
-- Per-seed crossings (each seed against the same target) are reported as a secondary result.
+  **No allowance for worsening.** Seed variability (per-seed values, standard deviation) is reported separately and never widens the target. A near-tie (within the reference's seed spread) is *inconclusive* until confirmed, and passing this criterion is not proof of exact quality equivalence.
+- **Candidate stopping point:** the first evaluation at which the 3-seed mean curve meets all three conditions. There is no "next evaluation" requirement, which avoided a conflict at 30k: the reference always has a candidate by 30k.
+- **Confirmation (R4):** every candidate, the reference's included, is rerun without intermediate evaluations, stopping there. It counts only if the confirmation runs meet the criterion against the reference's confirmation runs. **Failures to reproduce are counted and reported per arm**, with the metric that failed.
+- **Single views, image by image:**
+  - a test image is a failure in a run when it is more than 3 dB below that image's median over the reference runs;
+  - an arm may not have a failure on any image that never fails in the reference runs, so an unchanged *count* can no longer hide a newly broken view;
+  - every image more than 1 dB below its reference median is listed and inspected;
+  - camera-motion renders are inspected in R4.
+- "Faster on 2 of 3 seeds" is an exploratory speed signal only. It cannot outweigh a quality failure on the third seed.
 
-**Per-view checks at the crossing step, every seed:**
-- the number of one-view failures (a test image more than 3 dB below that image's median in the reference runs) must not exceed the reference's count;
-- every image more than 1 dB below its reference median is listed and inspected;
-- a run's quality failure is never outvoted by the other seeds (see stop rules).
+## Reinitialization, first version
 
-**Confirmation runs (R4).** Arms that cross are rerun without intermediate evaluations, stopping at their crossing step (`NUM_ITERATIONS` = crossing step; the learning-rate horizon stays 30k). They are timed by wall clock (`FGS_WALL` over the whole run) and by the training clock. This checks that the evaluated curve runs did not change the result, and gives the final models for the camera-path inspection.
+At step k, between `densify` / `morton_ordering` (priority 100 / 99) and the training step (80), in the callback `reinit_gaussians` (priority 95). Settings come from the environment variable `FGS_REINIT`, as the other hooks do, because the shared runner only injects OPTIMIZER keys. Every setting is printed in the `REINIT_CONFIG` line.
 
-## Reinitialization, first version (simple on purpose)
-
-At step k, inside the training loop and on the clock:
-
-1. **Depth for every training view.** Faster-GS @c60ea26 has no depth output, but the inference rasterizer (`rasterize(..., clamp_output=False)`) computes `sum(T·α·color) + T·bg`, with `color = max(0.5 + C0·sh0, 0)` when only the DC band is active. So:
-   - set `sh0 = (c − 0.5)/C0` per view with `c = (z_view, 1, 0)`, one SH band, background 0;
-   - one render then gives `(Σwz, Σw)`, so expected depth is `D = Σwz/Σw` and alpha is `A = Σw`.
-
-   No kernel change is needed. Expected depth mixes foreground and background at edges, so only pixels with `A ≥ 0.95` become candidates.
-2. **Candidates:** a regular pixel grid per view, with the stride set so the candidate count covers the target count at the keep rate measured in R1.
-3. **Geometric filter (on by default; unfiltered is a later ablation).**
-   - **Neighbours:** for each view, the 4 training views that see the largest share of its candidate points in-frustum, excluding views whose triangulation angle at the median depth is below 3°.
-   - **Agreement in one neighbour:** a point agrees if the neighbour's depth at the projection matches within 1% (with neighbour alpha at least 0.95) and the round trip reprojects within 1 px.
-   - **Keep rule:** keep a point if at least 2 of its 4 neighbours agree. Occlusion makes correct points fail some neighbours, hence 2 of 4.
-4. **Deduplicate:** a voxel hash with edge equal to the pixel footprint at the point's depth (z · stride / f, binned by log2 of the footprint). One point per voxel.
-5. **Replace only what is covered.** An existing Gaussian is removed if its centre falls in an occupied voxel. Otherwise it is kept with its parameters and optimizer state. This keeps sky and background coverage where nothing was registered.
-   - Total N = new + kept. For the matched-count arm, the number of new points is chosen so the total equals N_k. For the target-count arm, so it equals the stock N at 15k (garden 4.166 M, room 1.345 M; `phase2/logs/bench-analysis.md`).
-6. **Attributes: stock initialization rules for everything except position and colour.**
+1. **Depth for every training view.** One inference render (`rasterize(..., clamp_output=False)`) with one SH band, a black background and colours (z, 1, z²). That gives (Σwz, Σw, Σwz²): expected depth D, alpha A, and the relative depth standard deviation. No kernel change is needed.
+2. **Candidate pixels** on a regular grid (default stride 2): A ≥ 0.95 and relative depth std ≤ 0.05. Otherwise the status is empty, low alpha or mixture.
+3. **Geometric filter (default on).**
+   - **Neighbours:** the 4 views that see the largest share of the view's candidates in-frustum, with median triangulation angle ≥ 3°.
+   - **Test per neighbour:** the neighbour's depth is sampled **bilinearly** at the exact projection (all 4 taps valid) and must match within 1%. The point on the neighbour's ray at that depth must reproject into the reference within 1 px.
+   - Keep a candidate if 2 of its 4 neighbours agree.
+   - Why bilinear: a first version used nearest-pixel depth with a round trip through the neighbour pixel's centre. On a synthetic slanted plane it falsely rejected 12–13% of correct points; bilinear rejects 0.04–0.2%, and 4-tap validity keeps depth edges failing safe.
+4. **Deduplication:**
+   - a voxel hash with edge equal to the candidate spacing at its depth (z · stride / f, binned by log2);
+   - one candidate per voxel, preferring the most agreeing neighbours, ties broken by the track's own seeded generator;
+   - across levels, the finest observation wins.
+5. **Replacement, with an exact count.**
+   - **Removal:** an old Gaussian is removed iff its centre lies within `cover_ring` voxels (default 1, the 3×3×3 block; 0 = the same voxel) of a voxel occupied by a candidate, at that candidate's level.
+     - Removal is computed from *all* deduplicated candidates, before any subsampling, so the surviving rows do not depend on which candidates are drawn.
+     - Ring 1 because candidates sit at the rendered depth while old centres scatter around the surface by about one footprint: with ring 0 the stand-in scene removed almost nothing.
+   - **Addition:** `n_add = target − n_survivors` candidates are drawn uniformly at random (seeded).
+   - **Count:** `N_after = N_before − N_removed + N_added` must equal the target, and is asserted in the run.
+     - The matched-count arm therefore adds exactly as many points as it removes.
+     - If there are too few candidates, the stride is halved once. If the target is still unreachable, or below the survivors, apply runs abort (`REINIT_FAIL`) rather than run at a different count.
+   - Each run reports removed rows, surviving original rows and added rows.
+   - A centre in a covered voxel does not guarantee that the replacement keeps the old Gaussian's image coverage. The audit therefore renders silhouettes before and after with every opacity forced to 0.99, and reports holes and newly covered pixels.
+6. **New rows follow the stock initialization rules** except position and colour:
    - position: the back-projected point;
-   - colour: SH DC from the **training-photo pixel colour**, with SH rest set to 0;
-   - scale: log RMS distance to the k nearest neighbours, isotropic (`compute_root_mean_squared_knn_distances`, as in `initialize_from_point_cloud`);
+   - colour: SH DC from the **training-photo pixel colour**, SH rest 0;
+   - scale: isotropic, log RMS distance to the 3 nearest neighbours among all rows after the replacement;
    - rotation: identity;
    - opacity: 0.1.
 
-   Ridge-fitted SH, footprint-based anisotropic scales and higher initial opacity are later one-factor variants. Ridge regression cannot recover viewing directions that were never observed, and the synthetic conditioning check does not stand in for the real point tracks.
-7. **Optimizer state:** remove old rows and add new ones with NeRFICG's `Optim.adam_utils.prune_param_groups` / `extend_param_groups`, the path densification uses. New rows start with zero moments, exactly like densified rows (FusedAdam keeps one step counter per parameter group). Then apply `apply_morton_ordering()`.
+   Ridge-fitted SH, flat scales and other opacities are later one-factor variants. Ridge regression cannot recover directions never observed, and the synthetic conditioning check does not stand in for the real point tracks.
+7. **Optimizer state:**
+   - rebuilt with the model's `prune` and NeRFICG's `extend_param_groups`, the path densification uses, then Morton ordering;
+   - **checked in the run, on the real objects, every time** (untimed): survivors keep their parameters and both Adam moments exactly (tracked through the Morton permutation); new rows hold the constructed values with zero moments; every group's step counter is unchanged; every group has the target count;
+   - any failure aborts the run (`REINIT_CHECK ... FAIL`).
+8. **If densification continues after k** (not the R2 design, but the smoke runs do it): fresh densification buffers of the new size.
 
-**Proposed config keys** (track patch, all off by default):
-- `TRAINING.REINIT.ITERATION` (−1 = off);
-- `TRAINING.REINIT.TARGET_N` (0 = match current N);
-- `TRAINING.REINIT.ALPHA_MIN` (0.95);
-- `TRAINING.REINIT.FILTER.N_NEIGHBOURS` (4);
-- `TRAINING.REINIT.FILTER.MIN_AGREE` (2; 0 = unfiltered);
-- `TRAINING.REINIT.FILTER.DEPTH_TOL` (0.01);
-- `TRAINING.REINIT.FILTER.REPROJ_TOL_PX` (1.0).
+`reinit-same` therefore measures **reinitialization at a fixed count**, not repositioning alone: the replaced rows also get new colour, scale, opacity and zero optimizer moments. Its conclusions are labelled that way.
 
-**Ending densification early** is the stock key `DENSIFICATION_END_ITERATION: k`. In Faster-GS this also ends opacity resets at k (`reset_opacities` has `end_iteration='DENSIFICATION_END_ITERATION'`) and stops densification-info accumulation in the backward pass. All of that counts as "densification" in the arm table below.
+**Ending densification early** is the stock key `DENSIFICATION_END_ITERATION: k`. In Faster-GS this also ends opacity resets and densification-info accumulation at k. All of that counts as "densification" below.
 
 ## Stages
 
-### R0 — build and checks (no quality results)
+### R0: build and checks (`STAGES="build unit smoke"`, about 15 min)
 
-- **Build `FasterGSReinit`** with the clock patch and the track patch. Flags off must equal stock: a short garden run with flags off and densification ending at 14.9k must show the same per-step clock as stock to within noise.
-- **CPU unit tests** (`alt_reinit/tests/`, runnable without a GPU):
-  - back-projection and reprojection round trip with real Mip-NeRF360 cameras (error ≤ 1e-3 px);
-  - filter on synthetic depth maps: a plane seen by all views is kept; a floater present in one view's depth is rejected;
-  - deduplication: one point per voxel;
-  - kept or removed bookkeeping.
-- **GPU unit tests:**
-  - the colour-trick depth matches analytic depth for a single opaque, flat Gaussian facing the camera;
-  - after a reinit on a real checkpoint, parameter and optimizer-state shapes agree, and 200 further steps run without NaN.
+- **Build:** `make_reinit_variant.sh`.
+- **CPU tests (unit stage):**
+  - `test_core_cpu.py`: cameras, depth, filter, voxels, the exact-count rule, optimizer bookkeeping with deliberate corruption, photo ZNCC;
+  - `test_trainer_cpu.py`: the driver end to end, with a reference compositor and stand-ins for NeRFICG's helpers and pycolmap;
+  - `test_analyze_record.py`;
+  - `test_check_variant.py`.
+- **Static flags-off checks:**
+  - **tree:** the rename commit changes contents only by the rename, and only `Trainer.py` and the two driver files change after it;
+  - **Trainer:** the variant's `Trainer.py` minus the marked blocks equals stock + the shared hooks, and every marked block is gated by `FGS_REINIT` / `FGS_CBCLOCK`.
+- **GPU checks (`test_gpu.py`):**
+  - depth from the real kernel: one Gaussian, two overlapping layers (nearly opaque, expected depth about 2, flagged as a mixture), and empty pixels (alpha exactly 0, unclamped output);
+  - **flags-off equivalence from identical inputs:** forward image, all six gradients and the densification info within the stock-vs-stock run-to-run floor, and two FusedAdam steps bit-identical between the stock and variant backends.
+- **Smoke runs (garden):**
+  - stock and variant with flags off over 1200 steps: no hook output, per-step clock within 5%;
+  - apply at 2000 with target `match` and `+500000`, to 2300: the in-run check passes, the count equals the target, the callback clock logs the reinit and later densify calls;
+  - audit at 2000 with the final agreement;
+  - then the analyzer and the recorder must accept the real output.
 
-### R1 — reinitialization audit (garden and room, seed 0; no training comparison)
+### R1: reinitialization audit (`STAGES=audit`, garden and room, seed 0, about 20 min)
 
-- **Inputs:** warm-up states from short stock runs at k ∈ {2000, 5000}. k avoids multiples of 3000, where opacity resets fall. Also a 30k state (`FGS_SAVE_STATE`).
-- **Run the reinitialization offline** on each state and record:
-  - **cost**, per part, on the H100, in seconds;
-  - **keep and reject rates** per view, by depth bin and by image region;
-  - **rejection masks** for 4 views per scene, inspected and written up: edges, sky, thin structures, textureless surfaces, reflections;
-  - **evidence from the training photos**, independent of the model's geometry:
-    - (a) 7×7 ZNCC between a point's reference pixel and its reprojection in each agreeing view, classed as consistent (≥ 0.7), inconsistent (< 0.3) or unverifiable (patch too uniform), compared between kept and rejected points;
-    - (b) COLMAP sparse points: depth of each observed SfM point against the rendered depth at its pixel. These are triangulated from matched features, so they are independent of the model, but sparse and biased toward texture;
-  - **agreement with the 30k model's depth**, reported as such.
-- **Gate:**
-  - the measured cost leaves a positive budget, i.e. `T_warm-up(k) + T_reinit` is below the reference's time to target (stage-run estimates for now: garden about 209 s, room about 149 s; R2 replaces them);
-  - the rejection masks have been inspected;
-  - kept points are more photo-consistent than rejected ones. If not, the filter is not picking out geometry the images support, so revise its thresholds once, then decide.
-- **Choose k:** the earliest k that passes. Report both.
+- **One stock 30k run per scene** with `FGS_REINIT=mode=audit,iters=2000:5000,target=<stock N at 15k>/match`. The 15k counts are garden 4,166,000 and room 1,345,000, from `phase2/logs/bench-analysis.md`.
+- **At each k the reinit runs in full on a deep copy** of the model and optimizer, timed exactly as in apply mode, including the in-run check.
+  - The first reachable target is timed; every target is checked for feasibility.
+  - The live model, optimizer and training RNG are untouched, so training is stock.
+- **Untimed diagnostics, written to `reinit_audit/k_*/stats.json`:**
+  - status of the grid candidates overall, by depth bin and by 3×3 image region, plus neighbour outcomes;
+  - photo evidence: ZNCC in the training photos, the same statistics (mean over neighbours, best neighbour) for kept and every rejected class. Axis-aligned patches assume small baselines, and the neighbour angles are logged;
+  - COLMAP sparse points on 16 diagnostic views: reprojection with our cameras (checks the conventions and the dataset's PCA transform), and rendered-depth error by status at the observed pixel;
+  - silhouette coverage before and after the replacement;
+  - status images of 4 views (`masks/view*.jpg`: photo | status | depth std), and full-resolution depth / status maps (npz, archived).
+- **After the last step:** the audited depth against the final model's depth by status, labelled "agreement, not accuracy" (`agreement_final.json`).
+- **`analyze_audit.py`** validates each run (all k present, check passed, files present, final agreement written) and writes the tables and gates:
+  - **G1:** `T_warm-up(k) + T_reinit` leaves a positive budget against the reference estimate (stock's seed-0 stage-run time to its own 30k PSNR: garden 209 s, room 149 s, SEGCLOCK only, so conservative; R2 replaces it);
+  - **G2:** kept candidates are more photo-consistent than geometry-rejected ones (consistent share and median). If not, the filter is not picking out geometry the images support: revise its thresholds once, then decide;
+  - **G3:** the masks have been inspected and written up (manual).
+- **Choose k per scene:** the earliest k that passes G1–G3.
 
-### R2 — controlled training comparison (garden and room, 3 seeds, the chosen k)
+### R2: controlled training comparison (garden and room, 3 seeds, the chosen k per scene)
 
 | arm | densification and opacity resets | reinit at k | N after k | compared with | measures |
 |---|---|---|---|---|---|
 | `ref` | stock, to 14.9k | no | grows as stock | — | reference time and quality |
 | `stop` | end at k | no | N_k | `ref` | effect of ending densification itself |
-| `reinit-same` | end at k | yes, filtered | N_k (matched) | `stop` | effect of repositioning at a fixed count |
+| `reinit-same` | end at k | yes, filtered | N_k (matched) | `stop` | reinitialization at a fixed count (new positions, colours, scales, opacities, zero moments) |
 | `reinit-target` | end at k | yes, filtered | stock N at 15k | `reinit-same`, `ref` | effect of the count; the hypothesis itself |
 
-That is 24 runs. Optimizer, learning-rate schedule and everything else are matched. Reported per scene before any summary:
-- time to target;
-- quality at matched training time (the reference's 25/50/75/100% points);
-- curves of PSNR, SSIM and LPIPS against training time;
-- N and ms/step after k;
-- per-view checks.
+That is 24 runs, with everything else matched.
 
-**How to read it:**
-- `reinit-same ≈ stop` at equal time: repositioning does not help at this k.
-- `reinit-same > stop`, but neither reaches the target: repositioning helps, and the count is the limit. Look at `reinit-target`.
-- `reinit-target` crosses before `ref` on the mean curve, with clean per-view checks: H is supported on that scene. Go to R3/R4.
-- `reinit-target` never reaches the target by 30k: the reinitialized start is worse than what densification produces. Stop, or do one R3 revision.
+**Before R2: the evaluator.** NeRFICG's intermediate checkpoint-and-render path costs about 54 s per call on room (`results/sparse_switch` timings). Evaluating every 500 steps through it would cost about 50 min per run and break the budget. R2 therefore needs a metrics-only, in-process evaluator (render the test set, PSNR / SSIM / LPIPS-VGG, per-image PSNR, outside the clock). It is written and timed before R2 is scheduled. It is not part of R0/R1.
 
-### R3 — one factor at a time (only if R2 shows promise)
+**How to read R2:**
+- `reinit-same ≈ stop` at equal time: reinitialization at this count does not help at this k.
+- `reinit-same > stop`, but neither reaches the target: it helps, and the count is the limit; look at `reinit-target`.
+- `reinit-target`'s candidate precedes `ref`'s, with clean per-view checks: H is supported on that scene, pending R4.
+- `reinit-target` never meets the target by 30k: the reinitialized start is worse than what densification produces. Stop, or do one R3 revision.
 
-- **Filtered vs unfiltered** (`MIN_AGREE` 2 vs 0): does the filter matter?
-- **Attributes, one at a time:** opacity 0.5; footprint-based flat scales with normals from depth gradients; SH degree 1 by ridge regression (base colour not shrunk) from the agreeing views.
-- **The other k.**
-- At most one revision round. Each variant is compared with the R2 winner, using the same rule.
+### R3: one factor at a time (only if R2 shows promise)
 
-### R4 — confirmation (only for arms that crossed)
+- filtered vs unfiltered (`min_agree` 2 vs 0);
+- `cover_ring` 0 vs 1;
+- opacity 0.5; flat footprint scales; SH degree 1 by ridge regression;
+- the other k.
 
-- Rerun without intermediate evaluations, stopping at the crossing step, 3 seeds each: the reference at its crossing, the new arm at its own. Measure wall time and final metrics.
-- **Camera-motion inspection:** the same smooth path through the training poses, plus the same path raised by 10% of the scene extent (off-orbit views, where view-dependent colour is least constrained). Rendered for both arms and inspected side by side for floaters, popping and colour shifts. Findings are written up with frames.
-- **Only after R4:** decide whether to run all 9 scenes.
+At most one revision round, each against the R2 winner by the same rule.
 
-### R5 — combination with the main track (only after H holds)
+### R4: confirmation (only for arms with a candidate)
 
-Add the Phase 2 gains one at a time, each against the then-current best main-track stack, with the same crossing rule:
-1. **A (macro blend backward):** kernel-only, but the reinitialized Gaussians' size and overlap may change its gain.
-2. **B (selective Adam):** tested as its own question. Does ending densification make an earlier switch safe? Its step-0 failure (−0.09 to −0.13 dB, 17% fewer Gaussians) is thought to be an interaction with densification.
-3. **C (bf16 SH-rest moments):** last, and only with its own quality check.
+- Rerun every candidate, the reference's included, without intermediate evaluations, 3 seeds each, and count failures to reproduce.
+- Camera-motion inspection: the same smooth path through the training poses, plus the same path raised by 10% of the scene extent. Inspect side by side for floaters, popping and colour shifts.
+- Only after R4: decide whether to run all 9 scenes.
+
+### R5: combination with the main track (only after H holds)
+
+Add the Phase 2 gains one at a time, each against the then-current best main-track stack, with the same rule. Success against stock establishes the mechanism; R5 must still show that it improves the strongest existing implementation at matched quality.
+1. **A (macro backward):** kernel-only, but the reinitialized Gaussians' size and overlap may change its gain.
+2. **B (selective Adam):** its own question. Does ending densification make an earlier switch safe?
+3. **C:** last, with its own quality check.
 
 ## Stop rules
 
-- **After R1:** stop if the measured reinitialization cost leaves no positive budget on either scene.
-- **After R2:** stop the track if `reinit-target` does not cross before `ref` on both scenes.
-  - "Faster on at least 2 of 3 seeds" is an exploratory speed signal only. It cannot outweigh a quality failure on the third seed.
-  - A seed whose quality failure is attributable to the reinitialization blocks a positive claim until it is explained.
-- **After R3:** stop if no variant crosses before `ref` on both scenes.
-- **Overall:** about 8 GPU-hours before any nine-scene decision. Rough estimate: R1 under 0.5 h; R2 about 3–3.5 h including evaluations every 500 steps; R3 and R4 about 2–3 h.
+- **After R1:** stop if the measured cost leaves no positive budget on either scene, or G2 fails after the one threshold revision.
+- **After R2:** stop unless `reinit-target`'s candidate precedes `ref`'s on both scenes. A quality failure on any seed blocks a positive claim until it is explained.
+- **After R3:** stop if no variant does better.
+- **Overall:** about 8 GPU-hours before any nine-scene decision.
 
-## Tools to write (all in `alt_reinit/`)
+## What building R0 turned up (CPU, synthetic scenes)
 
-| file | what |
-|---|---|
-| `build_reinit.sbatch` | stages `build unit audit compare confirm`, in the style of `phase2/build_plus.sbatch` |
-| `make_reinit_variant.sh` | clones FasterGS @1144604 to `FasterGSReinit`; applies the clock patch, the track patch and the rename; builds |
-| `patches/fastergs_reinit.py` | trainer patch: `REINIT` keys, the reinit callback, CUDA-event timing of the between-step callbacks |
-| `reinit_core.py` | depth render (colour trick), neighbour selection, filter, deduplication, attribute construction (shared by the callback and the audit) |
-| `tools/reinit_audit.py` | R1 on saved states: cost, keep/reject rates, masks, photo ZNCC, COLMAP agreement, agreement with 30k |
-| `analyze_compare.py` | R2–R4 analysis: validation, crossing rule, matched-time quality, per-view checks |
-| `tests/` | CPU unit tests of the geometry, plus the GPU checks in R0 |
+- **Nearest-pixel neighbour depth was the wrong choice.** It falsely rejected 12–13% of a correct slanted plane, at both 320×208 and 1297×840. Bilinear sampling at the exact projection rejects 0.04–0.2%.
+- **"Same voxel" removal was too strict.** The candidates sit at the rendered depth, about one footprint from the old centres, so it removed almost nothing. `cover_ring=1` fixed this in the stand-in scene; R1 reports the real removal counts and coverage holes.
+- **Each Gaussian contributes its centre depth over its footprint.** On the stand-in slanted plane with 3×3-pixel splats, back-projected points sit a median 0.05 scene units off the plane, at 3–4 units from the camera. Real Gaussians at k = 2000 may be larger; R1's COLMAP and final-model checks measure it.
+- **ZNCC with axis-aligned 7×7 patches needs small baselines.** On the stand-in plane: median 0.92 for neighbours 15° apart (240×160 px), 0.36 at 45° (96×64 px).
+- **A reinit before densification ends needs fresh densification buffers,** or the next `densify` call fails on the old sizes.
+- **The recorder's de-duplication key would have swallowed the `;` after the job id** (caught by `test_analyze_record.py`).
 
-## Decisions for you
+## Tools (all in `alt_reinit/`)
 
-1. **Scenes:** garden (outdoor) and room (indoor) for R1–R4?
-2. **k:** chosen by rule in R1, as the earliest passing value of {2000, 5000}? Or fix it now?
-3. **Quality target tolerance:** ε_SSIM and ε_LPIPS equal to the reference's own seed-to-seed standard deviation in this job, PSNR at or above the reference mean, and no extra one-view failures? Or stricter or looser?
-4. **First reinitialization:** filtered (2 of 4 neighbours) as above, with unfiltered as the R3 ablation? Or the other way round?
-5. **R2 arms:** keep both `reinit-same` and `reinit-target` (24 runs), or only `reinit-target` (18 runs, but no way to separate position from count)?
-6. **Budget cap:** about 8 GPU-hours before any nine-scene decision?
+| file | what | status |
+|---|---|---|
+| `reinit_core.py` | geometry and bookkeeping: cameras, depth from the (z, 1, z²) render, filter, voxels, the exact-count rule, optimizer checks, ZNCC | CPU-tested |
+| `reinit_trainer.py` | the driver in the trainer: apply / audit, diagnostics, final agreement, callback clock | CPU-tested with stand-ins |
+| `patches/fastergs_reinit.py` | the Trainer hooks (marked, gated blocks) | applied to Faster-GS c60ea26's `Trainer.py` here; static check passes |
+| `make_reinit_variant.sh` | builds `FasterGSReinit` | dry-run (no CUDA build) on a scratch layout and in `test_check_variant.py` |
+| `build_reinit.sbatch` | stages `build unit smoke audit` | syntax-checked; smoke checker tested on synthetic logs |
+| `analyze_audit.py` | R1 validation, tables, gates | tested on a synthetic job built from a real driver output |
+| `record_runs.py` | `experiment_log.csv` rows for this track | tested on successful, failed and shortened runs |
+| `tests/` | 40 CPU tests, static checks, 3 GPU checks | GPU checks pending the cluster |
+| R2 evaluator, R2–R4 job stages and analysis | | not written (after R1) |
+
+## How to run (from the repo root on Capella)
+
+```bash
+STAGES="build unit smoke" sbatch alt_reinit/build_reinit.sbatch
+```
+
+```bash
+STAGES=audit sbatch --job-name=gs-alt-audit --time=01:30:00 alt_reinit/build_reinit.sbatch
+```
+
+```bash
+python3 alt_reinit/analyze_audit.py alt_reinit/logs/gs-alt-audit-<job>.out > alt_reinit/logs/audit-<job>-analysis.md
+```
+
+```bash
+python3 alt_reinit/record_runs.py alt_reinit/logs/gs-alt-audit-<job>.out
+```
