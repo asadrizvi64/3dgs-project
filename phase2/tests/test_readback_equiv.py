@@ -7,7 +7,7 @@ both backward kernels read the real count on the GPU). None of this may change r
   - bucket count: >= the reference's (exact) count, <= floor((n_instances + 31 * n_tiles) / 32) with 16x12 tiles, and 0
     when there are no instances;
   - backward (stock taming kernel, mode 0, and the macro kernel, mode 3): every gradient and densification row within
-    1e-6 relative error of the reference (only atomic order differs);
+    1e-5 relative error of the reference (only atomic order differs; stock vs stock is printed for comparison);
   - 30 forward/backward calls in a row on different inputs, without host syncs in between, keep agreeing (no stale reuse
     of the pinned count buffer).
 
@@ -25,7 +25,9 @@ if not torch.cuda.is_available():
     pytest.skip('needs a CUDA GPU', allow_module_level=True)
 REF = importlib.import_module(f"{os.environ.get('FGS_REF', 'FasterGSPlusCudaBackend')}._C")
 NEW = importlib.import_module(f"{os.environ.get('FGS_NEW', 'FasterGSPlusRBCudaBackend')}._C")
-TOL = 1e-6
+# relative-norm tolerance on gradients. Float atomics make even stock-vs-stock differ by ~1e-6 on the 300k-primitive
+# scene (measured below as ref_noise); a real bucket/indexing bug gives errors of order 1e-2 or more
+TOL = 1e-5
 SCENES = [  # name, n, width, height, scale range, opacity range, depth range
     ('tiny', 1_000, 160, 120, (0.01, 0.1), (0.05, 0.95), (2.0, 8.0)),
     ('partial_tiles', 20_000, 333, 250, (0.005, 0.08), (0.05, 0.95), (2.0, 8.0)),
@@ -102,8 +104,10 @@ def test_equivalent(scene, mode, rows):
         return
     errs = {f'g{i}': rel(a, b) for i, (a, b) in enumerate(zip(new[3], ref[3]))}
     errs.update({f'densify{r}': rel(new[4][r], ref[4][r]) for r in range(rows)})
+    ref2 = fwd_bwd(REF, params, settings, grad_image, mode, rows)  # stock vs stock: the atomic-order noise floor
+    noise = [rel(a, b) for a, b in zip(ref2[3], ref[3])] + [rel(ref2[4][r], ref[4][r]) for r in range(rows)]
     print(f'EQUIV scene={scene[0]} mode={mode} rows={rows} instances={new[1]} buckets ref={ref[2]} new={new[2]} '
-          f'bound={bound} max_rel={max(errs.values()) if errs else 0:.2e}')
+          f'bound={bound} max_rel={max(errs.values()) if errs else 0:.2e} ref_noise={max(noise) if noise else 0:.2e}')
     assert all(v <= TOL for v in errs.values()), errs
 
 
