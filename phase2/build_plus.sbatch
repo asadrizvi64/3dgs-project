@@ -28,6 +28,8 @@
 #            benchmark protocol: device sync after every step) and OFF; interleaved, order rotated by seed. Every run
 #            also logs FGS_WALL (unprofiled wall time over 0-15k and 15k-30k, device synced only at those boundaries)
 #            and a hash of the training-view sequence, so matched runs can be checked to have seen the same views
+#   rbbench  (step 4c / 5b) one scene, SEEDS (default 0 1 2): A+B+C vs A+B+C built as CMP_VARIANT (default FasterGSPlusRB),
+#            timer ON, FGS_WALL; interleaved, order rotated by seed. Step 5b: CMP_VARIANT=FasterGSPlusCull (ellipse culling)
 #   blendstats (step 5) SCENES (default garden room), seed 0, A+B+C built as FasterGSPlusStats (BUILD_VARIANT=FasterGSPlusStats
 #            BUILD_SRC_PATCHES=phase2/blend_stats.patch): blend-kernel work counters over 50-step windows (BS_STARTS)
 #   sbatch phase2/build_plus.sbatch      (from the repo root)
@@ -36,6 +38,8 @@
 #   STAGES=stages SCENE=room sbatch --job-name=gs-stages-room --time=02:30:00 phase2/build_plus.sbatch
 #   STAGES=profile SCENE=room sbatch --job-name=gs-prof-room --time=02:00:00 phase2/build_plus.sbatch
 #   STAGES=timerctl SCENE=room sbatch --job-name=gs-timer-room --time=01:30:00 phase2/build_plus.sbatch
+#   STAGES="build unit" BUILD_VARIANT=FasterGSPlusCull BUILD_SRC_PATCHES=phase2/ellipse_cull.patch sbatch --job-name=gs-cull-build phase2/build_plus.sbatch
+#   STAGES=rbbench SCENE=garden CMP_VARIANT=FasterGSPlusCull CMP_ARM=abce sbatch --job-name=gs-cull-garden --time=00:40:00 phase2/build_plus.sbatch
 #   STAGES="build unit blendstats" BUILD_VARIANT=FasterGSPlusStats BUILD_SRC_PATCHES=phase2/blend_stats.patch sbatch --job-name=gs-blendstats phase2/build_plus.sbatch
 #SBATCH --job-name=gs-phase2-build
 #SBATCH --nodes=1
@@ -263,13 +267,15 @@ sys.exit(0 if ok else 1)
 PYC
 fi
 
-if has rbbench; then   # A+B+C vs A+B+C with the readback patch (FasterGSPlusRB), timer ON (benchmark protocol), wall clock on
+if has rbbench; then   # A+B+C vs A+B+C built with a source patch (CMP_VARIANT, default FasterGSPlusRB = readback patch; arm
+  # name CMP_ARM), timer ON (benchmark protocol), wall clock on
   BSCENE=${SCENE:?set SCENE for the rbbench stage}
+  CMP_VARIANT=${CMP_VARIANT:-FasterGSPlusRB}; CMP_ARM=${CMP_ARM:-abcr}
   case $BSCENE in room|counter|kitchen|bonsai) BSCALE=0.5 ;; *) BSCALE=0.25 ;; esac
-  echo "########## rbbench (scene $BSCENE scale $BSCALE, seeds ${SEEDS:-0 1 2}; A+B+C vs A+B+C + readback patch)"
+  echo "########## rbbench (scene $BSCENE scale $BSCALE, seeds ${SEEDS:-0 1 2}; A+B+C vs A+B+C as $CMP_VARIANT)"
   for seed in ${SEEDS:-0 1 2}; do
     for k in 0 1; do
-      if [ $(( (k + seed) % 2 )) = 0 ]; then arm=abc; m=FasterGSPlus; else arm=abcr; m=FasterGSPlusRB; fi
+      if [ $(( (k + seed) % 2 )) = 0 ]; then arm=abc; m=FasterGSPlus; else arm=$CMP_ARM; m=$CMP_VARIANT; fi
       TRAIN_ENV="FGS_WALL=0,15000,30000" train "x_${BSCENE}_${arm}_s$seed" $m "$seed" 30000 "SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true" macro
     done
   done

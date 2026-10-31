@@ -12,6 +12,10 @@ both backward kernels read the real count on the GPU). None of this may change r
     of the pinned count buffer).
 
     FGS_REF=FasterGSPlusCudaBackend FGS_NEW=FasterGSPlusRBCudaBackend python -m pytest -q phase2/tests/test_readback_equiv.py
+
+The same checks hold for any patch that must not change results; build_plus.sbatch's unit stage runs this test for every
+variant other than FasterGSPlus. Step 5b (phase2/ellipse_cull.patch, FasterGSPlusCull, culling on by default) relies
+on it: culled pairs must have alpha < 1/255 at every pixel, so images stay bit-identical and gradients match.
 """
 from __future__ import annotations
 

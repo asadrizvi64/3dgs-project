@@ -1,0 +1,236 @@
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernel_utils.cuh b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernel_utils.cuh
+index e106a4d..2f8c681 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernel_utils.cuh
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernel_utils.cuh
+@@ -4,6 +4,7 @@
+ #include "buffer_utils.h"
+ #include "utils.h"
+ #include <cooperative_groups.h>
++#include <cstdlib>
+ namespace cg = cooperative_groups;
+ 
+ namespace faster_gs::rasterization::kernels {
+@@ -113,6 +114,55 @@ namespace faster_gs::rasterization::kernels {
+         }
+     }
+ 
++    // phase2 ellipse culling: will_primitive_contribute for any pixel rectangle [x0, x0 + w - 1] x [y0, y0 + h - 1]
++    // (integer pixel coordinates; pass the mean shifted by -0.5 as create_instances does). Same maximum-on-the-
++    // nearest-edge test as the per-tile version.
++    template <int w, int h>
++    __device__ inline bool will_primitive_contribute_rect(
++        const float2& mean,
++        const float3& conic,
++        const uint x0,
++        const uint y0,
++        const float power_threshold)
++    {
++        const float2 rect_min = make_float2(static_cast<float>(x0), static_cast<float>(y0));
++        const float2 rect_max = make_float2(static_cast<float>(x0 + w - 1), static_cast<float>(y0 + h - 1));
++        const float x_min_diff = rect_min.x - mean.x;
++        const float x_left = static_cast<float>(x_min_diff >= 0.0f);
++        const float not_in_x_range = x_left + static_cast<float>(mean.x > rect_max.x);
++        const float y_min_diff = rect_min.y - mean.y;
++        const float y_above = static_cast<float>(y_min_diff >= 0.0f);
++        const float not_in_y_range = y_above + static_cast<float>(mean.y > rect_max.y);
++        if (not_in_y_range + not_in_x_range == 0.0f) return true;
++        const float2 closest_corner = make_float2(lerp(rect_max.x, rect_min.x, x_left), lerp(rect_max.y, rect_min.y, y_above));
++        const float2 diff = mean - closest_corner;
++        const float2 d = make_float2(copysignf(static_cast<float>(w - 1), x_min_diff), copysignf(static_cast<float>(h - 1), y_min_diff));
++        const float2 t = make_float2(
++            not_in_y_range * __saturatef((d.x * conic.x * diff.x + d.x * conic.y * diff.y) / (d.x * conic.x * d.x)),
++            not_in_x_range * __saturatef((d.y * conic.y * diff.x + d.y * conic.z * diff.y) / (d.y * conic.z * d.y))
++        );
++        const float2 max_contribution_point = closest_corner + t * d;
++        const float2 delta = mean - max_contribution_point;
++        const float max_power = 0.5f * (conic.x * delta.x * delta.x + conic.z * delta.y * delta.y) + conic.y * delta.x * delta.y;
++        return max_power <= power_threshold;
++    }
++
++    // Per-subtile cull threshold. The exact test is not quite conservative at the alpha >= 1/255 cut-off: the blend
++    // kernels compute alpha with fast-math expf from per-pixel deltas, and the blend-counter run (phase2/blend_stats.patch)
++    // found 0-12 contributions per 50 steps inside rejected pairs. The margin (alpha cut-off x e^-0.01, about 1%) is far
++    // above that rounding, so culling never removes a contributing pair and images stay bit-identical.
++    constexpr float ellipse_cull_power_margin = 1e-2f;
++    __device__ inline float ellipse_cull_power_threshold(const float opacity) {
++        return (config::original_opacity_interpretation ? logf(opacity * config::min_alpha_threshold_rcp) : config::max_power_threshold)
++            + ellipse_cull_power_margin;
++    }
++
++    // phase2 ellipse culling switch (host side): on unless FGS_ELLIPSE_CULL=0
++    inline bool ellipse_cull_enabled() {
++        static const bool on = [] { const char* e = std::getenv("FGS_ELLIPSE_CULL"); return !(e && e[0] == '0'); }();
++        return on;
++    }
++
+     // based on https://github.com/r4dl/StopThePop-Rasterization/blob/d8cad09919ff49b11be3d693d1e71fa792f559bb/cuda_rasterizer/stopthepop/stopthepop_common.cuh#L177
+     __device__ inline uint compute_exact_n_touched_tiles(
+         const float2& mean2d,
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh
+index 9422834..6ce0409 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh
+@@ -505,7 +505,9 @@ namespace faster_gs::rasterization::kernels::backward {
+     //   transpose_reduce  reduce the 8 (mean2d, conic, color) sums with a transposing butterfly (9 shuffles)
+     //                     and opacity (+ |mean2d|) with a second one (5-6 shuffles) instead of 5 shuffles per
+     //                     value; the atomics are then issued by 8-11 lanes in parallel
+-    template <bool compute_abs_grad, int n_warps, bool subtile_skip, bool transpose_reduce>
++    //   ellipse_cull      (phase2, with subtile_skip only) skip per 8x4 subtile by the exact ellipse test (with a margin, see
++    //                     ellipse_cull_power_threshold) as well as by the screen bounds, like blend_cu<true>
++    template <bool compute_abs_grad, int n_warps, bool subtile_skip, bool transpose_reduce, bool ellipse_cull>
+     __global__ void __launch_bounds__(32 * n_warps) blend_backward_macro_cu(
+         const uint2* __restrict__ tile_instance_ranges,
+         const uint* __restrict__ tile_bucket_offsets,
+@@ -586,6 +588,29 @@ namespace faster_gs::rasterization::kernels::backward {
+                     const uint y_min = tile_y0 + sy * config::subtile_height;
+                     if (sb.z < y_min + config::subtile_height && y_min < sb.w) flags |= 32u << sy;
+                 }
++                if constexpr (ellipse_cull) {
++                    // cell bits 8 + 2 * sy + sx: bounds and ellipse both hit subtile (sx, sy); row bits 5-7 = any cell
++                    // of that subtile row (the x-half bits 3-4 are no longer used)
++                    const float4 co = s_conic_opacity[warp_idx][lane_idx];
++                    const float2 mean_shifted = s_mean2d[warp_idx][lane_idx] - 0.5f;
++                    const float power_threshold = ellipse_cull_power_threshold(co.w);
++                    uint cells = 0u;
++                    #pragma unroll
++                    for (int sy = 0; sy < n_subtile_rows; ++sy) {
++                        #pragma unroll
++                        for (int sx = 0; sx < config::subgrid_width; ++sx) {
++                            if ((flags & (8u << sx)) != 0u && (flags & (32u << sy)) != 0u &&
++                                will_primitive_contribute_rect<config::subtile_width, config::subtile_height>(mean_shifted, make_float3(co),
++                                    tile_x0 + sx * config::subtile_width, tile_y0 + sy * config::subtile_height, power_threshold))
++                                cells |= 256u << (2 * sy + sx);
++                        }
++                    }
++                    flags &= 7u;
++                    flags |= cells;
++                    #pragma unroll
++                    for (int sy = 0; sy < n_subtile_rows; ++sy)
++                        if ((cells & (768u << (2 * sy))) != 0u) flags |= 32u << sy;
++                }
+             }
+             s_flags[warp_idx][lane_idx] = flags;
+         }
+@@ -593,7 +618,8 @@ namespace faster_gs::rasterization::kernels::backward {
+         // per-pixel state from the bucket checkpoint
+         const uint pixel_x = tile_x0 + lane_idx % config::tile_width;
+         const uint pixel_y0 = tile_y0 + lane_idx / config::tile_width;
+-        const uint x_half_bit = 8u << ((lane_idx % config::tile_width) / config::subtile_width);
++        const uint x_sub = (lane_idx % config::tile_width) / config::subtile_width;
++        const uint x_half_bit = 8u << x_sub;
+         const float pixel_xf = __uint2float_rn(pixel_x) + 0.5f;
+         const uint n_pixels = width * height;
+         const float4* checkpoint = bucket_color_transmittance + static_cast<size_t>(bucket_idx) * config::block_size_blend;
+@@ -642,7 +668,11 @@ namespace faster_gs::rasterization::kernels::backward {
+             for (int r = 0; r < n_px; ++r) {
+                 if constexpr (subtile_skip) {
+                     if ((flags & (32u << (r / steps_per_subtile_row))) == 0u) continue; // warp-uniform
+-                    if ((flags & x_half_bit) == 0u) continue;
++                    if constexpr (ellipse_cull) {
++                        if ((flags & (256u << (2 * (r / steps_per_subtile_row) + x_sub))) == 0u) continue;
++                    } else {
++                        if ((flags & x_half_bit) == 0u) continue;
++                    }
+                 }
+                 if (j >= lim[r]) continue;
+                 const float2 delta = make_float2(mean2d.x - pixel_xf, mean2d.y - (__uint2float_rn(pixel_y0 + r * rows_per_step) + 0.5f));
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_forward.cuh b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_forward.cuh
+index 29a723b..82ce318 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_forward.cuh
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_forward.cuh
+@@ -360,6 +360,9 @@ namespace faster_gs::rasterization::kernels::forward {
+         tile_n_buckets[tile_idx] = n_buckets;
+     }
+ 
++    // ellipse_cull (phase2): also skip a splat whose ellipse misses this warp's 8x4 subtile (exact test with a margin, see
++    // ellipse_cull_power_threshold); the skipped pairs have alpha < 1/255 at every pixel, so the image is unchanged
++    template <bool ellipse_cull>
+     __global__ void __launch_bounds__(config::block_size_blend) blend_cu(
+         const uint2* __restrict__ tile_instance_ranges,
+         const uint* __restrict__ tile_buckets_offset,
+@@ -448,6 +451,14 @@ namespace faster_gs::rasterization::kernels::forward {
+                     const ushort4 screen_bounds = collected_screen_bounds[current_shmem_offset + lane_idx];
+                     overlaps_subtile = screen_bounds.x < subtile_bounds.y && subtile_bounds.x < screen_bounds.y &&
+                         screen_bounds.z < subtile_bounds.w && subtile_bounds.z < screen_bounds.w;
++                    if constexpr (ellipse_cull) {
++                        if (overlaps_subtile) {
++                            const float4 co = collected_conic_opacity[current_shmem_offset + lane_idx];
++                            overlaps_subtile = will_primitive_contribute_rect<config::subtile_width, config::subtile_height>(
++                                collected_mean2d[current_shmem_offset + lane_idx] - 0.5f, make_float3(co),
++                                subtile_bounds.x, subtile_bounds.z, ellipse_cull_power_threshold(co.w));
++                        }
++                    }
+                 }
+                 uint pending_primitives = warp.ballot(overlaps_subtile);
+                 while (!done && pending_primitives != 0u) {
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/backward.cu b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/backward.cu
+index 5ea41af..10054d8 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/backward.cu
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/backward.cu
+@@ -7,23 +7,25 @@
+ #include <type_traits>
+ 
+ // Phase 1 macro blend backward. blend_backward_mode bits: 1 = macro kernel, 2 = subtile skip,
+-// 4 = transposing warp reduction, 8 = 8 warps per block (else 4).
+-template <bool abs_grad, int n_warps, bool subtile_skip, bool transpose_reduce, typename... Args>
++// 4 = transposing warp reduction, 8 = 8 warps per block (else 4), 16 = per-subtile ellipse culling (phase2; with 2 only,
++// set from FGS_ELLIPSE_CULL, on by default).
++template <bool abs_grad, int n_warps, bool subtile_skip, bool transpose_reduce, bool ellipse_cull, typename... Args>
+ static void launch_macro_variant(const int n_buckets, Args... args) {
+-    faster_gs::rasterization::kernels::backward::blend_backward_macro_cu<abs_grad, n_warps, subtile_skip, transpose_reduce>
++    faster_gs::rasterization::kernels::backward::blend_backward_macro_cu<abs_grad, n_warps, subtile_skip, transpose_reduce, ellipse_cull>
+         <<<div_round_up(n_buckets, n_warps), 32 * n_warps>>>(args...);
+ }
+ 
+-template <bool abs_grad, int n_warps, bool subtile_skip, typename... Args>
++template <bool abs_grad, int n_warps, bool subtile_skip, bool ellipse_cull, typename... Args>
+ static void dispatch_macro_reduce(const int mode, const int n_buckets, Args... args) {
+-    if (mode & 4) launch_macro_variant<abs_grad, n_warps, subtile_skip, true>(n_buckets, args...);
+-    else launch_macro_variant<abs_grad, n_warps, subtile_skip, false>(n_buckets, args...);
++    if (mode & 4) launch_macro_variant<abs_grad, n_warps, subtile_skip, true, ellipse_cull>(n_buckets, args...);
++    else launch_macro_variant<abs_grad, n_warps, subtile_skip, false, ellipse_cull>(n_buckets, args...);
+ }
+ 
+ template <bool abs_grad, int n_warps, typename... Args>
+ static void dispatch_macro_skip(const int mode, const int n_buckets, Args... args) {
+-    if (mode & 2) dispatch_macro_reduce<abs_grad, n_warps, true>(mode, n_buckets, args...);
+-    else dispatch_macro_reduce<abs_grad, n_warps, false>(mode, n_buckets, args...);
++    if ((mode & 2) && (mode & 16)) dispatch_macro_reduce<abs_grad, n_warps, true, true>(mode, n_buckets, args...);
++    else if (mode & 2) dispatch_macro_reduce<abs_grad, n_warps, true, false>(mode, n_buckets, args...);
++    else dispatch_macro_reduce<abs_grad, n_warps, false, false>(mode, n_buckets, args...);
+ }
+ 
+ template <bool abs_grad, typename... Args>
+@@ -108,7 +110,7 @@ void faster_gs::rasterization::backward(
+         if (blend_backward_mode != 0) {
+             if (n_buckets == 0) return;
+             launch_blend_backward_macro(
+-                blend_backward_mode,
++                blend_backward_mode | (kernels::ellipse_cull_enabled() ? 16 : 0),
+                 grad_mean2d_abs_helper != nullptr,
+                 tile_buffers.instance_ranges,
+                 tile_buffers.buckets_offset,
+@@ -138,6 +140,9 @@ void faster_gs::rasterization::backward(
+             CHECK_CUDA(config::debug, "blend_backward_macro")
+             return;
+         }
++        // a zero-block launch is an invalid configuration that leaves a pending CUDA error (stock bug, fixed as in
++        // phase2/fastergs_readback.patch; the macro path above already returns). Only reachable when nothing is visible.
++        if (n_buckets == 0) return;
+         const auto blend_backward_kernel = grad_mean2d_abs_helper != nullptr ? kernels::backward::blend_backward_cu<true> : kernels::backward::blend_backward_cu<false>;
+         blend_backward_kernel<<<n_buckets, 32>>>(
+             tile_buffers.instance_ranges,
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/forward.cu b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/forward.cu
+index 530d51f..6891d74 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/forward.cu
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/forward.cu
+@@ -236,7 +236,8 @@ void faster_gs::rasterization::diff_rasterize(
+     char* bucket_buffers_blob = resize_bucket_buffers(required<BucketBuffers>(n_buckets));
+     BucketBuffers bucket_buffers = BucketBuffers::from_blob(bucket_buffers_blob, n_buckets);
+ 
+-    kernels::forward::blend_cu<<<grid, block>>>(
++    const auto blend_kernel = kernels::ellipse_cull_enabled() ? kernels::forward::blend_cu<true> : kernels::forward::blend_cu<false>;
++    blend_kernel<<<grid, block>>>(
+         tile_buffers.instance_ranges,
+         tile_buffers.buckets_offset,
+         instance_buffers.primitive_indices.Current(),
