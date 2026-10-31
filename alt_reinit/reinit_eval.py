@@ -119,11 +119,20 @@ def run_eval(trainer, iteration: int, dataset) -> None:
         trainer._fgs_estate = st
         rt._log(trainer, f'EVAL_CONFIG {cfg.describe()} schedule={cfg.schedule}')
     from Datasets.utils import apply_background_color
+    first = st.gt is None
+    gib = 1024 ** 3
+
+    def mem(tag: str) -> None:   # first evaluation only: where the evaluator's own memory goes
+        if first:
+            rt._log(trainer, f'EVAL_MEM step={step} at={tag} alloc_gib={torch.cuda.memory_allocated() / gib:.2f} '
+                             f'peak_gib={torch.cuda.max_memory_allocated() / gib:.2f}')
+    mem('start')
     rt._sync()
     t0 = time.perf_counter()
     rng = (torch.get_rng_state(), torch.cuda.get_rng_state_all(), random.getstate(), np.random.get_state())
     gs = trainer.model.gaussians
     fp0 = _fingerprint(gs)
+    mem('fingerprint')
     was_training = getattr(trainer.model, 'training', True)   # training_iteration calls model.train() every step anyway
     trainer.model.eval()
     dataset.test()
@@ -136,12 +145,17 @@ def run_eval(trainer, iteration: int, dataset) -> None:
                 if (a := view.alpha) is not None:
                     g = apply_background_color(g, a, view.camera.background_color)
                 st.gt.append(_quantize(g))
+            mem(f'references ({len(st.gt)} images, {tuple(st.gt[0].shape)})')
         for i, view in enumerate(dataset):
             out = trainer.renderer.render_image(view, to_chw=True, benchmark=False)['rgb']
             res = _quantize(out).float().div(255.0)[None]
             tgt = st.gt[i].float().div(255.0)[None]
+            if i == 0:
+                mem('render image 0')
             for k, m in st.metrics.items():
                 vals[k].append(float(m(res, tgt)))
+                if i == 0:
+                    mem(f'metric {k} image 0')
             del out, res, tgt
     finally:
         for m in st.metrics.values():
@@ -154,6 +168,7 @@ def run_eval(trainer, iteration: int, dataset) -> None:
         random.setstate(rng[2])
         np.random.set_state(rng[3])
     fp1 = _fingerprint(gs)
+    mem('end')
     rt._sync()
     dt = time.perf_counter() - t0
     ok = fp0 == fp1

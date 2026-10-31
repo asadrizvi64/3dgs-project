@@ -18,6 +18,7 @@
 #           final metrics_8bit.txt, densification and opacity resets end at k in the stop / reinit arms, counts hit targets
 #   r2      R2 (PLAN.md, k = 5000 for both scenes, amended 2026-10-31): per scene in SCENES and seed in SEEDS (default 0 1 2),
 #           the four arms ref / stop / same / target, 30k each, arm order rotated by seed, FGS_EVAL every 500 from k
+#   r4      R4 confirmation: CONFIRM="scene:arm:step ..." (from analyze_r2.py), 3 seeds each, FGS_EVAL=at=step only
 #   STAGES="build unit smoke" sbatch alt_reinit/build_reinit.sbatch        (from the repo root)
 #   STAGES=audit sbatch --job-name=gs-alt-audit --time=01:30:00 alt_reinit/build_reinit.sbatch
 #SBATCH --job-name=gs-alt-r0
@@ -61,7 +62,7 @@ fi
 if has unit; then
   echo "########## unit"
   ( cd "$REPO" && python -m pytest -q -p no:cacheprovider alt_reinit/tests/test_core_cpu.py alt_reinit/tests/test_trainer_cpu.py \
-      alt_reinit/tests/test_analyze_record.py alt_reinit/tests/test_check_variant.py alt_reinit/tests/test_eval_cpu.py ) > "$OUT/cpu_tests.log" 2>&1 \
+      alt_reinit/tests/test_analyze_record.py alt_reinit/tests/test_check_variant.py alt_reinit/tests/test_eval_cpu.py alt_reinit/tests/test_analyze_r2.py ) > "$OUT/cpu_tests.log" 2>&1 \
     && tail -1 "$OUT/cpu_tests.log" | sed 's/^/CPU tests: /' || { echo "FAILED cpu tests"; tail -30 "$OUT/cpu_tests.log"; FAILED+=(cpu_tests); }
   python3 "$REPO/alt_reinit/tests/check_variant.py" tree "$METHODS/FasterGSReinit" --base 1144604 > "$OUT/check_tree.log" 2>&1 \
     && grep -c '^PASS' "$OUT/check_tree.log" | sed 's/^/static tree checks PASS: /' || { echo "FAILED static tree"; cat "$OUT/check_tree.log"; FAILED+=(check_tree); }
@@ -198,6 +199,15 @@ if has r2smoke; then
   python3 "$REPO/alt_reinit/check_r2smoke.py" "$OUT" "$DATA/nerficg" || FAILED+=(r2smoke_checks)
 fi
 
+if has evalmem; then   # diagnostic: memory of the first evaluation, garden and room, 5000 stock steps
+  for BSCENE in ${SCENES:-garden room}; do
+    scene_setup
+    EVALSPEC="at=5000"
+    train "ar0_${BSCENE}_evalmem_s0" FasterGSReinit 0 5100 "" 1 100
+    EVALSPEC=
+  done
+fi
+
 if has r2; then
   K=${K:-5000}
   ARMS=(ref stop same target)
@@ -211,6 +221,20 @@ if has r2; then
         train "ar2_${BSCENE}_${arm}_s${seed}" FasterGSReinit "$seed" 30000 "$(arm_spec $arm $K $N15)" 1 500
         EVALSPEC=
       done
+    done
+  done
+fi
+
+if has r4; then   # R4 confirmation: CONFIRM="garden:target:12500 garden:ref:30000 ..." (scene:arm:step), seeds SEEDS
+  K=${K:-5000}
+  for item in ${CONFIRM:?CONFIRM=scene:arm:step ... is required for r4}; do
+    IFS=: read -r BSCENE arm step <<< "$item"
+    scene_setup || { echo "FAILED no stock 15k count recorded for $BSCENE"; FAILED+=("r4_$BSCENE"); continue; }
+    echo "########## R4 confirm $BSCENE $arm at step $step (single evaluation), seeds ${SEEDS:-0 1 2}"
+    for seed in ${SEEDS:-0 1 2}; do
+      EVALSPEC="at=$step"
+      train "ar4_${BSCENE}_${arm}_s${seed}" FasterGSReinit "$seed" 30000 "$(arm_spec $arm $K $N15)" 1 500
+      EVALSPEC=
     done
   done
 fi
