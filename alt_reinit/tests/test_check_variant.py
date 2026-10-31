@@ -72,7 +72,7 @@ def test_make_variant_and_checks_pass(workspace):
     dst = workspace['dst']
     assert (dst / 'FasterGSReinitCudaBackend' / 'FasterGSReinitCudaBackend' / 'kernel.cu').exists()
     assert (dst / 'fastergsreinit_garden.yaml').read_text().startswith('METHOD_TYPE: FasterGSReinit')
-    assert (dst / 'reinit_core.py').exists() and (dst / 'reinit_trainer.py').exists()
+    assert (dst / 'reinit_core.py').exists() and (dst / 'reinit_trainer.py').exists() and (dst / 'reinit_eval.py').exists()
     r = subprocess.run(CHECK + ['tree', str(dst), '--base', workspace['base']], capture_output=True, text=True)
     assert r.returncode == 0, r.stdout
     stock = workspace['tmp'] / 'stock_Trainer.py'

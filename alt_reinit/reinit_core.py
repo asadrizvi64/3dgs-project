@@ -35,7 +35,8 @@ PARAM_GROUPS = ('means', 'sh_coefficients_0', 'sh_coefficients_rest', 'opacities
 @dataclass
 class ReinitConfig:
     """Settings, parsed from the FGS_REINIT environment variable (see parse_env)."""
-    mode: str = 'off'          # off | apply | audit (audit: dry run on a copy of the model and optimizer; training unchanged)
+    mode: str = 'off'          # off | apply | audit | stop (audit: dry run on a copy of the model and optimizer; training
+                               # unchanged. stop: no reinit, densification ends at iters=k: the R2 'stop' arm)
     start: int = -1            # first iteration at which the callback runs
     end: int = -1              # last iteration (inclusive)
     every: int = 1             # iteration stride between start and end
@@ -58,6 +59,8 @@ class ReinitConfig:
     mask_views: int = 4        # audit: views whose status maps are saved as images
     zncc_samples: int = 20000  # audit: candidates per class for the photo-consistency check
     nbr_samples: int = 1024    # points per view used to choose neighbours
+    end_densify: bool = False  # set DENSIFICATION_END_ITERATION = start (R2 arms; implied by mode=stop). In Faster-GS this
+                               # also ends opacity resets and densification-info accumulation there
 
     def describe(self) -> str:
         return ','.join(f'{k}={v}' for k, v in asdict(self).items())
@@ -94,19 +97,23 @@ def parse_env(spec: str) -> ReinitConfig:
             setattr(cfg, key, int(val))
         elif key in _FLOAT:
             setattr(cfg, key, float(val))
-        elif key == 'check':
-            cfg.check = val not in ('0', 'false', 'False', 'no')
+        elif key in ('check', 'end_densify'):
+            setattr(cfg, key, val not in ('0', 'false', 'False', 'no'))
         elif key in ('mode', 'target'):
             setattr(cfg, key, val)
         else:
             raise ValueError(f'FGS_REINIT: unknown key {key!r}')
-    if cfg.mode not in ('off', 'apply', 'audit'):
-        raise ValueError(f'FGS_REINIT: mode must be off, apply or audit, got {cfg.mode!r}')
+    if cfg.mode not in ('off', 'apply', 'audit', 'stop'):
+        raise ValueError(f'FGS_REINIT: mode must be off, apply, audit or stop, got {cfg.mode!r}')
+    if cfg.mode == 'stop':
+        cfg.end_densify = True
     if cfg.mode != 'off':
         if cfg.start < 1 or cfg.end < cfg.start or cfg.every < 1:
             raise ValueError(f'FGS_REINIT: bad iteration range start={cfg.start} end={cfg.end} every={cfg.every}')
-        if cfg.mode == 'apply' and cfg.end != cfg.start:
-            raise ValueError('FGS_REINIT: apply mode runs once (iters=k)')
+        if cfg.mode in ('apply', 'stop') and cfg.end != cfg.start:
+            raise ValueError(f'FGS_REINIT: {cfg.mode} mode runs once (iters=k)')
+    if cfg.end_densify and cfg.mode not in ('apply', 'stop'):
+        raise ValueError('FGS_REINIT: end_densify needs mode apply or stop')
     if cfg.stride < 1 or cfg.n_nbr < 1 or cfg.min_agree < 0 or cfg.min_agree > cfg.n_nbr:
         raise ValueError('FGS_REINIT: need stride >= 1, n_nbr >= 1, 0 <= min_agree <= n_nbr')
     for t in cfg.target.split('/'):

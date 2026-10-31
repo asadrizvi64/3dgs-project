@@ -15,12 +15,54 @@ T_warm-up(0..k) + T_reinit + T_train(k..target)  <  T_reference(0..target)
 
 Both sides use the same quality target, the same candidate-and-confirmation rule, the same clock and the same seeds. If the better start cannot save enough later work to recover its own cost while preserving quality, the track stops before any nine-scene campaign.
 
+## Amendment (2026-10-31, after R1, before any R2 run): k = 5000 for both scenes
+
+**Rule, as amended by the user (their wording):** "Select the earliest intervention point for which every experimental arm
+has a reachable target Gaussian population and reinitialization replaces approximately 5% or more of the relevant
+Gaussian rows. The k=2000 candidate fails these feasibility and intervention-strength requirements; therefore, k=5000 is
+selected for both scenes before evaluating reconstruction quality."
+
+- **Why** (R1 job 4503153, [`logs/audit-4503153-README.md`](logs/audit-4503153-README.md)): at k = 2000 garden's stock-15k
+  target (4,166,000) is unreachable (at most 2,081,426 at stride 1). The matched-count replacement touches under 1% of rows
+  (garden 10,886 of 1,138,286; room 4,270 of 453,080), and only about 0.5% of grid pixels are kept. At k = 5000 every
+  target is reachable, and the replacement touches 1,383,720 of 3,119,719 rows in garden and 204,756 of 968,429 in room.
+- **The k = 2000 audit stays on record** as a documented negative feasibility result.
+- **No quality data was looked at for this decision.** R2 had not run.
+
+**R2 design, locked by the user on 2026-10-31:**
+- k = 5000; garden and room; 3 seeds; the four arms below (24 runs); stock Faster-GS behaviour; filtered reinitialization
+  first; about 8 GPU-hours ceiling; no Phase 2 changes.
+- The `stop` arm stays: it separates replacement from the population change.
+- Quality is the conservative criterion below: no worsening of the 3-seed means, with individual-image failures
+  inspected. Each arm is reported as one of three outcomes:
+  - **improves time-to-quality**;
+  - **keeps quality but does not improve time**;
+  - **reduces quality**.
+- A crossing first seen at an intermediate evaluation is confirmed by runs without intermediate evaluations (R4:
+  `FGS_EVAL=at=<step>`, a single evaluation).
+
+**Implementation notes:**
+- All four arms run the `FasterGSReinit` variant. With its flags off it matches stock: R0's static checks, the GPU
+  equivalence checks and the per-step clock. So the arms differ only in `FGS_REINIT`:
+  - `ref`: unset;
+  - `stop`: `mode=stop,iters=5000`;
+  - `reinit-same`: `mode=apply,iters=5000,target=match,end_densify=1`;
+  - `reinit-target`: `mode=apply,iters=5000,target=<stock 15k N>,end_densify=1`.
+- `stop` / `end_densify=1` set `DENSIFICATION_END_ITERATION = 5000`. The last densify call is at 5000, and opacity resets
+  end there too.
+- The evaluator is `reinit_eval.py`, with `FGS_EVAL=every=500,from=5000`:
+  - it runs as a callback after the training step, outside SEGCLOCK / CBCLOCK;
+  - it renders the test set as NeRFICG's final pass does, rounds to 8 bits, and uses the same torchmetrics PSNR / SSIM /
+    LPIPS-VGG classes;
+  - it restores every RNG state and aborts if the model changed;
+  - the `r2smoke` stage checks it against `metrics_8bit.txt`.
+
 ## Decisions (2026-10-29)
 
 | decision | choice |
 |---|---|
 | scenes | garden and room |
-| intervention step | the earliest passing value of 2000 or 5000, **per scene**; both audits are recorded |
+| intervention step | the earliest passing value of 2000 or 5000, **per scene**; both audits are recorded (**amended 2026-10-31: k = 5000 for both scenes**, see above) |
 | quality | **no worsening** of the 3-seed mean PSNR, SSIM or LPIPS (pilot criterion, below); seed variability is reported but never used as an allowance |
 | filtering | filtered first; unfiltered later, as the comparison (R3) |
 | arms | all four (R2) |
@@ -178,7 +220,7 @@ At step k, between `densify` / `morton_ordering` (priority 100 / 99) and the tra
 
 That is 24 runs, with everything else matched.
 
-**Before R2: the evaluator.** NeRFICG's intermediate checkpoint-and-render path costs about 54 s per call on room (`results/sparse_switch` timings). Evaluating every 500 steps through it would cost about 50 min per run and break the budget. R2 therefore needs a metrics-only, in-process evaluator (render the test set, PSNR / SSIM / LPIPS-VGG, per-image PSNR, outside the clock). It is written and timed before R2 is scheduled. It is not part of R0/R1.
+**Before R2: the evaluator.** NeRFICG's intermediate checkpoint-and-render path costs about 54 s per call on room (`results/sparse_switch` timings). Evaluating every 500 steps through it would cost about 50 min per run and break the budget. R2 therefore needs a metrics-only, in-process evaluator (render the test set, PSNR / SSIM / LPIPS-VGG, per-image PSNR, outside the clock). It is written and timed before R2 is scheduled. It is not part of R0/R1. Written 2026-10-31: `reinit_eval.py`.
 
 **How to read R2:**
 - `reinit-same ≈ stop` at equal time: reinitialization at this count does not help at this k.

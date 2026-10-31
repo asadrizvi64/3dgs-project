@@ -8,7 +8,7 @@ trainer: rename the stock Trainer.py (FasterGS -> FasterGSReinit, as make_reinit
          '# >>> fgs-reinit' ... '# <<< fgs-reinit' block. They must be identical: the track's patch only inserts marked
          blocks. Also checks that every marked block is one the patch defines (init, callbacks, cbclock).
 tree:    in the variant's git checkout, the rename commit must change file contents only by the rename, and the
-         commits after it may touch only Trainer.py and add reinit_core.py / reinit_trainer.py.
+         commits after it may touch only Trainer.py and add reinit_core.py / reinit_trainer.py / reinit_eval.py.
 Prints PASS/FAIL lines; exit status 1 on any failure.
 """
 from __future__ import annotations
@@ -25,7 +25,7 @@ VARIANT = 'FasterGSReinit'
 SHARED_PATCHES = ('cluster/patches/fastergs_sparse_from.py', 'cluster/patches/fastergs_save_state.py')
 BLOCK = re.compile(r'^[ \t]*# >>> fgs-reinit (\S+)\n.*?^[ \t]*# <<< fgs-reinit \1\n', re.S | re.M)
 EXPECTED_BLOCKS = ['init', 'callbacks', 'cbclock']
-ALLOWED_AFTER_RENAME = {'Trainer.py', 'reinit_core.py', 'reinit_trainer.py'}
+ALLOWED_AFTER_RENAME = {'Trainer.py', 'reinit_core.py', 'reinit_trainer.py', 'reinit_eval.py'}
 
 
 def rename(text: str, variant: str = VARIANT) -> str:
@@ -63,9 +63,11 @@ def check_trainer(stock: Path, variant: Path) -> list[tuple[str, bool]]:
     # _fgs_reinit_active / _fgs_audit_final_active; cbclock installs only with FGS_CBCLOCK
     blocks = dict((m.group(1), m.group(0)) for m in BLOCK.finditer(actual))
     results.append(('init block parses FGS_REINIT only when set', "if _fgs_spec else None" in blocks.get('init', '')))
+    results.append(('init block parses FGS_EVAL only when set', "if _fgs_ev else None" in blocks.get('init', '')))
     cb = blocks.get('callbacks', '')
-    results.append(('callbacks are gated by _fgs_reinit_active / _fgs_audit_final_active',
-                    cb.count("active='_fgs_reinit_active'") == 1 and cb.count("active='_fgs_audit_final_active'") == 1))
+    results.append(('callbacks are gated by _fgs_reinit_active / _fgs_audit_final_active / _fgs_eval_active',
+                    cb.count("active='_fgs_reinit_active'") == 1 and cb.count("active='_fgs_audit_final_active'") == 1
+                    and cb.count("active='_fgs_eval_active'") == 1 and cb.count('@training_callback(') == 3))
     results.append(('cbclock installs only with FGS_CBCLOCK', "environ.get('FGS_CBCLOCK')" in blocks.get('cbclock', '')))
     return results
 

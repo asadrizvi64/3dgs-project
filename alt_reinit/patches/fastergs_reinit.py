@@ -12,6 +12,9 @@ FGS_REINIT=spec   reinitialization (reinit_core.parse_env), e.g. 'mode=apply,ite
                   reinit_gaussians (priority 95: after densify and Morton ordering, before opacity reset and the
                   training step) at the configured iterations, and reinit_audit_final (audit only, priority 70: after the
                   last training step). The logic lives in reinit_trainer.py / reinit_core.py next to this Trainer.
+FGS_EVAL=spec     metrics-only test-set evaluation outside the clock (reinit_eval.parse_eval), e.g. 'every=500,from=5000'
+                  or 'at=12500': callback reinit_eval (priority 60, after the training step), inactive without it.
+                  mode=stop / end_densify=1 in FGS_REINIT set DENSIFICATION_END_ITERATION to k (R2 arms).
 FGS_CBCLOCK=1     per-call synchronized wall time of the callbacks that run between training steps (CBCLOCK lines),
                   installed at the first training step.
 FGS_LOG=path      where both write (as the clock hooks do).
@@ -33,12 +36,18 @@ INIT_HOOK = INIT_ANCHOR + '''        # >>> fgs-reinit init
         _fgs_spec = __import__('os').environ.get('FGS_REINIT', '')
         self._fgs_rcfg = __import__('importlib').import_module(__package__ + '.reinit_core').parse_env(_fgs_spec) if _fgs_spec else None
         _fgs_on = self._fgs_rcfg is not None and self._fgs_rcfg.mode != 'off'
-        self._fgs_reinit_active = _fgs_on
+        if _fgs_on and self._fgs_rcfg.end_densify:
+            self.DENSIFICATION_END_ITERATION = self._fgs_rcfg.start
+        self._fgs_reinit_active = _fgs_on and self._fgs_rcfg.mode in ('apply', 'audit')
         self._fgs_reinit_start = self._fgs_rcfg.start if _fgs_on else 0
         self._fgs_reinit_end = self._fgs_rcfg.end if _fgs_on else 0
         self._fgs_reinit_every = self._fgs_rcfg.every if _fgs_on else 1
         self._fgs_audit_final_active = _fgs_on and self._fgs_rcfg.mode == 'audit'
         self._fgs_audit_final_iteration = self.NUM_ITERATIONS - 1
+        _fgs_ev = __import__('os').environ.get('FGS_EVAL', '')
+        self._fgs_ecfg = __import__('importlib').import_module(__package__ + '.reinit_eval').parse_eval(_fgs_ev, self.NUM_ITERATIONS) if _fgs_ev else None
+        self._fgs_eval_active = self._fgs_ecfg is not None
+        self._fgs_eval_start, self._fgs_eval_end, self._fgs_eval_every = self._fgs_ecfg.schedule if self._fgs_ecfg is not None else (0, 0, 1)
         # <<< fgs-reinit init
 '''
 
@@ -57,6 +66,12 @@ CB_HOOK = '''    # >>> fgs-reinit callbacks
     def reinit_audit_final(self, iteration: int, dataset: 'BaseDataset') -> None:
         """Alternative track R: audited depth against the final model's depth (audit runs only)."""
         __import__('importlib').import_module(__package__ + '.reinit_trainer').run_audit_final(self, iteration, dataset)
+
+    @training_callback(active='_fgs_eval_active', priority=60, start_iteration='_fgs_eval_start', end_iteration='_fgs_eval_end', iteration_stride='_fgs_eval_every')
+    @torch.no_grad()
+    def reinit_eval(self, iteration: int, dataset: 'BaseDataset') -> None:
+        """Alternative track R: metrics-only test-set evaluation, outside the clock (FGS_EVAL runs only)."""
+        __import__('importlib').import_module(__package__ + '.reinit_eval').run_eval(self, iteration, dataset)
 
     # <<< fgs-reinit callbacks
 ''' + CB_ANCHOR

@@ -16,6 +16,28 @@ T_warm-up(0..k) + T_reinit + T_train(k..target)  <  T_reference(0..target)
 
 Quality must not get worse: 3-seed mean PSNR, SSIM and LPIPS, plus checks on every test image.
 
+**Update 2026-10-31:**
+- R0 passed (job 4503144) and R1 passed (job 4503153). See `logs/audit-4503153-README.md`.
+- The user amended the k rule and locked the R2 design: k = 5000 for both scenes, see "Amendment" in [`PLAN.md`](PLAN.md).
+- The R2 evaluator and job stages are written (`reinit_eval.py`, stages `r2smoke` and `r2`). They are run as:
+
+  ```bash
+  STAGES="build unit r2smoke" sbatch --job-name=gs-alt-r2smoke alt_reinit/build_reinit.sbatch
+  ```
+
+  ```bash
+  SCENES=garden STAGES=r2 sbatch --job-name=gs-alt-r2-garden --time=03:00:00 alt_reinit/build_reinit.sbatch
+  ```
+
+  ```bash
+  SCENES=room STAGES=r2 sbatch --job-name=gs-alt-r2-room --time=03:00:00 alt_reinit/build_reinit.sbatch
+  ```
+
+- The cluster has no GitHub credentials. Commit in `~/3dgs-alt`, pull that commit into a local clone over ssh, and push
+  from there.
+- Compute nodes see `/projects` read-only, so audit archives are staged under `$DATA/alt_reinit-archive-staging` and
+  copied from a login node.
+
 **State:**
 - R0 (build and checks) and R1 (audit) tooling is written and **40 CPU tests pass**.
 - **Nothing has run on a GPU yet.** The CUDA build, the 3 GPU checks, the smoke runs and the audit are all pending.

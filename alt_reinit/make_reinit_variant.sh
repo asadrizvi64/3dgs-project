@@ -5,7 +5,7 @@
 #   3. trainer patches, one commit each: the shared clock hook (cluster/patches/fastergs_sparse_from.py, SELECTIVE_FROM
 #      stays unset), the shared save-state hook (cluster/patches/fastergs_save_state.py), the track's hooks
 #      (alt_reinit/patches/fastergs_reinit.py)
-#   4. copy alt_reinit/reinit_core.py and reinit_trainer.py into the method, one commit
+#   4. copy alt_reinit/reinit_core.py, reinit_trainer.py and reinit_eval.py into the method, one commit
 #   5. pip install the extension into fastergs-venv (BUILD=0 skips) and mark it built for train_fastergs.sbatch
 # No macro backward, no profiling hooks, nothing from FasterGSPlus. The FasterGS checkout itself is only read.
 #   bash alt_reinit/make_reinit_variant.sh
@@ -43,9 +43,9 @@ for tp in cluster/patches/fastergs_sparse_from.py cluster/patches/fastergs_save_
   python3 "$REPO/$tp" "$DST/Trainer.py"
   git commit -qam "trainer patch $tp (3dgs-project $REV)"
 done
-cp "$REPO/alt_reinit/reinit_core.py" "$REPO/alt_reinit/reinit_trainer.py" "$DST/"
-git add reinit_core.py reinit_trainer.py
-git commit -qm "alt_reinit reinit_core.py + reinit_trainer.py (3dgs-project $REV)"
+cp "$REPO/alt_reinit/reinit_core.py" "$REPO/alt_reinit/reinit_trainer.py" "$REPO/alt_reinit/reinit_eval.py" "$DST/"
+git add reinit_core.py reinit_trainer.py reinit_eval.py
+git commit -qm "alt_reinit reinit_core.py + reinit_trainer.py + reinit_eval.py (3dgs-project $REV)"
 echo "$REV" > "$MARK"   # untracked marker: made by this script
 echo "$MARK" >> .git/info/exclude
 git log --oneline -7

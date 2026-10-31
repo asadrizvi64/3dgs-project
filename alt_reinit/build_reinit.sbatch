@@ -14,6 +14,10 @@
 #   audit   R1: per scene in SCENES (default "garden room"), seed 0, one 30k run with
 #           FGS_REINIT=mode=audit,iters=2000:5000,target=<stock N at 15k>/match and the callback clock. The audit works
 #           on a copy; training is stock Faster-GS.
+#   r2smoke short garden runs of the four R2 arms (k=5000, to 6500) with the in-process evaluator: evaluator == NeRFICG's
+#           final metrics_8bit.txt, densification and opacity resets end at k in the stop / reinit arms, counts hit targets
+#   r2      R2 (PLAN.md, k = 5000 for both scenes, amended 2026-10-31): per scene in SCENES and seed in SEEDS (default 0 1 2),
+#           the four arms ref / stop / same / target, 30k each, arm order rotated by seed, FGS_EVAL every 500 from k
 #   STAGES="build unit smoke" sbatch alt_reinit/build_reinit.sbatch        (from the repo root)
 #   STAGES=audit sbatch --job-name=gs-alt-audit --time=01:30:00 alt_reinit/build_reinit.sbatch
 #SBATCH --job-name=gs-alt-r0
@@ -57,7 +61,7 @@ fi
 if has unit; then
   echo "########## unit"
   ( cd "$REPO" && python -m pytest -q -p no:cacheprovider alt_reinit/tests/test_core_cpu.py alt_reinit/tests/test_trainer_cpu.py \
-      alt_reinit/tests/test_analyze_record.py alt_reinit/tests/test_check_variant.py ) > "$OUT/cpu_tests.log" 2>&1 \
+      alt_reinit/tests/test_analyze_record.py alt_reinit/tests/test_check_variant.py alt_reinit/tests/test_eval_cpu.py ) > "$OUT/cpu_tests.log" 2>&1 \
     && tail -1 "$OUT/cpu_tests.log" | sed 's/^/CPU tests: /' || { echo "FAILED cpu tests"; tail -30 "$OUT/cpu_tests.log"; FAILED+=(cpu_tests); }
   python3 "$REPO/alt_reinit/tests/check_variant.py" tree "$METHODS/FasterGSReinit" --base 1144604 > "$OUT/check_tree.log" 2>&1 \
     && grep -c '^PASS' "$OUT/check_tree.log" | sed 's/^/static tree checks PASS: /' || { echo "FAILED static tree"; cat "$OUT/check_tree.log"; FAILED+=(check_tree); }
@@ -71,10 +75,11 @@ fi
 train() {  # name method seed iters reinit_spec cbclock(0|1) [segk]
   local name=$1 method=$2 seed=$3 iters=$4 spec=$5 cbclock=$6 segk=${7:-1000}
   rm -f "$OUT/$name.seg"
-  echo "##### $name: method=$method scene=$BSCENE seed=$seed iters=$iters reinit=${spec:--} cbclock=$cbclock $(date +%T)"
+  echo "##### $name: method=$method scene=$BSCENE seed=$seed iters=$iters reinit=${spec:--} cbclock=$cbclock eval=${EVALSPEC:--} $(date +%T)"
   local envs=(FGS_SEGCLOCK=$segk FGS_LOG="$OUT/$name.seg")
   [ -n "$spec" ] && envs+=(FGS_REINIT="$spec")
   [ "$cbclock" = 1 ] && envs+=(FGS_CBCLOCK=1)
+  [ -n "${EVALSPEC:-}" ] && envs+=(FGS_EVAL="$EVALSPEC")
   env "${envs[@]}" SCENE=$BSCENE SCALE=$BSCALE SEED=$seed ITERS=$iters METHOD=$method TAG=$name \
       bash "$REPO/cluster/train_fastergs.sbatch" > "$OUT/$name.log" 2>&1 || true
   local RUN; RUN=$(tr '\r' '\n' < "$OUT/$name.log" | sed -n 's/^== run dir //p' | tail -1)
@@ -84,7 +89,7 @@ train() {  # name method seed iters reinit_spec cbclock(0|1) [segk]
     mkdir -p "$OUT/runs/$name"; echo "$RUN" > "$OUT/runs/$name/rundir.txt"
     ( cd "$DATA/nerficg/$RUN" && cp --parents -t "$OUT/runs/$name" training_config.yaml timings.txt n_gaussians.txt vram_stats.txt \
         gpu_clock_summary.txt test_*/metrics_8bit.txt reinit_audit/k_*/stats.json reinit_audit/k_*/agreement_final.json \
-        reinit_audit/k_*/masks/*.jpg 2>/dev/null ) || true
+        reinit_audit/k_*/masks/*.jpg fgs_eval/metrics.jsonl 2>/dev/null ) || true
     if [ -d "$DATA/nerficg/$RUN/reinit_audit" ]; then   # full audit output (with the depth maps) outside the workspace
       # /projects is read-only on compute nodes: then stage on the workspace and copy to $ARCHIVE from a login node
       local ARC=$ARCHIVE/alt_reinit/${SLURM_JOB_ID:-local}/$name
@@ -164,6 +169,49 @@ if has audit; then
     esac
     echo "########## audit (R1) $BSCENE scale $BSCALE: k = 2000, 5000; targets $N15 (stock N at 15k) / match"
     train "ar1_${BSCENE}_audit_s0" FasterGSReinit 0 30000 "mode=audit,iters=2000:5000,target=$N15/match" 1 1000
+  done
+fi
+
+arm_spec() {  # arm k target15k -> FGS_REINIT spec ("" for ref)
+  case $1 in
+    ref) echo "" ;;
+    stop) echo "mode=stop,iters=$2" ;;
+    same) echo "mode=apply,iters=$2,target=match,end_densify=1" ;;
+    target) echo "mode=apply,iters=$2,target=$3,end_densify=1" ;;
+  esac
+}
+scene_setup() {  # sets BSCALE and N15 for BSCENE
+  case $BSCENE in
+    garden) BSCALE=0.25; N15=4166000 ;;   # stock N at 15k, phase2/logs/bench-analysis.md (3-seed mean)
+    room)   BSCALE=0.5;  N15=1345000 ;;
+    *) return 1 ;;
+  esac
+}
+
+if has r2smoke; then
+  echo "########## r2smoke (garden seed 0, k=5000, to 6500, evaluator every 500 from 5000)"
+  BSCENE=garden; scene_setup; EVALSPEC="every=500,from=5000"
+  for arm in ref stop same target; do
+    train "ar0_garden_r2${arm}_s0" FasterGSReinit 0 6500 "$(arm_spec $arm 5000 $N15)" 1 100
+  done
+  EVALSPEC=
+  python3 "$REPO/alt_reinit/check_r2smoke.py" "$OUT" "$DATA/nerficg" || FAILED+=(r2smoke_checks)
+fi
+
+if has r2; then
+  K=${K:-5000}
+  ARMS=(ref stop same target)
+  for BSCENE in ${SCENES:-garden room}; do
+    scene_setup || { echo "FAILED no stock 15k count recorded for $BSCENE"; FAILED+=("r2_$BSCENE"); continue; }
+    echo "########## R2 $BSCENE scale $BSCALE: k=$K, arms ${ARMS[*]}, seeds ${SEEDS:-0 1 2}; target arm N=$N15"
+    for seed in ${SEEDS:-0 1 2}; do
+      for j in 0 1 2 3; do   # arm order rotated by seed
+        arm=${ARMS[$(( (j + seed) % 4 ))]}
+        EVALSPEC="every=500,from=$K"
+        train "ar2_${BSCENE}_${arm}_s${seed}" FasterGSReinit "$seed" 30000 "$(arm_spec $arm $K $N15)" 1 500
+        EVALSPEC=
+      done
+    done
   done
 fi
 
