@@ -16,6 +16,12 @@ T_warm-up(0..k) + T_reinit + T_train(k..target)  <  T_reference(0..target)
 
 Quality must not get worse: 3-seed mean PSNR, SSIM and LPIPS, plus checks on every test image.
 
+**Status 2026-10-31: TRACK STOPPED after R2 + R4** under the pre-registered rule.
+- Garden: every arm loses SSIM.
+- Room: the reinit crossings did not reproduce. `reinit-target` keeps quality without a confirmed time gain.
+
+See [`logs/r2-r4-README.md`](logs/r2-r4-README.md). About 4.0 GPU-hours used.
+
 **Update 2026-10-31:**
 - R0 passed (job 4503144) and R1 passed (job 4503153). See `logs/audit-4503153-README.md`.
 - The user amended the k rule and locked the R2 design: k = 5000 for both scenes, see "Amendment" in [`PLAN.md`](PLAN.md).
