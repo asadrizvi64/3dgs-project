@@ -10,8 +10,9 @@ run_<job>/runs/<name>/fgs_eval/metrics.jsonl (per-image values of every evaluati
 - **Target, per scene:** the `ref` arm's 3-seed means at 30k: PSNR >=, SSIM >=, LPIPS <=. No allowance.
 - **Candidate step of an arm:** the first evaluation at which the arm's 3-seed mean curve meets all three. Its time is
   the 3-seed mean track clock at that step. `ref` has one by 30k by construction.
-- **Near-tie:** the margin on any metric at the candidate (or the deficit at 30k, if there is no candidate) is smaller
-  than the reference's seed standard deviation at 30k. The result is then inconclusive until confirmed.
+- **Near-tie:** with a candidate, some metric passes by less than the reference's seed standard deviation at 30k.
+  Without one, every metric that misses at 30k misses by less than that. The result is then inconclusive until
+  confirmed. A miss larger than the spread on any metric is a clear quality loss.
 - **Images:** an image fails in a run when its PSNR is more than 3 dB below that image's median over the ref runs at 30k.
   A new failure is one on an image that never fails in the ref runs. Images more than 1 dB below are listed. Each arm
   run is checked at the arm's candidate step, or at 30k when there is none.
@@ -164,7 +165,11 @@ def analyze(runs: list[dict]) -> tuple[str, list[str], list[tuple]]:
             t_c = [clock(r, cand) for r in rs.values()] if cand else []
             t30 = [clock(r, 30000) for r in rs.values()]
             mg = margins(curve[at], tgt) if at else {}
-            near = bool(mg) and any(abs(mg[k]) < tsd[k] for k in METRICS)
+            # near-tie: a candidate that passes some metric by less than the ref seed sd, or (no candidate) a miss in which
+            # every metric below target is below it by less than the ref seed sd
+            below = [k for k in METRICS if mg and mg[k] < 0]
+            near = bool(mg) and (any(abs(mg[k]) < tsd[k] for k in METRICS) if cand is not None
+                                 else all(-mg[k] < tsd[k] for k in below))
             # images, at the candidate (or 30k)
             new_fail, low = set(), set()
             if img_med and at:
@@ -195,7 +200,13 @@ def analyze(runs: list[dict]) -> tuple[str, list[str], list[tuple]]:
             if arm == 'ref':
                 outcome = 'reference'
             elif cand is None or nf:
-                outcome = 'reduces quality' + (' (new image failures)' if nf and cand else '')
+                if nf and cand:
+                    outcome = 'reduces quality (new image failures)'
+                else:
+                    tsd_ = tsd
+                    outcome = 'reduces quality (' + ', '.join(
+                        f'{k} below target{" by more than the ref sd" if -mg[k] >= tsd_[k] else ""}' for k in METRICS
+                        if mg[k] < 0) + ')'
             elif t_ref is not None and t < t_ref:
                 outcome = 'improves time-to-quality (pending R4)'
             else:
