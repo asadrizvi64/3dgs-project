@@ -1,0 +1,5 @@
+SEGCLOCK step=300 seg_s=0.660 cum_s=0.660 sparse=0 N=138766 peak_alloc_gib=2.24
+SEGCLOCK step=600 seg_s=0.612 cum_s=1.272 sparse=0 N=138766 peak_alloc_gib=2.24
+SEGCLOCK step=900 seg_s=0.633 cum_s=1.904 sparse=0 N=220660 peak_alloc_gib=2.34
+SEGCLOCK step=1200 seg_s=0.720 cum_s=2.624 sparse=0 N=392188 peak_alloc_gib=2.51
+FGS_TRAIN_END N=392188 peak_alloc_gib=2.51 peak_reserved_gib=2.59

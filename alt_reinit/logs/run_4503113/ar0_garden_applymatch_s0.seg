@@ -1,0 +1,51 @@
+CBCLOCK_INSTALLED iteration=0 callbacks=increase_sh_degree,densify,morton_ordering,recompute_3d_filter,reset_opacities,reset_opacities_extra,hard_pruning,reinit_gaussians
+SEGCLOCK step=100 seg_s=0.220 cum_s=0.220 sparse=0 N=138766 peak_alloc_gib=2.24
+SEGCLOCK step=200 seg_s=0.217 cum_s=0.437 sparse=0 N=138766 peak_alloc_gib=2.24
+SEGCLOCK step=300 seg_s=0.216 cum_s=0.653 sparse=0 N=138766 peak_alloc_gib=2.24
+SEGCLOCK step=400 seg_s=0.213 cum_s=0.866 sparse=0 N=138766 peak_alloc_gib=2.24
+SEGCLOCK step=500 seg_s=0.208 cum_s=1.075 sparse=0 N=138766 peak_alloc_gib=2.24
+CBCLOCK name=reset_opacities_extra iteration=500 s=0.013693
+SEGCLOCK step=600 seg_s=0.207 cum_s=1.282 sparse=0 N=138766 peak_alloc_gib=2.24
+CBCLOCK name=densify iteration=600 s=0.065664
+SEGCLOCK step=700 seg_s=0.212 cum_s=1.493 sparse=0 N=149527 peak_alloc_gib=2.27
+CBCLOCK name=densify iteration=700 s=0.003656
+SEGCLOCK step=800 seg_s=0.217 cum_s=1.711 sparse=0 N=180002 peak_alloc_gib=2.30
+CBCLOCK name=densify iteration=800 s=0.003544
+SEGCLOCK step=900 seg_s=0.223 cum_s=1.934 sparse=0 N=220717 peak_alloc_gib=2.34
+CBCLOCK name=densify iteration=900 s=0.003325
+SEGCLOCK step=1000 seg_s=0.228 cum_s=2.162 sparse=0 N=268768 peak_alloc_gib=2.38
+CBCLOCK name=increase_sh_degree iteration=1000 s=0.000029
+CBCLOCK name=densify iteration=1000 s=0.003952
+SEGCLOCK step=1100 seg_s=0.247 cum_s=2.409 sparse=0 N=326749 peak_alloc_gib=2.44
+CBCLOCK name=densify iteration=1100 s=0.004160
+SEGCLOCK step=1200 seg_s=0.272 cum_s=2.681 sparse=0 N=391255 peak_alloc_gib=2.51
+CBCLOCK name=densify iteration=1200 s=0.003947
+SEGCLOCK step=1300 seg_s=0.280 cum_s=2.962 sparse=0 N=460260 peak_alloc_gib=2.59
+CBCLOCK name=densify iteration=1300 s=0.006725
+SEGCLOCK step=1400 seg_s=0.305 cum_s=3.266 sparse=0 N=534746 peak_alloc_gib=2.67
+CBCLOCK name=densify iteration=1400 s=0.005581
+SEGCLOCK step=1500 seg_s=0.314 cum_s=3.581 sparse=0 N=613962 peak_alloc_gib=2.75
+CBCLOCK name=densify iteration=1500 s=0.004840
+SEGCLOCK step=1600 seg_s=0.330 cum_s=3.910 sparse=0 N=698329 peak_alloc_gib=2.84
+CBCLOCK name=densify iteration=1600 s=0.005127
+SEGCLOCK step=1700 seg_s=0.344 cum_s=4.255 sparse=0 N=780053 peak_alloc_gib=2.92
+CBCLOCK name=densify iteration=1700 s=0.005385
+SEGCLOCK step=1800 seg_s=0.357 cum_s=4.612 sparse=0 N=864996 peak_alloc_gib=3.01
+CBCLOCK name=densify iteration=1800 s=0.006681
+SEGCLOCK step=1900 seg_s=0.372 cum_s=4.984 sparse=0 N=953170 peak_alloc_gib=3.10
+CBCLOCK name=densify iteration=1900 s=0.007378
+SEGCLOCK step=2000 seg_s=0.389 cum_s=5.373 sparse=0 N=1043264 peak_alloc_gib=3.20
+CBCLOCK name=increase_sh_degree iteration=2000 s=0.000031
+CBCLOCK name=densify iteration=2000 s=0.006338
+REINIT_CONFIG mode=apply,start=2000,end=2000,every=1,target=match,stride=2,alpha_min=0.95,rel_std_max=0.05,n_nbr=4,min_agree=2,depth_tol=0.01,reproj_tol=1.0,min_angle=3.0,cover_ring=1,init_opacity=0.1,seed=0,check=True,max_retries=1,diag_views=16,mask_views=4,zncc_samples=20000,nbr_samples=1024 densification_end=14900
+REINIT iteration=2000 mode=apply stride=2 retries=0 timed_target=1136127 t_total=0.9604 t_depth=0.1647 t_candidates=0.0657 t_neighbours=0.1326 t_filter=0.4643 t_dedupe=0.0306 t_select=0.0446 t_knn=0.0469 t_rebuild=0.0062 t_morton=0.0048
+REINIT_COUNTS iteration=2000 n_before=1136127 n_candidates_grid=43817760 n_filtered=507015 n_deduped=388155 n_covered=41737 n_survivors=1094390 n_added=41737 n_after=1136127 target=1136127 max_reachable=1482545
+REINIT_STATUS iteration=2000 stride=2 kept=507015 empty=0 low_alpha=10903645 mixture=30345537 geometry=2061563 | neighbour outcomes agree=1722490 out_of_view=175879 target_invalid=7449432 depth_mismatch=474632 reproj_mismatch=451879
+REINIT_CHECK iteration=2000 result=pass
+CBCLOCK name=reinit_gaussians iteration=2000 s=1.051929
+SEGCLOCK step=2100 seg_s=0.420 cum_s=5.793 sparse=0 N=1136127 peak_alloc_gib=8.32
+CBCLOCK name=densify iteration=2100 s=0.006660
+SEGCLOCK step=2200 seg_s=0.431 cum_s=6.224 sparse=0 N=1220669 peak_alloc_gib=8.32
+CBCLOCK name=densify iteration=2200 s=0.006920
+SEGCLOCK step=2300 seg_s=0.444 cum_s=6.668 sparse=0 N=1310541 peak_alloc_gib=8.32
+FGS_TRAIN_END N=1310541 peak_alloc_gib=8.32 peak_reserved_gib=8.65

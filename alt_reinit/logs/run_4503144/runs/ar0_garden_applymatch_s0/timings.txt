@@ -1,0 +1,101 @@
+Dataset loading:
+	Total execution time: 0:00:01
+	Time per iteration [ms]: 737.43
+	Number of iterations: 1
+
+_commit_wandb:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+_log_test_metrics_wandb:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+_prepare_dataset:
+	Total execution time: 0:00:17
+	Time per iteration [ms]: 16840.67
+	Number of iterations: 1
+
+_save_final_checkpoint:
+	Total execution time: 0:00:44
+	Time per iteration [ms]: 44246.56
+	Number of iterations: 1
+
+_save_intermediate_checkpoint:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+create_sampler:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 34.54
+	Number of iterations: 1
+
+densify:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 8.79
+	Number of iterations: 17
+
+finalize:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 13.68
+	Number of iterations: 1
+
+hard_pruning:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+increase_sh_degree:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.03
+	Number of iterations: 2
+
+log_wandb:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+morton_ordering:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 7.47
+	Number of iterations: 1
+
+recompute_3d_filter:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+reinit_audit_final:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+reinit_gaussians:
+	Total execution time: 0:00:01
+	Time per iteration [ms]: 1096.79
+	Number of iterations: 1
+
+reset_opacities:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+reset_opacities_extra:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 13.61
+	Number of iterations: 1
+
+setup_gaussians:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 92.82
+	Number of iterations: 1
+
+training_iteration:
+	Total execution time: 0:00:07
+	Time per iteration [ms]: 2.92
+	Number of iterations: 2300
+
+Time:7.974174

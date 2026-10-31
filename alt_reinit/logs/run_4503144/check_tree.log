@@ -1,0 +1,6 @@
+PASS exactly one rename commit after the base
+PASS the rename commit is the first commit after the base
+PASS rename commit has the same files, renamed
+PASS rename commit changes contents only by the rename (53 files)
+PASS after the rename only ['Trainer.py', 'reinit_core.py', 'reinit_trainer.py'] change (got ['Trainer.py', 'reinit_core.py', 'reinit_trainer.py'])
+PASS tracked files unchanged since the last commit

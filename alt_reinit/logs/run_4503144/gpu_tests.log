@@ -1,0 +1,15 @@
+CHECK depth single layer: D=2.000000 A=0.999000 rel_std=0.00e+00
+.CHECK depth two layers: D=1.9995 (expected 1.9995) A=0.9995 rel_std=0.500 (expected 0.500)
+CHECK depth empty corners: A=0.0e+00,0.0e+00,0.0e+00,0.0e+00
+.CHECK forward image: max |new - stock| = 0.000e+00 (stock vs stock 0.000e+00)
+CHECK grad means: rel(new, stock) = 1.01e-07, rel(stock, stock) = 1.03e-07
+CHECK grad scales: rel(new, stock) = 6.06e-07, rel(stock, stock) = 6.47e-07
+CHECK grad rotations: rel(new, stock) = 5.20e-07, rel(stock, stock) = 6.25e-07
+CHECK grad opacities: rel(new, stock) = 1.11e-07, rel(stock, stock) = 1.06e-07
+CHECK grad sh0: rel(new, stock) = 1.13e-07, rel(stock, stock) = 1.15e-07
+CHECK grad sh_rest: rel(new, stock) = 1.12e-07, rel(stock, stock) = 1.16e-07
+CHECK densification info row 0: rel(new, stock) = 0.00e+00, floor 0.00e+00
+CHECK densification info row 1: rel(new, stock) = 9.17e-08, floor 9.10e-08
+CHECK FusedAdam 2 steps: parameters and both moments bit-identical: True
+.
+3 passed in 5.38s

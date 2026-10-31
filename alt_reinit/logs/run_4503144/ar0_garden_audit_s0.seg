@@ -1,0 +1,51 @@
+CBCLOCK_INSTALLED iteration=0 callbacks=increase_sh_degree,densify,morton_ordering,recompute_3d_filter,reset_opacities,reset_opacities_extra,hard_pruning,reinit_gaussians
+SEGCLOCK step=100 seg_s=0.234 cum_s=0.234 sparse=0 N=138766 peak_alloc_gib=2.24
+SEGCLOCK step=200 seg_s=0.213 cum_s=0.447 sparse=0 N=138766 peak_alloc_gib=2.24
+SEGCLOCK step=300 seg_s=0.206 cum_s=0.653 sparse=0 N=138766 peak_alloc_gib=2.24
+SEGCLOCK step=400 seg_s=0.201 cum_s=0.854 sparse=0 N=138766 peak_alloc_gib=2.24
+SEGCLOCK step=500 seg_s=0.200 cum_s=1.054 sparse=0 N=138766 peak_alloc_gib=2.24
+CBCLOCK name=reset_opacities_extra iteration=500 s=0.013417
+SEGCLOCK step=600 seg_s=0.201 cum_s=1.256 sparse=0 N=138766 peak_alloc_gib=2.24
+CBCLOCK name=densify iteration=600 s=0.062831
+SEGCLOCK step=700 seg_s=0.204 cum_s=1.459 sparse=0 N=149531 peak_alloc_gib=2.27
+CBCLOCK name=densify iteration=700 s=0.003616
+SEGCLOCK step=800 seg_s=0.207 cum_s=1.666 sparse=0 N=180009 peak_alloc_gib=2.30
+CBCLOCK name=densify iteration=800 s=0.003508
+SEGCLOCK step=900 seg_s=0.218 cum_s=1.884 sparse=0 N=220970 peak_alloc_gib=2.34
+CBCLOCK name=densify iteration=900 s=0.003269
+SEGCLOCK step=1000 seg_s=0.227 cum_s=2.111 sparse=0 N=268952 peak_alloc_gib=2.38
+CBCLOCK name=increase_sh_degree iteration=1000 s=0.000132
+CBCLOCK name=densify iteration=1000 s=0.003521
+SEGCLOCK step=1100 seg_s=0.240 cum_s=2.350 sparse=0 N=327179 peak_alloc_gib=2.44
+CBCLOCK name=densify iteration=1100 s=0.004120
+SEGCLOCK step=1200 seg_s=0.256 cum_s=2.606 sparse=0 N=391868 peak_alloc_gib=2.51
+CBCLOCK name=densify iteration=1200 s=0.004528
+SEGCLOCK step=1300 seg_s=0.266 cum_s=2.872 sparse=0 N=460703 peak_alloc_gib=2.59
+CBCLOCK name=densify iteration=1300 s=0.004306
+SEGCLOCK step=1400 seg_s=0.281 cum_s=3.153 sparse=0 N=535442 peak_alloc_gib=2.67
+CBCLOCK name=densify iteration=1400 s=0.005536
+SEGCLOCK step=1500 seg_s=0.291 cum_s=3.444 sparse=0 N=615274 peak_alloc_gib=2.75
+CBCLOCK name=densify iteration=1500 s=0.004735
+SEGCLOCK step=1600 seg_s=0.310 cum_s=3.754 sparse=0 N=699832 peak_alloc_gib=2.84
+CBCLOCK name=densify iteration=1600 s=0.007300
+SEGCLOCK step=1700 seg_s=0.322 cum_s=4.075 sparse=0 N=781537 peak_alloc_gib=2.93
+CBCLOCK name=densify iteration=1700 s=0.005691
+SEGCLOCK step=1800 seg_s=0.340 cum_s=4.415 sparse=0 N=866602 peak_alloc_gib=3.01
+CBCLOCK name=densify iteration=1800 s=0.006838
+SEGCLOCK step=1900 seg_s=0.353 cum_s=4.768 sparse=0 N=954515 peak_alloc_gib=3.11
+CBCLOCK name=densify iteration=1900 s=0.008010
+SEGCLOCK step=2000 seg_s=0.368 cum_s=5.136 sparse=0 N=1044276 peak_alloc_gib=3.20
+CBCLOCK name=increase_sh_degree iteration=2000 s=0.000104
+CBCLOCK name=densify iteration=2000 s=0.007218
+REINIT_CONFIG mode=audit,start=2000,end=2000,every=1,target=match/4166000,stride=2,alpha_min=0.95,rel_std_max=0.05,n_nbr=4,min_agree=2,depth_tol=0.01,reproj_tol=1.0,min_angle=3.0,cover_ring=1,init_opacity=0.1,seed=0,check=True,max_retries=1,diag_views=16,mask_views=4,zncc_samples=20000,nbr_samples=1024 densification_end=14900
+REINIT iteration=2000 mode=audit stride=2 retries=0 timed_target=1137951 t_total=0.9727 t_depth=0.1660 t_candidates=0.0667 t_neighbours=0.1242 t_filter=0.4839 t_dedupe=0.0230 t_select=0.0487 t_knn=0.0500 t_rebuild=0.0062 t_morton=0.0041
+REINIT_COUNTS iteration=2000 n_before=1137951 n_candidates_grid=43817760 n_filtered=791201 n_deduped=561797 n_covered=54829 n_survivors=1083122 n_added=54829 n_after=1137951 target=1137951 max_reachable=1644919
+REINIT_STATUS iteration=2000 stride=2 kept=791201 empty=0 low_alpha=10890015 mixture=29845938 geometry=2290606 | neighbour outcomes agree=2606792 out_of_view=129632 target_invalid=7775760 depth_mismatch=1022028 reproj_mismatch=793016
+REINIT_CHECK iteration=2000 result=pass
+REINIT_TARGET iteration=2000 target=1137951 reachable n_survivors=1083122 n_added=54829 max_reachable=1644919
+REINIT_TARGET iteration=2000 target=4166000 UNREACHABLE n_survivors=1083122 n_added=3082878 max_reachable=1644919
+REINIT_AUDIT iteration=2000 dir=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSReinit/fastergsreinit_garden_cd00013_s0ar0_garden_audit_s0_2026-10-31-12-25-54/reinit_audit/k_02000 diagnostics_s=5.2
+CBCLOCK name=reinit_gaussians iteration=2000 s=6.276584
+SEGCLOCK step=2100 seg_s=0.395 cum_s=5.531 sparse=0 N=1137951 peak_alloc_gib=9.08
+FGS_TRAIN_END N=1137951 peak_alloc_gib=9.08 peak_reserved_gib=9.50
+REINIT_AGREEMENT k=02000 final=2100 kept_median=0.0013620624085888267 kept_within_1pct=0.9900994300842285 geometry_median=0.0016625038115307689 geometry_within_1pct=0.977819561958313

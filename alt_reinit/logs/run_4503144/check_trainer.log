@@ -1,0 +1,6 @@
+PASS marked blocks are ['init', 'callbacks', 'cbclock']
+PASS no stray fgs-reinit markers outside the blocks
+PASS variant Trainer.py minus marked blocks == renamed stock + clock + save-state patches
+PASS init block parses FGS_REINIT only when set
+PASS callbacks are gated by _fgs_reinit_active / _fgs_audit_final_active
+PASS cbclock installs only with FGS_CBCLOCK
