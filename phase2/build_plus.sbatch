@@ -59,6 +59,8 @@ STAGES=${STAGES:-"build unit switch sanity"}
 REPO=${SLURM_SUBMIT_DIR:-$PWD}
 DATA=$(ws_find -F cat 3dgs-data) || { echo "cat workspace not visible on $(hostname)"; exit 1; }
 ARCHIVE=${ARCHIVE:-/projects/p_scads_mlhpc/syas272h/3dgs-archive}   # durable results (project storage; moved out of $HOME 2026-10-29, which has a 50 GB quota)
+# NOTE: /projects is read-only on the compute nodes (job 4503798): stages that write $ARCHIVE (stages, profile, hostprof)
+# need ARCHIVE pointed at the workspace, with a copy to /projects from a login node afterwards
 export DATA
 module load GCC/13.3.0 CUDA/12.8.0 Python/3.12.3 >/dev/null 2>&1
 source "$DATA/fastergs-venv/bin/activate"
@@ -286,10 +288,10 @@ fi
 
 if has ncublend; then   # step 5c: Nsight Compute on the blend kernels, A+B+C vs FasterGSPlusCull, steps NCU_STEP..+2
   # one process per scene and arm: training runs normally to NCU_STEP (default 20000), ncu captures the forward blend and the
-  # macro backward of 2 steps (--set full), then the process exits. Reports in $ARCHIVE/ncu/<job>/, details CSV with the logs.
+  # macro backward of 2 steps (--set full), then the process exits. Reports in $DATA/ncu/<job>/, details CSV with the logs.
   NCU=$(command -v ncu || true)
   [ -n "$NCU" ] || { echo "FAILED ncublend: ncu not found"; FAILED+=(ncublend); }
-  NS=${NCU_STEP:-20000}; REP=$ARCHIVE/ncu/${SLURM_JOB_ID:-local}; mkdir -p "$REP"
+  NS=${NCU_STEP:-20000}; REP=$DATA/ncu/${SLURM_JOB_ID:-local}; mkdir -p "$REP"   # /projects is read-only on compute nodes
   for BSCENE in ${SCENES:-garden room}; do
     case $BSCENE in room|counter|kitchen|bonsai) BSCALE=0.5 ;; *) BSCALE=0.25 ;; esac
     for arm in abc abce; do
