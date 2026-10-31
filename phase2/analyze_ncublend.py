@@ -1,4 +1,5 @@
-"""Nsight Compute blend-kernel comparison (build_plus.sbatch STAGES=ncublend): A+B+C vs FasterGSPlusCull.
+"""Nsight Compute blend-kernel comparison (build_plus.sbatch STAGES=ncublend): A+B+C (arm abc) vs the other arm in the run
+(FasterGSPlusCull = abce, FasterGSPlusDR = abcd).
 
     python phase2/analyze_ncublend.py phase2/logs/run_<job> [--md out.md]
 
@@ -83,11 +84,12 @@ def main(argv):
                 ok = False; lines.append(f'CHECK FAILED {scene} {arm} {k}: {len(d[k])} launches')
     for scene in sorted({s for s, _ in by}):
         for k, title in (('fwd', 'forward blend_cu'), ('bwd', 'backward macro')):
-            a, c = by.get((scene, 'abc'), {}).get(k, []), by.get((scene, 'abce'), {}).get(k, [])
+            other = next((arm for s2, arm in by if s2 == scene and arm != 'abc'), None)
+            a, c = by.get((scene, 'abc'), {}).get(k, []), by.get((scene, other), {}).get(k, [])
             if not a or not c:
                 continue
             lines.append(f'### {scene}: {title}  ({a[0]["kernel"]} vs {c[0]["kernel"]})\n')
-            lines.append('| metric | A+B+C | culling | change |')
+            lines.append(f'| metric | A+B+C | {other} | change |')
             lines.append('|---|---|---|---|')
             for name, label, fmt in (('dur_us', 'duration (us, ncu clock)', '{:.0f}'), ('inst', 'warp instructions executed (M)', '{:.1f}'),
                                      ('issue_pct', 'issue slots busy (%)', '{:.1f}'), ('ipc', 'IPC (per SM)', '{:.2f}'),

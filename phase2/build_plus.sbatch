@@ -43,6 +43,8 @@
 #   STAGES="build unit" BUILD_VARIANT=FasterGSPlusCull BUILD_SRC_PATCHES=phase2/ellipse_cull.patch sbatch --job-name=gs-cull-build phase2/build_plus.sbatch
 #   STAGES=rbbench SCENE=garden CMP_VARIANT=FasterGSPlusCull CMP_ARM=abce sbatch --job-name=gs-cull-garden --time=00:40:00 phase2/build_plus.sbatch
 #   STAGES=ncublend sbatch --job-name=gs-ncublend --time=00:40:00 phase2/build_plus.sbatch
+#   STAGES="build unit" BUILD_VARIANT=FasterGSPlusDR BUILD_SRC_PATCHES=phase2/deferred_reduce.patch sbatch --job-name=gs-dr-build phase2/build_plus.sbatch
+#   STAGES=ncublend CMP_VARIANT=FasterGSPlusDR CMP_ARM=abcd sbatch --job-name=gs-dr-ncu phase2/build_plus.sbatch
 #   STAGES="build unit blendstats" BUILD_VARIANT=FasterGSPlusStats BUILD_SRC_PATCHES=phase2/blend_stats.patch sbatch --job-name=gs-blendstats phase2/build_plus.sbatch
 #SBATCH --job-name=gs-phase2-build
 #SBATCH --nodes=1
@@ -286,7 +288,8 @@ if has rbbench; then   # A+B+C vs A+B+C built with a source patch (CMP_VARIANT, 
   done
 fi
 
-if has ncublend; then   # step 5c: Nsight Compute on the blend kernels, A+B+C vs FasterGSPlusCull, steps NCU_STEP..+2
+if has ncublend; then   # step 5c: Nsight Compute on the blend kernels, A+B+C vs CMP_VARIANT (default FasterGSPlusCull, arm
+  # CMP_ARM, default abce), steps NCU_STEP..+2
   # one process per scene and arm: training runs normally to NCU_STEP (default 20000), ncu captures the forward blend and the
   # macro backward of 2 steps (--set full), then the process exits. Reports in $DATA/ncu/<job>/, details CSV with the logs.
   NCU=$(command -v ncu || true)
@@ -294,9 +297,9 @@ if has ncublend; then   # step 5c: Nsight Compute on the blend kernels, A+B+C vs
   NS=${NCU_STEP:-20000}; REP=$DATA/ncu/${SLURM_JOB_ID:-local}; mkdir -p "$REP"   # /projects is read-only on compute nodes
   for BSCENE in ${SCENES:-garden room}; do
     case $BSCENE in room|counter|kitchen|bonsai) BSCALE=0.5 ;; *) BSCALE=0.25 ;; esac
-    for arm in abc abce; do
+    for arm in abc ${CMP_ARM:-abce}; do
       [ -n "$NCU" ] || break
-      if [ $arm = abc ]; then m=FasterGSPlus; else m=FasterGSPlusCull; fi
+      if [ $arm = abc ]; then m=FasterGSPlus; else m=${CMP_VARIANT:-FasterGSPlusCull}; fi
       name=u_${BSCENE}_${arm}_$NS
       echo "##### $name: method=$m seed=0 window=$NS-$(( NS + 2 )) $(date +%T)"
       env FGS_BLEND_BWD=macro FGS_PROF_RANGE=$NS,$(( NS + 2 )) FGS_PROF_EXIT=$(( NS + 2 )) SCENE=$BSCENE SCALE=$BSCALE SEED=0 METHOD=$m TAG=p2$name           OPT_FLAGS="SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true"           LAUNCHER="$NCU --profile-from-start off --kernel-name regex:blend_cu|blend_backward_macro_cu --launch-count 4 --set full --import-source no -f -o $REP/$name"           bash "$REPO/cluster/train_fastergs.sbatch" > "$OUT/$name.log" 2>&1 || true

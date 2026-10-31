@@ -1,0 +1,149 @@
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh
+index 9422834..fc514a3 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh
+@@ -505,7 +505,11 @@ namespace faster_gs::rasterization::kernels::backward {
+     //   transpose_reduce  reduce the 8 (mean2d, conic, color) sums with a transposing butterfly (9 shuffles)
+     //                     and opacity (+ |mean2d|) with a second one (5-6 shuffles) instead of 5 shuffles per
+     //                     value; the atomics are then issued by 8-11 lanes in parallel
+-    template <bool compute_abs_grad, int n_warps, bool subtile_skip, bool transpose_reduce>
++    //   deferred_reduce   (phase2) instead of reducing each splat's sums across the warp right away (9-11 values x 5
++    //                     shuffles), each lane stores them to shared memory; every 8 splat steps the warp sums the
++    //                     columns (each lane one (splat, value) column, rotated reads: no bank conflicts) and issues the
++    //                     atomics. Overrides transpose_reduce. Same values, different summation order.
++    template <bool compute_abs_grad, int n_warps, bool subtile_skip, bool transpose_reduce, bool deferred_reduce>
+     __global__ void __launch_bounds__(32 * n_warps) blend_backward_macro_cu(
+         const uint2* __restrict__ tile_instance_ranges,
+         const uint* __restrict__ tile_bucket_offsets,
+@@ -547,6 +551,11 @@ namespace faster_gs::rasterization::kernels::backward {
+         __shared__ uint s_primitive_idx[n_warps][32];
+         __shared__ uint s_flags[n_warps][32]; // bits 0-2: color >= 0 mask; 3-4: x subtile halves hit; 5-7: subtile rows hit
+         __shared__ float3 s_grad[n_warps][config::block_size_blend];
++        constexpr int dr_k = 8; // splat steps per flush
++        constexpr int dr_nv = compute_abs_grad ? 11 : 9; // mean2d 2, conic 3, colour 3, opacity, (|mean2d| 2)
++        constexpr int dr_cols = deferred_reduce ? dr_k * dr_nv : 1;
++        constexpr int dr_rounds = (dr_cols + 31) / 32;
++        __shared__ float s_part[n_warps][dr_cols][32]; // [slot * dr_nv + value][lane]
+ 
+         const uint warp_idx = threadIdx.x / 32;
+         const uint lane_idx = threadIdx.x % 32;
+@@ -624,6 +633,39 @@ namespace faster_gs::rasterization::kernels::backward {
+         }
+         __syncwarp();
+ 
++        uint dr_pending = 0u; // deferred_reduce: slots (j % dr_k) with a contribution, warp-uniform
++        // deferred_reduce: sum the stored columns of steps first_j .. first_j + dr_k - 1 and issue their atomics
++        auto dr_flush = [&](const int first_j) {
++            __syncwarp();
++            #pragma unroll
++            for (int rd = 0; rd < dr_rounds; ++rd) {
++                const int c = static_cast<int>(lane_idx) + 32 * rd;
++                if (c >= dr_cols) continue;
++                const int slot = c / dr_nv, v = c % dr_nv;
++                if (((dr_pending >> slot) & 1u) == 0u) continue;
++                const float* col = s_part[warp_idx][c];
++                float sum = 0.0f;
++                #pragma unroll 8
++                for (int i = 0; i < 32; ++i) sum += col[(i + lane_idx) & 31u];
++                const int jj = first_j + slot;
++                const uint pid = s_primitive_idx[warp_idx][jj];
++                if (v >= 5 && v < 8 && ((s_flags[warp_idx][jj] >> (v - 5)) & 1u) == 0u) continue; // clamped colour: 0
++                if (v == 8 && !proper_antialiasing) {
++                    const float op = s_conic_opacity[warp_idx][jj].w;
++                    sum *= op * (1.0f - op);
++                }
++                float* const target =
++                    v < 2 ? reinterpret_cast<float*>(grad_mean2d) + 2 * pid + v :
++                    v < 5 ? grad_conic + static_cast<size_t>(v - 2) * n_primitives + pid :
++                    v < 8 ? reinterpret_cast<float*>(grad_sh_coefficients_0) + 3 * pid + (v - 5) :
++                    v == 8 ? grad_opacity + pid :
++                    reinterpret_cast<float*>(grad_mean2d_abs) + 2 * pid + (v - 9);
++                atomicAdd(target, sum);
++            }
++            __syncwarp();
++            dr_pending = 0u;
++        };
++
+         for (int j = 0; j < bucket_size; ++j) {
+             const float2 mean2d = s_mean2d[warp_idx][j];
+             const float4 conic_opacity = s_conic_opacity[warp_idx][j];
+@@ -677,6 +719,22 @@ namespace faster_gs::rasterization::kernels::backward {
+                 }
+                 T[r] *= one_minus_alpha;
+             }
++            if constexpr (deferred_reduce) {
++                const int slot = j % dr_k;
++                if (__ballot_sync(full_mask, used) != 0u) { // warp-uniform
++                    float* const p = &s_part[warp_idx][slot * dr_nv][lane_idx];
++                    #pragma unroll
++                    for (int k = 0; k < 8; ++k) p[k * 32] = a[k];
++                    p[8 * 32] = b[0];
++                    if constexpr (compute_abs_grad) {
++                        p[9 * 32] = b[1];
++                        p[10 * 32] = b[2];
++                    }
++                    dr_pending |= 1u << slot;
++                }
++                if ((slot == dr_k - 1 || j == bucket_size - 1) && dr_pending != 0u) dr_flush(j - slot);
++                continue;
++            }
+             if (__ballot_sync(full_mask, used) == 0u) continue; // warp-uniform
+ 
+             const uint primitive_idx = s_primitive_idx[warp_idx][j];
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/backward.cu b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/backward.cu
+index 5ea41af..8d91936 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/backward.cu
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/backward.cu
+@@ -5,19 +5,28 @@
+ #include "utils.h"
+ #include "helper_math.h"
+ #include <type_traits>
++#include <cstdlib>
+ 
+ // Phase 1 macro blend backward. blend_backward_mode bits: 1 = macro kernel, 2 = subtile skip,
+-// 4 = transposing warp reduction, 8 = 8 warps per block (else 4).
+-template <bool abs_grad, int n_warps, bool subtile_skip, bool transpose_reduce, typename... Args>
++// 4 = transposing warp reduction, 8 = 8 warps per block (else 4), 32 = deferred reduction through shared memory
++// (phase2; overrides 4; set from FGS_DEFERRED_REDUCE, on by default).
++template <bool abs_grad, int n_warps, bool subtile_skip, bool transpose_reduce, bool deferred_reduce, typename... Args>
+ static void launch_macro_variant(const int n_buckets, Args... args) {
+-    faster_gs::rasterization::kernels::backward::blend_backward_macro_cu<abs_grad, n_warps, subtile_skip, transpose_reduce>
++    faster_gs::rasterization::kernels::backward::blend_backward_macro_cu<abs_grad, n_warps, subtile_skip, transpose_reduce, deferred_reduce>
+         <<<div_round_up(n_buckets, n_warps), 32 * n_warps>>>(args...);
+ }
+ 
+ template <bool abs_grad, int n_warps, bool subtile_skip, typename... Args>
+ static void dispatch_macro_reduce(const int mode, const int n_buckets, Args... args) {
+-    if (mode & 4) launch_macro_variant<abs_grad, n_warps, subtile_skip, true>(n_buckets, args...);
+-    else launch_macro_variant<abs_grad, n_warps, subtile_skip, false>(n_buckets, args...);
++    if (mode & 32) launch_macro_variant<abs_grad, n_warps, subtile_skip, false, true>(n_buckets, args...);
++    else if (mode & 4) launch_macro_variant<abs_grad, n_warps, subtile_skip, true, false>(n_buckets, args...);
++    else launch_macro_variant<abs_grad, n_warps, subtile_skip, false, false>(n_buckets, args...);
++}
++
++// phase2 deferred reduction switch: on unless FGS_DEFERRED_REDUCE=0
++static bool deferred_reduce_enabled() {
++    static const bool on = [] { const char* e = std::getenv("FGS_DEFERRED_REDUCE"); return !(e && e[0] == '0'); }();
++    return on;
+ }
+ 
+ template <bool abs_grad, int n_warps, typename... Args>
+@@ -108,7 +117,7 @@ void faster_gs::rasterization::backward(
+         if (blend_backward_mode != 0) {
+             if (n_buckets == 0) return;
+             launch_blend_backward_macro(
+-                blend_backward_mode,
++                blend_backward_mode | (deferred_reduce_enabled() ? 32 : 0),
+                 grad_mean2d_abs_helper != nullptr,
+                 tile_buffers.instance_ranges,
+                 tile_buffers.buckets_offset,
+@@ -138,6 +147,9 @@ void faster_gs::rasterization::backward(
+             CHECK_CUDA(config::debug, "blend_backward_macro")
+             return;
+         }
++        // a zero-block launch is an invalid configuration that leaves a pending CUDA error (stock bug, fixed as in
++        // phase2/fastergs_readback.patch; the macro path above already returns). Only reachable when nothing is visible.
++        if (n_buckets == 0) return;
+         const auto blend_backward_kernel = grad_mean2d_abs_helper != nullptr ? kernels::backward::blend_backward_cu<true> : kernels::backward::blend_backward_cu<false>;
+         blend_backward_kernel<<<n_buckets, 32>>>(
+             tile_buffers.instance_ranges,

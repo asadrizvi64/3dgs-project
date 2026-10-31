@@ -47,6 +47,8 @@ def describe(method, flags, blend):
         parts.append('fewer host read-backs (phase2/fastergs_readback.patch)')
     if method == 'FasterGSPlusCull':
         parts.append('per-subtile ellipse culling in both blend kernels (phase2/ellipse_cull.patch)')
+    if method == 'FasterGSPlusDR':
+        parts.append('deferred warp reduction in the macro backward (phase2/deferred_reduce.patch)')
     if method == 'FasterGSPlusStats':
         parts.append('blend work counters (phase2/blend_stats.patch)')
     return f'{method} ({", ".join(parts)})'
@@ -140,7 +142,7 @@ for path in args.logs:
         notes.append('LPIPS is VGG')
         hook = 'v5' if walls else ('v4 or later' if (clk and clk.group(5)) else 'v3')
         commit = (f'FasterGS@1144604 + sparse_from {hook} hooks' if b['method'] == 'FasterGS'
-                  else f'{b["method"]} (1144604 + phase1 macro' + (' + phase2 readback patch' if b['method'] == 'FasterGSPlusRB' else ' + phase2 blend counters' if b['method'] == 'FasterGSPlusStats' else ' + phase2 ellipse culling' if b['method'] == 'FasterGSPlusCull' else '') + f' + sparse_from {hook})') + f'; 3dgs-project {repo}'
+                  else f'{b["method"]} (1144604 + phase1 macro' + (' + phase2 readback patch' if b['method'] == 'FasterGSPlusRB' else ' + phase2 blend counters' if b['method'] == 'FasterGSPlusStats' else ' + phase2 ellipse culling' if b['method'] == 'FasterGSPlusCull' else ' + phase2 deferred reduction' if b['method'] == 'FasterGSPlusDR' else '') + f' + sparse_from {hook})') + f'; 3dgs-project {repo}'
         row = dict(date=dm.group(1) if dm else '', commit=commit, instance_type=f'ZIH Capella node {node} (job {job})',
                    scene=scene, method=describe(b['method'], b['flags'], b['blend']), seed=b['seed'],
                    train_time_s=f'{float(clk.group(2)):.1f}' if clk else '',
