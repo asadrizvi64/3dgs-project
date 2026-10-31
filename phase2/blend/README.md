@@ -118,3 +118,39 @@ Converted to the training clock, the per-step totals (forward + backward) come t
 **Implications for further blend work:**
 - **Culling** only pays off if the per-subtile test is nearly free inside the blend loop. One option is to compute a 6-bit subtile mask once per tile instance in `create_instances`, which already runs the per-tile ellipse test, and store it with the instance; blend kernels would then only read bits. It would also have to keep the forward kernel's barriers at fixed IDs: check the SASS for `BAR.SYNC 0x0` only and the ncu block limit before timing.
 - **Backward instruction count** is the main lever: the per-row exponent, alpha and gradient arithmetic, and the reduction. Counting instructions per evaluation from the SASS is the next measurement if blend work continues.
+
+# Step 5d: where the backward kernel's instructions go
+
+2026-10-31, from the A+B+C Nsight Compute reports of job 4503800 (step 20,000, seed 0). Per-instruction SASS counts were exported with `ncu --page source --print-source sass` (`../logs/run_4503800/<scene>.bwd_sass.csv`, one launch each) and grouped into code regions by [`../analyze_bwd_sass.py`](../analyze_bwd_sass.py). Full tables: [`bwd-sass-analysis.md`](bwd-sass-analysis.md). Because the kernel is issue-bound (step 5c), instruction share is a direct proxy for time share.
+
+| region (macro backward, mode 3) | runs | garden share | room share | warp instructions |
+|---|---|---|---|---|
+| staging: splat staging, checkpoint loads | once per bucket | 4.7% | 4.1% | ~450 per bucket |
+| loop head: splat from shared memory, flags | every splat step | 8.6% | 7.3% | 29 per step |
+| row checks (6 unrolled rows) | every step | 6.5% | 5.7% | ~22 per step |
+| **evaluate:** delta, exponent, `expf`, alpha cut-off | per row where any lane evaluates | **17.9%** | **20.2%** | 17 per row |
+| **gradient:** contributing-pixel math | per row where any lane contributes | **22.3%** | **28.2%** | 30 per row |
+| ballot of `used` | every step | 0.9% | 0.8% | 3 per step |
+| **reduce:** 9 sums × 5 `shfl_down` + adds, 9 global atomics | steps with any contribution (92.5% / 94.5%) | **36.7%** | **31.8%** | **132 per step** |
+| loop tail | every step | 2.4% | 2.0% | 8 per step |
+| total, one launch | | 1078.7M | 1107.8M | 338 / 398 per step |
+
+- **The per-splat warp reduction is the largest single cost: about a third of the kernel.** Each splat step that any lane contributed to reduces 9 values (mean2d 2, conic 3, colour 3, opacity 1) across 32 lanes. That takes 45 shuffles, 46 adds and 9 atomics, 132 instructions. It runs on 92–95% of steps. One step evaluates only 3.6 (garden) to 4.7 (room) of its 6 rows on average, so the reduction costs more than the rows' own arithmetic.
+- **Evaluation and gradient together are 40–48%.** At 17 + 30 instructions per row, they are fairly tight already.
+- **Staging is cheap in instructions (4–5%) but takes 15–17% of the stall samples:** it waits on the checkpoint and gradient-image loads.
+- **Phase 1's transposing reduction is not the fix.** On synthetic scenes it barely changed the instruction count, and its divergent per-lane atomics added stalls ([results/phase1/macro_backward.md](../../results/phase1/macro_backward.md)).
+
+**Candidate: a deferred reduction.** Instead of reducing each splat across the warp right away:
+- each lane writes its 9 partial sums for the step to shared memory (9 stores);
+- every K steps, each lane sums one (splat, value) column over the 32 lanes (on average 9 loads + 9 adds per step and lane) and issues the atomic.
+
+That is about 30 instructions per step instead of 132, which would cut the backward kernel's instructions by roughly 25–30%. At the measured 1.2–1.3 ms per step for this kernel, that is up to about 0.3 ms, or 5–7% of the training step. Costs and risks:
+- shared memory: K × 32 × 9 floats per warp, 9.2 KB for K = 8, so about 37 KB per 4-warp block. That would lower the block limit from 7 to about 4 per SM. Whether occupancy then matters for this issue-bound kernel has to be measured.
+- bank conflicts in the column reads (needs padding);
+- one more `__syncwarp` per flush;
+- a different summation order, so the gradients are not bit-identical: the same 10⁻⁵ tolerance as the other gradient tests applies.
+
+**Smaller candidates in the row body:**
+- an incremental exponent down a lane's column (dy changes by a constant 2 px per row band);
+- `exp2` on a pre-scaled conic.
+Each would save a few of the 17 evaluate instructions, about 3–5% of the kernel together.

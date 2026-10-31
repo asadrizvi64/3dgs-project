@@ -242,3 +242,11 @@ Details: [`blend/README.md`](blend/README.md#step-5c-nsight-compute-on-the-blend
 - **Both kernels executed more instructions with culling** (forward +2–7%, backward +4–6%). The test runs on nearly every chunk and costs more than the cheap evaluations it removes. So culling would not pay off even without the occupancy loss.
 - **A+B+C's backward (about 2/3 of blend time) is issue-bound** (80% of issue slots busy, IPC 3.2); only fewer instructions per evaluation will speed it up. Forward's largest stall is the per-batch block barrier.
 - The ncu totals (+0.27 / +0.16 ms per step at training clock) agree with step 5b's measured +0.2 ms.
+
+## Step 5d: backward kernel instruction breakdown (garden and room, step 20k)
+
+Details: [`blend/README.md`](blend/README.md#step-5d-where-the-backward-kernels-instructions-go). Per-SASS-instruction counts of A+B+C's macro backward, grouped by code region ([`analyze_bwd_sass.py`](analyze_bwd_sass.py)).
+
+- **The per-splat warp reduction is a third of the kernel** (36.7% garden, 31.8% room): 132 instructions (9 sums × 5 shuffles, adds, 9 atomics) on 92–95% of splat steps. More than the row arithmetic it reduces.
+- **Pixel evaluation and gradient math: 40–48%** (17 + 30 instructions per row). Staging is 4–5% of instructions but 15–17% of stall samples (load latency).
+- **Candidate: a deferred reduction through shared memory** (about 30 instead of 132 instructions per step). Estimated −25–30% of backward instructions, up to about 0.3 ms or 5–7% of the step, at the cost of shared memory (occupancy) and a different summation order (gradients within 10⁻⁵, not bit-identical).
