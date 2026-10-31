@@ -215,3 +215,12 @@ Details: [`readback/README.md`](readback/README.md). A+B+C against A+B+C with th
 - **Quality and memory unchanged** within seed noise.
 - **The ~1 ms per step of GPU idle time seen in step 4a does not come from these blocking reads**, nor (step 4b) from the timer.
 - **Not adopted:** under 1% on one scene, nil on the other, and it adds upper-bound buffer sizing that later rasterizer changes would have to carry. Next lever: the blend kernels.
+
+## Step 5a: how much blend work is wasted (garden and room, seed 0, counters)
+
+Details: [`blend/README.md`](blend/README.md). A+B+C with work counters in both blend kernels (FasterGSPlusStats, [`blend_stats.patch`](blend_stats.patch)); images bit-identical to A+B+C.
+
+- **About 19% of the splat-subtile pairs the blend kernels evaluate fail an exact ellipse test** (bounding-box culling lets them through) on both scenes, from 5k steps on. In the forward pass that is about 19% of the blend loop. In the current backward lane layout, about 10% of row executions.
+- **Pixels that finish early waste little** (about 6–7% idle lanes or chunks), so the per-warp early exit and the per-subtile backward cut-off are dropped from the plan.
+- **Estimated gain of exact per-subtile culling: at most about 3.5% of the step on garden and 5.4% on room**, or 5.4% / 7.8% with a backward layout whose rows match subtiles.
+- **The exact test misses 0–12 contributions per 50 steps at the 1/255 cut-off** (float rounding), so the culling needs a small threshold margin to keep images bit-identical.

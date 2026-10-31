@@ -1,0 +1,114 @@
+EQUIV scene=tiny mode=0 rows=0 instances=2275 buckets ref=102 new=102 bound=167 max_rel=1.06e-07 ref_noise=1.06e-07
+.EQUIV scene=partial_tiles mode=0 rows=0 instances=75692 buckets ref=2576 new=2576 bound=2792 max_rel=2.26e-07 ref_noise=1.99e-07
+.EQUIV scene=garden_res mode=0 rows=0 instances=1199711 buckets ref=40253 new=40253 bound=43051 max_rel=8.76e-07 ref_noise=6.94e-07
+.EQUIV scene=room_res mode=0 rows=0 instances=2311215 buckets ref=76336 new=76336 bound=80485 max_rel=1.07e-06 ref_noise=8.46e-07
+.EQUIV scene=heavy_overlap mode=0 rows=0 instances=7050638 buckets ref=221118 new=221118 bound=221882 max_rel=6.39e-07 ref_noise=7.22e-07
+.FEQUIV scene=tiny mode=3 rows=0 instances=2275 buckets ref=102 new=102 bound=167 max_rel=7.24e-08 ref_noise=4.28e-08
+.EQUIV scene=partial_tiles mode=3 rows=0 instances=75692 buckets ref=2576 new=2576 bound=2792 max_rel=2.99e-07 ref_noise=2.15e-07
+.EQUIV scene=garden_res mode=3 rows=0 instances=1199711 buckets ref=40253 new=40253 bound=43051 max_rel=8.48e-07 ref_noise=8.11e-07
+.EQUIV scene=room_res mode=3 rows=0 instances=2311215 buckets ref=76336 new=76336 bound=80485 max_rel=6.38e-07 ref_noise=9.05e-07
+.EQUIV scene=heavy_overlap mode=3 rows=0 instances=7050638 buckets ref=221118 new=221118 bound=221882 max_rel=4.95e-07 ref_noise=3.81e-07
+.EQUIV scene=empty mode=3 rows=0 instances=0 buckets ref=0 new=0 bound=0 max_rel=0.00e+00 ref_noise=0.00e+00
+.EQUIV scene=tiny mode=0 rows=3 instances=2275 buckets ref=102 new=102 bound=167 max_rel=9.95e-08 ref_noise=9.28e-08
+.EQUIV scene=partial_tiles mode=0 rows=3 instances=75692 buckets ref=2576 new=2576 bound=2792 max_rel=2.46e-07 ref_noise=2.74e-07
+.EQUIV scene=garden_res mode=0 rows=3 instances=1199711 buckets ref=40253 new=40253 bound=43051 max_rel=5.69e-07 ref_noise=5.77e-07
+.EQUIV scene=room_res mode=0 rows=3 instances=2311215 buckets ref=76336 new=76336 bound=80485 max_rel=7.14e-07 ref_noise=1.05e-06
+.EQUIV scene=heavy_overlap mode=0 rows=3 instances=7050638 buckets ref=221118 new=221118 bound=221882 max_rel=8.14e-07 ref_noise=8.10e-07
+.FEQUIV scene=tiny mode=3 rows=3 instances=2275 buckets ref=102 new=102 bound=167 max_rel=7.71e-08 ref_noise=6.27e-08
+.EQUIV scene=partial_tiles mode=3 rows=3 instances=75692 buckets ref=2576 new=2576 bound=2792 max_rel=2.45e-07 ref_noise=2.28e-07
+.EQUIV scene=garden_res mode=3 rows=3 instances=1199711 buckets ref=40253 new=40253 bound=43051 max_rel=7.43e-07 ref_noise=8.30e-07
+.EQUIV scene=room_res mode=3 rows=3 instances=2311215 buckets ref=76336 new=76336 bound=80485 max_rel=4.14e-07 ref_noise=7.67e-07
+.EQUIV scene=heavy_overlap mode=3 rows=3 instances=7050638 buckets ref=221118 new=221118 bound=221882 max_rel=6.64e-07 ref_noise=6.42e-07
+.EQUIV scene=empty mode=3 rows=3 instances=0 buckets ref=0 new=0 bound=0 max_rel=0.00e+00 ref_noise=0.00e+00
+..
+=================================== FAILURES ===================================
+___________________ test_equivalent[no_densify-taming-empty] ___________________
+
+scene = ('empty', 100, 64, 48, (0.01, 0.1), (0.1, 0.9), ...), mode = 0, rows = 0
+
+    @pytest.mark.parametrize('scene', SCENES, ids=[s[0] for s in SCENES])
+    @pytest.mark.parametrize('mode', [0, 3], ids=['taming', 'macro'])
+    @pytest.mark.parametrize('rows', [0, 3], ids=['no_densify', 'densify_abs'])
+    def test_equivalent(scene, mode, rows):
+        params, settings, grad_image = inputs(scene, seed=7)
+        # stock Faster-GS launches the taming backward with zero blocks when nothing is visible, which leaves a pending CUDA
+        # error that breaks the next call (the RB patch guards it, like the macro path already did): skip the reference's
+        # backward there and check only that the new build runs it cleanly
+        ref_bwd = not (scene[0] == 'empty' and mode == 0)
+        new = fwd_bwd(NEW, params, settings, grad_image, mode, rows)
+>       ref = fwd_bwd(REF, params, settings, grad_image, mode, rows, backward=ref_bwd)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py:93: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+C = <module 'FasterGSPlusCudaBackend._C' from '/data/cat/ws/syas272h-3dgs-data/fastergs-venv/lib/python3.12/site-packages/FasterGSPlusCudaBackend/_C.cpython-312-x86_64-linux-gnu.so'>
+params = (tensor([[-2.3512,  0.1286, -3.7850],
+        [-1.4321, -0.0649, -3.4550],
+        [-1.1831, -1.2177, -4.7750],
+      ...509,  0.0305,  0.0701],
+         [ 0.0414, -0.0888,  0.0821],
+         [-0.1186, -0.0205,  0.1447]]], device='cuda:0'))
+settings = (tensor([[1., 0., 0., 0.],
+        [0., 1., 0., 0.],
+        [0., 0., 1., 0.],
+        [0., 0., 0., 1.]], device='cuda:0'), tensor([0., 0., 0.], device='cuda:0'), tensor([0.2293, 0.7214, 0.5634], device='cuda:0'), 16, 64, 48, ...)
+grad_image = tensor([[[-2.2648,  0.1256, -1.0254,  ..., -0.0257, -0.0869, -0.9966],
+         [ 0.8168,  1.1315, -0.9886,  ...,  0.2...18, -0.4978, -0.2247],
+         [ 0.6716,  0.1477,  2.4710,  ..., -2.6210,  0.2745, -1.0744]]],
+       device='cuda:0')
+mode = 0, rows = 0, sync = True, backward = False
+
+    def fwd_bwd(C, params, settings, grad_image, mode, rows, sync=True, backward=True):
+>       image, pb, tb, ib, bb, n_inst, n_buckets, sel = C.forward(*params, *settings)
+                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 130272.70 GiB. GPU 0 has a total capacity of 93.09 GiB of which 92.47 GiB is free. Including non-PyTorch memory, this process has 616.00 MiB memory in use. Of the allocated memory 159.50 KiB is allocated by PyTorch, and 1.84 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)
+
+/home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py:70: OutOfMemoryError
+__________________ test_equivalent[densify_abs-taming-empty] ___________________
+
+scene = ('empty', 100, 64, 48, (0.01, 0.1), (0.1, 0.9), ...), mode = 0, rows = 3
+
+    @pytest.mark.parametrize('scene', SCENES, ids=[s[0] for s in SCENES])
+    @pytest.mark.parametrize('mode', [0, 3], ids=['taming', 'macro'])
+    @pytest.mark.parametrize('rows', [0, 3], ids=['no_densify', 'densify_abs'])
+    def test_equivalent(scene, mode, rows):
+        params, settings, grad_image = inputs(scene, seed=7)
+        # stock Faster-GS launches the taming backward with zero blocks when nothing is visible, which leaves a pending CUDA
+        # error that breaks the next call (the RB patch guards it, like the macro path already did): skip the reference's
+        # backward there and check only that the new build runs it cleanly
+        ref_bwd = not (scene[0] == 'empty' and mode == 0)
+        new = fwd_bwd(NEW, params, settings, grad_image, mode, rows)
+>       ref = fwd_bwd(REF, params, settings, grad_image, mode, rows, backward=ref_bwd)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py:93: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+C = <module 'FasterGSPlusCudaBackend._C' from '/data/cat/ws/syas272h-3dgs-data/fastergs-venv/lib/python3.12/site-packages/FasterGSPlusCudaBackend/_C.cpython-312-x86_64-linux-gnu.so'>
+params = (tensor([[-2.3512,  0.1286, -3.7850],
+        [-1.4321, -0.0649, -3.4550],
+        [-1.1831, -1.2177, -4.7750],
+      ...509,  0.0305,  0.0701],
+         [ 0.0414, -0.0888,  0.0821],
+         [-0.1186, -0.0205,  0.1447]]], device='cuda:0'))
+settings = (tensor([[1., 0., 0., 0.],
+        [0., 1., 0., 0.],
+        [0., 0., 1., 0.],
+        [0., 0., 0., 1.]], device='cuda:0'), tensor([0., 0., 0.], device='cuda:0'), tensor([0.2293, 0.7214, 0.5634], device='cuda:0'), 16, 64, 48, ...)
+grad_image = tensor([[[-2.2648,  0.1256, -1.0254,  ..., -0.0257, -0.0869, -0.9966],
+         [ 0.8168,  1.1315, -0.9886,  ...,  0.2...18, -0.4978, -0.2247],
+         [ 0.6716,  0.1477,  2.4710,  ..., -2.6210,  0.2745, -1.0744]]],
+       device='cuda:0')
+mode = 0, rows = 3, sync = True, backward = False
+
+    def fwd_bwd(C, params, settings, grad_image, mode, rows, sync=True, backward=True):
+>       image, pb, tb, ib, bb, n_inst, n_buckets, sel = C.forward(*params, *settings)
+                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 130272.70 GiB. GPU 0 has a total capacity of 93.09 GiB of which 92.47 GiB is free. Including non-PyTorch memory, this process has 616.00 MiB memory in use. Of the allocated memory 284.50 KiB is allocated by PyTorch, and 1.72 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)
+
+/home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py:70: OutOfMemoryError
+=========================== short test summary info ============================
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[no_densify-taming-empty]
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[densify_abs-taming-empty]
+2 failed, 23 passed in 4.10s

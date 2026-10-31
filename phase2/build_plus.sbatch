@@ -282,7 +282,7 @@ if has blendstats; then   # step 5 (blend kernels): how much blend work is waste
     case $BSCENE in room|counter|kitchen|bonsai) BSCALE=0.5 ;; *) BSCALE=0.25 ;; esac
     echo "########## blendstats (scene $BSCENE scale $BSCALE, seed 0, A+B+C with blend counters)"
     TRAIN_ENV="FGS_BLENDSTATS=${BS_STARTS:-2000,5000,10000,15000,20000,29000}" train "p_${BSCENE}_abcstats_s0" FasterGSPlusStats 0 30000 "SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true" macro
-    tr '\r' '\n' < "$OUT/p_${BSCENE}_abcstats_s0.log" | grep -E '^BLENDSTATS_(FWD|BWD) ' > "$OUT/p_${BSCENE}_abcstats_s0.stats" || true
+    tr '\r' '\n' < "$OUT/p_${BSCENE}_abcstats_s0.log" | grep -oE 'BLENDSTATS_(FWD|BWD) .*' > "$OUT/p_${BSCENE}_abcstats_s0.stats" || true
     echo "STATS p_${BSCENE}_abcstats_s0 $(grep -c '^BLENDSTATS_FWD' "$OUT/p_${BSCENE}_abcstats_s0.stats" || true) fwd windows, $(grep -c '^BLENDSTATS_BWD' "$OUT/p_${BSCENE}_abcstats_s0.stats" || true) bwd windows"
     [ "$(grep -c '^BLENDSTATS_' "$OUT/p_${BSCENE}_abcstats_s0.stats" || true)" -gt 0 ] || FAILED+=("stats_${BSCENE}")
   done
