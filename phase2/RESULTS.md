@@ -224,3 +224,12 @@ Details: [`blend/README.md`](blend/README.md). A+B+C with work counters in both 
 - **Pixels that finish early waste little** (about 6–7% idle lanes or chunks), so the per-warp early exit and the per-subtile backward cut-off are dropped from the plan.
 - **Estimated gain of exact per-subtile culling: at most about 3.5% of the step on garden and 5.4% on room**, or 5.4% / 7.8% with a backward layout whose rows match subtiles.
 - **The exact test misses 0–12 contributions per 50 steps at the 1/255 cut-off** (float rounding), so the culling needs a small threshold margin to keep images bit-identical.
+
+## Step 5b: exact ellipse culling per subtile (garden and room, 3 seeds)
+
+Details: [`blend/README.md`](blend/README.md#step-2-step-5b-exact-ellipse-culling-per-subtile--slower-not-adopted). A+B+C against A+B+C with exact per-subtile ellipse culling in both blend kernels (FasterGSPlusCull, [`ellipse_cull.patch`](ellipse_cull.patch)); timer on; every seed's runs saw identical training views. Tests: 92 unit and 25/25 equivalence cases passed, with forward images bit-identical.
+
+- **Slower: wall time garden +3.46%, room +5.09%** (every seed slower; the per-step clock agrees: +3.47% / +5.15%). That is about 0.2 ms per step on both scenes, against step 5a's estimate of up to 0.23 ms faster.
+- **The test costs more than the work it removes:** it runs for every bounding-box-passing pair, while the culled evaluations were cheap. This is a hypothesis; kernel times were not measured.
+- **Quality:** garden unchanged; room −0.23 dB on average (−0.28 / +0.08 / −0.49), outside step 4c's spread. Not investigated, since the patch is rejected on speed.
+- **Not adopted**; the subtile-aligned backward follow-up is dropped too.

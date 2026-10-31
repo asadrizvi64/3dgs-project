@@ -57,3 +57,27 @@ The A+B+C kernel times at 20k come from step 4a: forward blend 0.55 / 0.60 ms an
 These are upper bounds. Part of each kernel's time is loading and checkpoint writes, which culling doesn't remove, and the ellipse test itself costs a few instructions per splat-subtile pair.
 
 **Next:** step 2 with the current backward layout: the ellipse test in the forward pass, and per-subtile ellipse bits in the backward. Then an equivalence test (bit-identical images) and 3-seed timing on garden and room. The subtile-aligned backward layout is a follow-up if step 2 lands near its bound.
+
+# Step 2 (step 5b): exact ellipse culling per subtile — slower, not adopted
+
+2026-10-31. Patch: [`../ellipse_cull.patch`](../ellipse_cull.patch), built as FasterGSPlusCull (A+B+C plus the patch; `FGS_ELLIPSE_CULL=0` turns it off). Build and tests: job 4503656. Timing: jobs 4503657 (garden) and 4503658 (room), stage `rbbench` with `CMP_VARIANT=FasterGSPlusCull`. All 12 runs are in `experiment_log.csv`.
+
+**What the patch changes:**
+- **Forward (`blend_cu`):** a splat that passes the bounding-box test is also tested against the warp's 8×4 subtile with the exact ellipse test, before the ballot.
+- **Backward (macro kernel):** each staged splat gets one bit per subtile (bounds and ellipse both hit). A row is skipped when neither of its subtiles is hit (warp-uniform), and a lane when its own subtile isn't.
+- **Margin:** the test's power threshold is raised by 0.01 (alpha cut-off × e^−0.01, about 1%), far above the rounding misses step 1 counted.
+- **Zero-bucket guard** in the taming backward, as in the readback patch.
+
+**Tests:** 92 unit tests and all 25 equivalence cases passed. Images are bit-identical to A+B+C, and gradients are within 10⁻⁵ (the empty-scene cases now pass too, because of the guard).
+
+**Timing** (timer on, the benchmark protocol; seeds 0 / 1 / 2, arms interleaved with the order rotated by seed; within each seed both arms saw the same training views):
+
+| scene | wall time A+B+C → culling | wall change | per-step clock change | test PSNR change |
+|---|---|---|---|---|
+| garden | 195.73 → 202.51 s | **+3.46%** (+3.18 / +3.64 / +3.56) | +3.47% | +0.008 dB (+0.033 / −0.006 / −0.003) |
+| room | 121.79 → 127.99 s | **+5.09%** (+6.18 / +4.67 / +4.40) | +5.15% | −0.231 dB (−0.277 / +0.077 / −0.491) |
+
+- **Culling makes the step about 0.2 ms slower on both scenes**, on every seed. Step 1's estimate was up to 0.23 ms *faster*. The slowdown is about as large as the hoped-for gain.
+- **Likely cause (not measured per kernel):** the estimate assumed kernel time scales with the pairs evaluated. But the added test runs for every bbox-passing pair, which is about 30 instructions plus a `logf` and two divisions, in the forward ballot stage and six times per splat in the backward staging. The removed pairs were cheap: the forward loop skips them in a few cycles and the backward drops only about 10% of rows. The kernels are evidently not limited by the evaluations that culling removes.
+- **Quality:** garden is unchanged. Room is 0.23 dB lower on average, driven by two seeds (−0.28, −0.49 dB). In step 4c, two builds whose images were also bit-identical differed by at most 0.14 dB on room. Three seeds can't tell whether this is seed noise or something the synthetic equivalence test misses. Since the patch is slower anyway, this was not investigated further.
+- **Decision: not adopted.** The subtile-aligned backward layout (the follow-up that depended on this step landing near its bound) is dropped as well. Any further culling would need a much cheaper test, for example one precomputed per splat and tile in `create_instances` instead of per warp in the blend loop.
