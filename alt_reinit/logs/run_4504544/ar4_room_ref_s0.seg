@@ -1,0 +1,254 @@
+CBCLOCK_INSTALLED iteration=0 callbacks=increase_sh_degree,densify,morton_ordering,recompute_3d_filter,reset_opacities,reset_opacities_extra,hard_pruning,reinit_gaussians
+SEGCLOCK step=500 seg_s=1.717 cum_s=1.717 sparse=0 N=112627 peak_alloc_gib=5.32
+CBCLOCK name=reset_opacities_extra iteration=500 s=0.014978
+CBCLOCK name=densify iteration=600 s=0.073829
+CBCLOCK name=densify iteration=700 s=0.004557
+CBCLOCK name=densify iteration=800 s=0.003367
+CBCLOCK name=densify iteration=900 s=0.003077
+SEGCLOCK step=1000 seg_s=1.466 cum_s=3.182 sparse=0 N=171812 peak_alloc_gib=5.37
+CBCLOCK name=increase_sh_degree iteration=1000 s=0.000036
+CBCLOCK name=densify iteration=1000 s=0.002850
+CBCLOCK name=densify iteration=1100 s=0.003685
+CBCLOCK name=densify iteration=1200 s=0.003460
+CBCLOCK name=densify iteration=1300 s=0.003758
+CBCLOCK name=densify iteration=1400 s=0.003215
+SEGCLOCK step=1500 seg_s=1.605 cum_s=4.788 sparse=0 N=295627 peak_alloc_gib=5.48
+CBCLOCK name=densify iteration=1500 s=0.003432
+CBCLOCK name=densify iteration=1600 s=0.003457
+CBCLOCK name=densify iteration=1700 s=0.004363
+CBCLOCK name=densify iteration=1800 s=0.003848
+CBCLOCK name=densify iteration=1900 s=0.003766
+SEGCLOCK step=2000 seg_s=1.745 cum_s=6.533 sparse=0 N=422771 peak_alloc_gib=5.61
+CBCLOCK name=increase_sh_degree iteration=2000 s=0.000034
+CBCLOCK name=densify iteration=2000 s=0.003664
+CBCLOCK name=densify iteration=2100 s=0.003779
+CBCLOCK name=densify iteration=2200 s=0.003853
+CBCLOCK name=densify iteration=2300 s=0.003927
+CBCLOCK name=densify iteration=2400 s=0.004020
+SEGCLOCK step=2500 seg_s=1.890 cum_s=8.423 sparse=0 N=547188 peak_alloc_gib=5.75
+CBCLOCK name=densify iteration=2500 s=0.004093
+CBCLOCK name=densify iteration=2600 s=0.004210
+CBCLOCK name=densify iteration=2700 s=0.004238
+CBCLOCK name=densify iteration=2800 s=0.004296
+CBCLOCK name=densify iteration=2900 s=0.004423
+SEGCLOCK step=3000 seg_s=2.010 cum_s=10.434 sparse=0 N=668006 peak_alloc_gib=5.88
+CBCLOCK name=increase_sh_degree iteration=3000 s=0.000027
+CBCLOCK name=densify iteration=3000 s=0.004498
+CBCLOCK name=reset_opacities iteration=3000 s=0.000177
+CBCLOCK name=densify iteration=3100 s=0.004271
+CBCLOCK name=densify iteration=3200 s=0.004657
+CBCLOCK name=densify iteration=3300 s=0.004403
+CBCLOCK name=densify iteration=3400 s=0.004721
+SEGCLOCK step=3500 seg_s=1.850 cum_s=12.284 sparse=0 N=654900 peak_alloc_gib=5.88
+CBCLOCK name=densify iteration=3500 s=0.004780
+CBCLOCK name=densify iteration=3600 s=0.004666
+CBCLOCK name=densify iteration=3700 s=0.004643
+CBCLOCK name=densify iteration=3800 s=0.004775
+CBCLOCK name=densify iteration=3900 s=0.004995
+SEGCLOCK step=4000 seg_s=1.931 cum_s=14.214 sparse=0 N=759494 peak_alloc_gib=5.97
+CBCLOCK name=increase_sh_degree iteration=4000 s=0.000027
+CBCLOCK name=densify iteration=4000 s=0.004888
+CBCLOCK name=densify iteration=4100 s=0.005535
+CBCLOCK name=densify iteration=4200 s=0.005052
+CBCLOCK name=densify iteration=4300 s=0.005109
+CBCLOCK name=densify iteration=4400 s=0.005198
+SEGCLOCK step=4500 seg_s=2.035 cum_s=16.250 sparse=0 N=857001 peak_alloc_gib=6.07
+CBCLOCK name=densify iteration=4500 s=0.005174
+CBCLOCK name=densify iteration=4600 s=0.006099
+CBCLOCK name=densify iteration=4700 s=0.005310
+CBCLOCK name=densify iteration=4800 s=0.005471
+CBCLOCK name=densify iteration=4900 s=0.005478
+SEGCLOCK step=5000 seg_s=2.124 cum_s=18.373 sparse=0 N=951211 peak_alloc_gib=6.18
+CBCLOCK name=increase_sh_degree iteration=5000 s=0.000024
+CBCLOCK name=densify iteration=5000 s=0.005536
+CBCLOCK name=morton_ordering iteration=5000 s=0.003311
+CBCLOCK name=densify iteration=5100 s=0.005525
+CBCLOCK name=densify iteration=5200 s=0.005594
+CBCLOCK name=densify iteration=5300 s=0.005921
+CBCLOCK name=densify iteration=5400 s=0.006222
+SEGCLOCK step=5500 seg_s=2.228 cum_s=20.602 sparse=0 N=1036110 peak_alloc_gib=6.27
+CBCLOCK name=densify iteration=5500 s=0.005885
+CBCLOCK name=densify iteration=5600 s=0.005876
+CBCLOCK name=densify iteration=5700 s=0.005945
+CBCLOCK name=densify iteration=5800 s=0.006819
+CBCLOCK name=densify iteration=5900 s=0.006184
+SEGCLOCK step=6000 seg_s=2.331 cum_s=22.932 sparse=0 N=1116348 peak_alloc_gib=6.36
+CBCLOCK name=increase_sh_degree iteration=6000 s=0.000028
+CBCLOCK name=densify iteration=6000 s=0.006119
+CBCLOCK name=reset_opacities iteration=6000 s=0.000116
+CBCLOCK name=densify iteration=6100 s=0.005797
+CBCLOCK name=densify iteration=6200 s=0.005689
+CBCLOCK name=densify iteration=6300 s=0.005765
+CBCLOCK name=densify iteration=6400 s=0.005741
+SEGCLOCK step=6500 seg_s=2.307 cum_s=25.240 sparse=0 N=1037047 peak_alloc_gib=6.36
+CBCLOCK name=densify iteration=6500 s=0.005831
+CBCLOCK name=densify iteration=6600 s=0.005831
+CBCLOCK name=densify iteration=6700 s=0.005910
+CBCLOCK name=densify iteration=6800 s=0.005992
+CBCLOCK name=densify iteration=6900 s=0.006031
+SEGCLOCK step=7000 seg_s=2.394 cum_s=27.634 sparse=0 N=1097990 peak_alloc_gib=6.36
+CBCLOCK name=increase_sh_degree iteration=7000 s=0.000024
+CBCLOCK name=densify iteration=7000 s=0.005995
+CBCLOCK name=densify iteration=7100 s=0.006039
+CBCLOCK name=densify iteration=7200 s=0.006133
+CBCLOCK name=densify iteration=7300 s=0.006130
+CBCLOCK name=densify iteration=7400 s=0.006222
+SEGCLOCK step=7500 seg_s=2.453 cum_s=30.087 sparse=0 N=1155609 peak_alloc_gib=6.41
+CBCLOCK name=densify iteration=7500 s=0.006254
+CBCLOCK name=densify iteration=7600 s=0.006552
+CBCLOCK name=densify iteration=7700 s=0.007100
+CBCLOCK name=densify iteration=7800 s=0.006413
+CBCLOCK name=densify iteration=7900 s=0.006651
+SEGCLOCK step=8000 seg_s=2.499 cum_s=32.586 sparse=0 N=1206828 peak_alloc_gib=6.47
+CBCLOCK name=increase_sh_degree iteration=8000 s=0.000026
+CBCLOCK name=densify iteration=8000 s=0.006424
+CBCLOCK name=densify iteration=8100 s=0.006475
+CBCLOCK name=densify iteration=8200 s=0.006509
+CBCLOCK name=densify iteration=8300 s=0.006526
+CBCLOCK name=densify iteration=8400 s=0.006563
+SEGCLOCK step=8500 seg_s=2.500 cum_s=35.086 sparse=0 N=1257168 peak_alloc_gib=6.52
+CBCLOCK name=densify iteration=8500 s=0.006588
+CBCLOCK name=densify iteration=8600 s=0.006670
+CBCLOCK name=densify iteration=8700 s=0.006651
+CBCLOCK name=densify iteration=8800 s=0.006730
+CBCLOCK name=densify iteration=8900 s=0.006701
+SEGCLOCK step=9000 seg_s=2.562 cum_s=37.648 sparse=0 N=1302955 peak_alloc_gib=6.57
+CBCLOCK name=increase_sh_degree iteration=9000 s=0.000024
+CBCLOCK name=densify iteration=9000 s=0.006747
+CBCLOCK name=reset_opacities iteration=9000 s=0.000074
+CBCLOCK name=densify iteration=9100 s=0.006526
+CBCLOCK name=densify iteration=9200 s=0.006419
+CBCLOCK name=densify iteration=9300 s=0.006463
+CBCLOCK name=densify iteration=9400 s=0.006403
+SEGCLOCK step=9500 seg_s=2.642 cum_s=40.290 sparse=0 N=1221176 peak_alloc_gib=6.57
+CBCLOCK name=densify iteration=9500 s=0.006744
+CBCLOCK name=densify iteration=9600 s=0.007945
+CBCLOCK name=densify iteration=9700 s=0.006503
+CBCLOCK name=densify iteration=9800 s=0.006845
+CBCLOCK name=densify iteration=9900 s=0.006729
+SEGCLOCK step=10000 seg_s=2.667 cum_s=42.957 sparse=0 N=1249150 peak_alloc_gib=6.57
+CBCLOCK name=increase_sh_degree iteration=10000 s=0.000031
+CBCLOCK name=densify iteration=10000 s=0.006810
+CBCLOCK name=morton_ordering iteration=10000 s=0.004075
+CBCLOCK name=densify iteration=10100 s=0.006636
+CBCLOCK name=densify iteration=10200 s=0.007809
+CBCLOCK name=densify iteration=10300 s=0.006998
+CBCLOCK name=densify iteration=10400 s=0.006641
+SEGCLOCK step=10500 seg_s=2.648 cum_s=45.605 sparse=0 N=1279282 peak_alloc_gib=6.57
+CBCLOCK name=densify iteration=10500 s=0.006718
+CBCLOCK name=densify iteration=10600 s=0.006796
+CBCLOCK name=densify iteration=10700 s=0.007072
+CBCLOCK name=densify iteration=10800 s=0.006972
+CBCLOCK name=densify iteration=10900 s=0.007240
+SEGCLOCK step=11000 seg_s=2.737 cum_s=48.341 sparse=0 N=1307406 peak_alloc_gib=6.59
+CBCLOCK name=increase_sh_degree iteration=11000 s=0.000031
+CBCLOCK name=densify iteration=11000 s=0.007110
+CBCLOCK name=densify iteration=11100 s=0.006821
+CBCLOCK name=densify iteration=11200 s=0.006969
+CBCLOCK name=densify iteration=11300 s=0.007104
+CBCLOCK name=densify iteration=11400 s=0.007045
+SEGCLOCK step=11500 seg_s=2.757 cum_s=51.098 sparse=0 N=1332969 peak_alloc_gib=6.62
+CBCLOCK name=densify iteration=11500 s=0.007063
+CBCLOCK name=densify iteration=11600 s=0.006990
+CBCLOCK name=densify iteration=11700 s=0.006848
+CBCLOCK name=densify iteration=11800 s=0.006884
+CBCLOCK name=densify iteration=11900 s=0.007033
+SEGCLOCK step=12000 seg_s=2.714 cum_s=53.812 sparse=0 N=1355976 peak_alloc_gib=6.65
+CBCLOCK name=increase_sh_degree iteration=12000 s=0.000027
+CBCLOCK name=densify iteration=12000 s=0.006932
+CBCLOCK name=reset_opacities iteration=12000 s=0.000076
+CBCLOCK name=densify iteration=12100 s=0.006907
+CBCLOCK name=densify iteration=12200 s=0.006964
+CBCLOCK name=densify iteration=12300 s=0.006815
+CBCLOCK name=densify iteration=12400 s=0.006859
+SEGCLOCK step=12500 seg_s=2.755 cum_s=56.568 sparse=0 N=1288187 peak_alloc_gib=6.65
+CBCLOCK name=densify iteration=12500 s=0.007450
+CBCLOCK name=densify iteration=12600 s=0.007784
+CBCLOCK name=densify iteration=12700 s=0.006758
+CBCLOCK name=densify iteration=12800 s=0.006799
+CBCLOCK name=densify iteration=12900 s=0.007074
+SEGCLOCK step=13000 seg_s=2.846 cum_s=59.414 sparse=0 N=1303768 peak_alloc_gib=6.65
+CBCLOCK name=increase_sh_degree iteration=13000 s=0.000035
+CBCLOCK name=densify iteration=13000 s=0.006984
+CBCLOCK name=densify iteration=13100 s=0.006860
+CBCLOCK name=densify iteration=13200 s=0.006808
+CBCLOCK name=densify iteration=13300 s=0.006883
+CBCLOCK name=densify iteration=13400 s=0.006779
+SEGCLOCK step=13500 seg_s=2.872 cum_s=62.286 sparse=0 N=1317769 peak_alloc_gib=6.65
+CBCLOCK name=densify iteration=13500 s=0.006808
+CBCLOCK name=densify iteration=13600 s=0.006874
+CBCLOCK name=densify iteration=13700 s=0.006958
+CBCLOCK name=densify iteration=13800 s=0.006856
+CBCLOCK name=densify iteration=13900 s=0.006957
+SEGCLOCK step=14000 seg_s=2.876 cum_s=65.163 sparse=0 N=1331315 peak_alloc_gib=6.65
+CBCLOCK name=increase_sh_degree iteration=14000 s=0.000042
+CBCLOCK name=densify iteration=14000 s=0.006871
+CBCLOCK name=densify iteration=14100 s=0.006910
+CBCLOCK name=densify iteration=14200 s=0.007006
+CBCLOCK name=densify iteration=14300 s=0.006878
+CBCLOCK name=densify iteration=14400 s=0.006931
+SEGCLOCK step=14500 seg_s=2.861 cum_s=68.023 sparse=0 N=1345203 peak_alloc_gib=6.65
+CBCLOCK name=densify iteration=14500 s=0.007025
+CBCLOCK name=densify iteration=14600 s=0.006969
+CBCLOCK name=densify iteration=14700 s=0.006941
+CBCLOCK name=densify iteration=14800 s=0.006926
+CBCLOCK name=densify iteration=14900 s=0.006927
+SEGCLOCK step=15000 seg_s=2.857 cum_s=70.881 sparse=0 N=1357645 peak_alloc_gib=6.66
+CBCLOCK name=increase_sh_degree iteration=15000 s=0.000030
+CBCLOCK name=morton_ordering iteration=15000 s=0.004378
+FGS_N iteration=15000 N=1357645
+SEGCLOCK step=15500 seg_s=2.883 cum_s=73.763 sparse=0 N=1357645 peak_alloc_gib=6.66
+SEGCLOCK step=16000 seg_s=2.850 cum_s=76.613 sparse=0 N=1357645 peak_alloc_gib=6.66
+CBCLOCK name=increase_sh_degree iteration=16000 s=0.000023
+SEGCLOCK step=16500 seg_s=2.849 cum_s=79.462 sparse=0 N=1357645 peak_alloc_gib=6.66
+SEGCLOCK step=17000 seg_s=2.793 cum_s=82.255 sparse=0 N=1357645 peak_alloc_gib=6.66
+CBCLOCK name=increase_sh_degree iteration=17000 s=0.000034
+SEGCLOCK step=17500 seg_s=2.799 cum_s=85.054 sparse=0 N=1357645 peak_alloc_gib=6.66
+SEGCLOCK step=18000 seg_s=2.796 cum_s=87.851 sparse=0 N=1357645 peak_alloc_gib=6.66
+CBCLOCK name=increase_sh_degree iteration=18000 s=0.000033
+SEGCLOCK step=18500 seg_s=2.794 cum_s=90.645 sparse=0 N=1357645 peak_alloc_gib=6.66
+SEGCLOCK step=19000 seg_s=2.811 cum_s=93.456 sparse=0 N=1357645 peak_alloc_gib=6.66
+CBCLOCK name=increase_sh_degree iteration=19000 s=0.000024
+SEGCLOCK step=19500 seg_s=2.760 cum_s=96.216 sparse=0 N=1357645 peak_alloc_gib=6.66
+SEGCLOCK step=20000 seg_s=2.791 cum_s=99.008 sparse=0 N=1357645 peak_alloc_gib=6.66
+CBCLOCK name=increase_sh_degree iteration=20000 s=0.000027
+SEGCLOCK step=20500 seg_s=2.768 cum_s=101.776 sparse=0 N=1357645 peak_alloc_gib=6.66
+SEGCLOCK step=21000 seg_s=2.746 cum_s=104.522 sparse=0 N=1357645 peak_alloc_gib=6.66
+CBCLOCK name=increase_sh_degree iteration=21000 s=0.000022
+SEGCLOCK step=21500 seg_s=2.756 cum_s=107.278 sparse=0 N=1357645 peak_alloc_gib=6.66
+SEGCLOCK step=22000 seg_s=2.741 cum_s=110.018 sparse=0 N=1357645 peak_alloc_gib=6.66
+CBCLOCK name=increase_sh_degree iteration=22000 s=0.000023
+SEGCLOCK step=22500 seg_s=2.710 cum_s=112.728 sparse=0 N=1357645 peak_alloc_gib=6.66
+SEGCLOCK step=23000 seg_s=2.655 cum_s=115.384 sparse=0 N=1357645 peak_alloc_gib=6.66
+CBCLOCK name=increase_sh_degree iteration=23000 s=0.000027
+SEGCLOCK step=23500 seg_s=2.654 cum_s=118.037 sparse=0 N=1357645 peak_alloc_gib=6.66
+SEGCLOCK step=24000 seg_s=2.645 cum_s=120.682 sparse=0 N=1357645 peak_alloc_gib=6.66
+CBCLOCK name=increase_sh_degree iteration=24000 s=0.000028
+SEGCLOCK step=24500 seg_s=2.641 cum_s=123.323 sparse=0 N=1357645 peak_alloc_gib=6.66
+SEGCLOCK step=25000 seg_s=2.720 cum_s=126.043 sparse=0 N=1357645 peak_alloc_gib=6.66
+CBCLOCK name=increase_sh_degree iteration=25000 s=0.000027
+SEGCLOCK step=25500 seg_s=2.704 cum_s=128.747 sparse=0 N=1357645 peak_alloc_gib=6.66
+SEGCLOCK step=26000 seg_s=2.709 cum_s=131.456 sparse=0 N=1357645 peak_alloc_gib=6.66
+CBCLOCK name=increase_sh_degree iteration=26000 s=0.000030
+SEGCLOCK step=26500 seg_s=2.684 cum_s=134.141 sparse=0 N=1357645 peak_alloc_gib=6.66
+SEGCLOCK step=27000 seg_s=2.696 cum_s=136.836 sparse=0 N=1357645 peak_alloc_gib=6.66
+CBCLOCK name=increase_sh_degree iteration=27000 s=0.000023
+SEGCLOCK step=27500 seg_s=2.684 cum_s=139.521 sparse=0 N=1357645 peak_alloc_gib=6.66
+SEGCLOCK step=28000 seg_s=2.591 cum_s=142.111 sparse=0 N=1357645 peak_alloc_gib=6.66
+CBCLOCK name=increase_sh_degree iteration=28000 s=0.000039
+SEGCLOCK step=28500 seg_s=2.651 cum_s=144.762 sparse=0 N=1357645 peak_alloc_gib=6.66
+SEGCLOCK step=29000 seg_s=2.659 cum_s=147.421 sparse=0 N=1357645 peak_alloc_gib=6.66
+CBCLOCK name=increase_sh_degree iteration=29000 s=0.000023
+SEGCLOCK step=29500 seg_s=2.666 cum_s=150.087 sparse=0 N=1357645 peak_alloc_gib=6.66
+SEGCLOCK step=30000 seg_s=2.652 cum_s=152.738 sparse=0 N=1357645 peak_alloc_gib=6.66
+FGS_TRAIN_END N=1357645 peak_alloc_gib=6.66 peak_reserved_gib=7.10
+EVAL_CONFIG steps 30000 schedule=(29999, 29999, 1)
+EVAL_MEM step=30000 at=start alloc_gib=5.89 peak_gib=6.66
+EVAL_MEM step=30000 at=fingerprint alloc_gib=5.89 peak_gib=6.66
+EVAL_MEM step=30000 at=references (39 images, (3, 1038, 1557)) alloc_gib=6.09 peak_gib=6.66
+EVAL_MEM step=30000 at=render image 0 alloc_gib=6.14 peak_gib=6.66
+EVAL_MEM step=30000 at=metric psnr image 0 alloc_gib=6.14 peak_gib=6.66
+EVAL_MEM step=30000 at=metric ssim image 0 alloc_gib=6.14 peak_gib=6.66
+EVAL_MEM step=30000 at=metric lpips image 0 alloc_gib=6.14 peak_gib=9.89
+EVAL_MEM step=30000 at=end alloc_gib=6.09 peak_gib=9.89
+EVAL step=30000 psnr=31.723461 ssim=0.920719 lpips=0.282537 n_images=39 N=1357645 t_eval=3.523 check=pass
