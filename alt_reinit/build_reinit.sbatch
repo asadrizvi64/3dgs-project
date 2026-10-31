@@ -35,6 +35,8 @@ export DATA
 module load GCC/13.3.0 CUDA/12.8.0 Python/3.12.3 >/dev/null 2>&1
 source "$DATA/fastergs-venv/bin/activate"
 export TORCH_CUDA_ARCH_LIST="8.0;9.0" MAX_JOBS=14 PIP_CACHE_DIR=$DATA/.pipcache
+# pytest is not in fastergs-venv; use the same extra package dir as phase2/build_plus.sbatch
+export PYTHONPATH=$HOME/py-extra${PYTHONPATH:+:$PYTHONPATH}
 OUT=$REPO/alt_reinit/logs/run_${SLURM_JOB_ID:-local}; mkdir -p "$OUT"
 LOG=$REPO/alt_reinit/logs/${SLURM_JOB_NAME:-local}-${SLURM_JOB_ID:-local}.out
 echo "node=$(hostname) job=${SLURM_JOB_ID:-local} gpu=$(nvidia-smi --query-gpu=name --format=csv,noheader) stages=$STAGES repo=$(git -C "$REPO" rev-parse --short HEAD)"
@@ -84,8 +86,14 @@ train() {  # name method seed iters reinit_spec cbclock(0|1) [segk]
         gpu_clock_summary.txt test_*/metrics_8bit.txt reinit_audit/k_*/stats.json reinit_audit/k_*/agreement_final.json \
         reinit_audit/k_*/masks/*.jpg 2>/dev/null ) || true
     if [ -d "$DATA/nerficg/$RUN/reinit_audit" ]; then   # full audit output (with the depth maps) outside the workspace
+      # /projects is read-only on compute nodes: then stage on the workspace and copy to $ARCHIVE from a login node
       local ARC=$ARCHIVE/alt_reinit/${SLURM_JOB_ID:-local}/$name
-      mkdir -p "$ARC" && rsync -a "$DATA/nerficg/$RUN/reinit_audit" "$ARC/" && echo "AUDITARCHIVE $name $ARC"
+      if mkdir -p "$ARC" 2>/dev/null; then
+        rsync -a "$DATA/nerficg/$RUN/reinit_audit" "$ARC/" && echo "AUDITARCHIVE $name $ARC"
+      else
+        ARC=$DATA/alt_reinit-archive-staging/${SLURM_JOB_ID:-local}/$name
+        mkdir -p "$ARC" && rsync -a "$DATA/nerficg/$RUN/reinit_audit" "$ARC/"           && echo "AUDITARCHIVE_STAGED $name $ARC (copy to $ARCHIVE/alt_reinit/ from a login node)"
+      fi
     fi
   fi
   if [ -z "$RUN" ] || [ ! -f "$DATA/nerficg/$RUN/test_$iters/metrics_8bit.txt" ] || tr '\r' '\n' < "$OUT/$name.log" | grep -q '^Traceback'; then
