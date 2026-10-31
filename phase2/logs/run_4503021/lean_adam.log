@@ -1,0 +1,16 @@
+PASS  1 dense sparse-kernel == original  max|dp|=0.000e+00
+PASS  2a visible rows == original  40064/100003 visible
+PASS  2b invisible rows untouched  
+PASS  2c mask indexing for shape (100003, 3)  
+PASS  2c mask indexing for shape (100003, 1)  
+PASS  2c mask indexing for shape (100003, 4)  
+PASS  2c mask indexing for shape (100003, 1, 3)  
+PASS  3a bf16 v tracks fp32 v (median rel err < 5%)  median rel err 0.0269
+PASS  3b bf16 m tracks fp32 m (rel norm err < 5%)  rel norm err 0.0054
+PASS  3c total parameter update agrees (rel err < 2%)  rel err of 3000-step update 0.0099
+PASS  3d SR EMA converges (no stall)  SR mean 0.9752, exact 0.9751, round-to-nearest 0.5000
+PASS  4a visibility shape/dtype  
+PASS  4b every primitive with a gradient is visible  visible 5768/20000, with grad 5768
+PASS  4d some primitives are visible  
+PASS  4c some primitives are culled  culled 14232
+ALL PASS

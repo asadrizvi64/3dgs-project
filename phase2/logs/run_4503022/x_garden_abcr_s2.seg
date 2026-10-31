@@ -1,0 +1,6 @@
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=4181126
+FGS_WALL from=0 to=15000 s=95.051 views=16b79b2f76d3ef42
+FGS_WALL from=15000 to=30000 s=97.760 views=94fd49726d76fa2
+SEGCLOCK step=30000 seg_s=188.913 cum_s=188.913 sparse=1 visfrac=0.302 N=4181126 peak_alloc_gib=6.47
+FGS_TRAIN_END N=4181126 peak_alloc_gib=6.47 peak_reserved_gib=7.83

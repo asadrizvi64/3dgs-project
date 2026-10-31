@@ -1,0 +1,59 @@
+node=c56 job=4502324 gpu=NVIDIA H100 stages=build unit repo=5ffc3ce
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## build
+patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSPlusRB/Trainer.py
+patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSPlusRB/Trainer.py
+1a92e1b trainer patch cluster/patches/fastergs_sparse_from.py
+7118777 fgs-prof hooks (cluster/patches/fastergs_profiling.py)
+f505676 Rename FasterGS -> FasterGSPlusRB
+136239b source patch phase2/fastergs_readback.patch
+b1fad46 Phase 1: macro blend backward (3dgs-project 5ffc3ce)
+1144604 Lean Adam: visibility-sparse update and bf16 SH-rest moments (stochastic rounding)
+FasterGSPlusRBCudaBackend ok, default blend backward mode 3
+########## unit
+.PARITY mode=15 scene=garden_res n=200000 buckets=42625 abs=True pa=True max=1.120e-06 means=7.07e-07 scales=1.01e-06 rotations=1.12e-06 opacities=6.98e-07 sh0=2.94e-07 sh_rest=2.93e-07 densify0=0.00e+00 densify1=6.66e-07 densify2=1.06e-07
+...
+92 passed in 4.47s
+lean-adam PASS count: 15
+FAILED equivalence
+
+scene = ('room_res', 300000, 1557, 1038, (0.002, 0.03), (0.02, 0.99), ...)
+mode = 0, rows = 3
+
+    @pytest.mark.parametrize('scene', SCENES, ids=[s[0] for s in SCENES])
+    @pytest.mark.parametrize('mode', [0, 3], ids=['taming', 'macro'])
+    @pytest.mark.parametrize('rows', [0, 3], ids=['no_densify', 'densify_abs'])
+    def test_equivalent(scene, mode, rows):
+        params, settings, grad_image = inputs(scene, seed=7)
+        # stock Faster-GS launches the taming backward with zero blocks when nothing is visible, which leaves a pending CUDA
+        # error that breaks the next call (the RB patch guards it, like the macro path already did): skip the reference's
+        # backward there and check only that the new build runs it cleanly
+        ref_bwd = not (scene[0] == 'empty' and mode == 0)
+        new = fwd_bwd(NEW, params, settings, grad_image, mode, rows)
+        ref = fwd_bwd(REF, params, settings, grad_image, mode, rows, backward=ref_bwd)
+        assert torch.equal(ref[0], new[0]), 'forward image differs'
+        assert ref[1] == new[1], f'instances {ref[1]} vs {new[1]}'
+        n_tiles = ((scene[2] + 15) // 16) * ((scene[3] + 11) // 12)  # 16x12 tiles (rasterization_config.h)
+        bound = 0 if new[1] == 0 else (new[1] + 31 * n_tiles) // 32
+        assert ref[2] <= new[2] <= bound, f'buckets ref {ref[2]} new {new[2]} bound {bound}'
+        if new[1] == 0:
+            assert new[2] == 0
+        if not ref_bwd:
+            assert all(torch.isfinite(t).all() and not t.any() for t in new[3] if t.numel()), 'empty scene: nonzero gradients'
+            print(f'EQUIV scene={scene[0]} mode={mode} rows={rows} instances=0 (reference backward skipped)')
+            return
+        errs = {f'g{i}': rel(a, b) for i, (a, b) in enumerate(zip(new[3], ref[3]))}
+        errs.update({f'densify{r}': rel(new[4][r], ref[4][r]) for r in range(rows)})
+        print(f'EQUIV scene={scene[0]} mode={mode} rows={rows} instances={new[1]} buckets ref={ref[2]} new={new[2]} '
+              f'bound={bound} max_rel={max(errs.values()) if errs else 0:.2e}')
+>       assert all(v <= TOL for v in errs.values()), errs
+E       AssertionError: {'g0': 1.2538089526862974e-07, 'g1': 1.0761578146000714e-06, 'g2': 7.409247953303778e-07, 'g3': 1.2772304181481888e-07, ...}
+E       assert False
+E        +  where False = all(<generator object test_equivalent.<locals>.<genexpr> at 0x7f64539a8a00>)
+
+/home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py:107: AssertionError
+=========================== short test summary info ============================
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[no_densify-macro-room_res]
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[densify_abs-taming-room_res]
+2 failed, 23 passed in 3.89s
+JOB FAILED: equivalence

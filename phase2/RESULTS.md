@@ -206,3 +206,12 @@ Details: [`timerctl/README.md`](timerctl/README.md). Stock vs A+B+C, each with N
 - **The advantage does not depend on the timer.** Turning the timer off saves 1–2% for stock and 2–3% for A+B+C (3–4 s per run). Most of the GPU idle time seen in the nsys windows (about 1 ms per step) is inside the steps and stays when the timer is off.
 - **The benchmark clock (summed per-step CUDA events) misses under 2% of a run's wall time**, so the step 3 numbers stand as measured.
 - **Quality:** on garden the timer setting changes nothing beyond seed noise. On room, stock has one single-view failure (image 13, the same view as in the benchmark), and A+B+C is about 0.12 dB higher with the timer off on all three seeds. That is unexplained and affects only timer-off quality, not any reported result.
+
+## Step 4c: readback patch (garden and room, 3 seeds)
+
+Details: [`readback/README.md`](readback/README.md). A+B+C against A+B+C with the per-step host reads in the rasterizer removed (FasterGSPlusRB, [`fastergs_readback.patch`](fastergs_readback.patch)); timer on; every seed's runs saw identical training views. Equivalence test: 25/25 passed, with forward images bit-identical.
+
+- **Wall time: garden +0.08% (no effect), room −0.72%** (−1.04 / −0.44 / −0.69 per seed, about 0.9 s per run). The per-step clock agrees (+0.05% / −0.66%).
+- **Quality and memory unchanged** within seed noise.
+- **The ~1 ms per step of GPU idle time seen in step 4a does not come from these blocking reads**, nor (step 4b) from the timer.
+- **Not adopted:** under 1% on one scene, nil on the other, and it adds upper-bound buffer sizing that later rasterizer changes would have to carry. Next lever: the blend kernels.

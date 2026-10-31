@@ -1,0 +1,59 @@
+node=c23 job=4486638 gpu=NVIDIA H100 stages=build unit repo=cacc6d2
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## build
+patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSPlusRB/Trainer.py
+patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSPlusRB/Trainer.py
+2c55372 trainer patch cluster/patches/fastergs_sparse_from.py
+38bc0ff fgs-prof hooks (cluster/patches/fastergs_profiling.py)
+f621587 Rename FasterGS -> FasterGSPlusRB
+b282fcd source patch phase2/fastergs_readback.patch
+188b438 Phase 1: macro blend backward (3dgs-project cacc6d2)
+1144604 Lean Adam: visibility-sparse update and bf16 SH-rest moments (stochastic rounding)
+FasterGSPlusRBCudaBackend ok, default blend backward mode 3
+########## unit
+.PARITY mode=15 scene=garden_res n=200000 buckets=42625 abs=True pa=True max=1.085e-06 means=7.07e-07 scales=1.03e-06 rotations=1.09e-06 opacities=6.96e-07 sh0=2.91e-07 sh_rest=2.91e-07 densify0=0.00e+00 densify1=6.64e-07 densify2=1.09e-07
+...
+92 passed in 3.09s
+lean-adam PASS count: 15
+FAILED equivalence
+    @pytest.mark.parametrize('scene', SCENES, ids=[s[0] for s in SCENES])
+    @pytest.mark.parametrize('mode', [0, 3], ids=['taming', 'macro'])
+    @pytest.mark.parametrize('rows', [0, 3], ids=['no_densify', 'densify_abs'])
+    def test_equivalent(scene, mode, rows):
+        params, settings, grad_image = inputs(scene, seed=7)
+        ref = fwd_bwd(REF, params, settings, grad_image, mode, rows)
+        new = fwd_bwd(NEW, params, settings, grad_image, mode, rows)
+        assert torch.equal(ref[0], new[0]), 'forward image differs'
+        assert ref[1] == new[1], f'instances {ref[1]} vs {new[1]}'
+        n_tiles = ((scene[2] + 15) // 16) * ((scene[3] + 15) // 16)
+        bound = 0 if new[1] == 0 else (new[1] + 31 * n_tiles) // 32
+>       assert ref[2] <= new[2] <= bound, f'buckets ref {ref[2]} new {new[2]} bound {bound}'
+E       AssertionError: buckets ref 223325 new 224113 bound 223726
+E       assert 224113 <= 223726
+
+/home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py:87: AssertionError
+=========================== short test summary info ============================
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[no_densify-taming-tiny]
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[no_densify-taming-partial_tiles]
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[no_densify-taming-garden_res]
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[no_densify-taming-room_res]
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[no_densify-taming-heavy_overlap]
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[no_densify-taming-empty]
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[no_densify-macro-tiny]
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[no_densify-macro-partial_tiles]
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[no_densify-macro-garden_res]
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[no_densify-macro-room_res]
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[no_densify-macro-heavy_overlap]
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[densify_abs-taming-tiny]
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[densify_abs-taming-partial_tiles]
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[densify_abs-taming-garden_res]
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[densify_abs-taming-room_res]
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[densify_abs-taming-heavy_overlap]
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[densify_abs-taming-empty]
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[densify_abs-macro-tiny]
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[densify_abs-macro-partial_tiles]
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[densify_abs-macro-garden_res]
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[densify_abs-macro-room_res]
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[densify_abs-macro-heavy_overlap]
+22 failed, 3 passed in 2.96s
+JOB FAILED: equivalence

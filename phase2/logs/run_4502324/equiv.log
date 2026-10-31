@@ -1,0 +1,104 @@
+EQUIV scene=tiny mode=0 rows=0 instances=2275 buckets ref=102 new=167 bound=167 max_rel=9.99e-08
+.EQUIV scene=partial_tiles mode=0 rows=0 instances=75692 buckets ref=2576 new=2792 bound=2792 max_rel=2.39e-07
+.EQUIV scene=garden_res mode=0 rows=0 instances=1199711 buckets ref=40253 new=43051 bound=43051 max_rel=9.37e-07
+.EQUIV scene=room_res mode=0 rows=0 instances=2311215 buckets ref=76336 new=80485 bound=80485 max_rel=8.76e-07
+.EQUIV scene=heavy_overlap mode=0 rows=0 instances=7050638 buckets ref=221118 new=221882 bound=221882 max_rel=8.40e-07
+.EQUIV scene=empty mode=0 rows=0 instances=0 (reference backward skipped)
+.EQUIV scene=tiny mode=3 rows=0 instances=2275 buckets ref=102 new=167 bound=167 max_rel=1.16e-07
+.EQUIV scene=partial_tiles mode=3 rows=0 instances=75692 buckets ref=2576 new=2792 bound=2792 max_rel=2.87e-07
+.EQUIV scene=garden_res mode=3 rows=0 instances=1199711 buckets ref=40253 new=43051 bound=43051 max_rel=7.08e-07
+.EQUIV scene=room_res mode=3 rows=0 instances=2311215 buckets ref=76336 new=80485 bound=80485 max_rel=1.24e-06
+FEQUIV scene=heavy_overlap mode=3 rows=0 instances=7050638 buckets ref=221118 new=221882 bound=221882 max_rel=4.59e-07
+.EQUIV scene=empty mode=3 rows=0 instances=0 buckets ref=0 new=0 bound=0 max_rel=0.00e+00
+.EQUIV scene=tiny mode=0 rows=3 instances=2275 buckets ref=102 new=167 bound=167 max_rel=9.28e-08
+.EQUIV scene=partial_tiles mode=0 rows=3 instances=75692 buckets ref=2576 new=2792 bound=2792 max_rel=3.25e-07
+.EQUIV scene=garden_res mode=0 rows=3 instances=1199711 buckets ref=40253 new=43051 bound=43051 max_rel=6.87e-07
+.EQUIV scene=room_res mode=0 rows=3 instances=2311215 buckets ref=76336 new=80485 bound=80485 max_rel=1.08e-06
+FEQUIV scene=heavy_overlap mode=0 rows=3 instances=7050638 buckets ref=221118 new=221882 bound=221882 max_rel=6.66e-07
+.EQUIV scene=empty mode=0 rows=3 instances=0 (reference backward skipped)
+.EQUIV scene=tiny mode=3 rows=3 instances=2275 buckets ref=102 new=167 bound=167 max_rel=8.57e-08
+.EQUIV scene=partial_tiles mode=3 rows=3 instances=75692 buckets ref=2576 new=2792 bound=2792 max_rel=2.58e-07
+.EQUIV scene=garden_res mode=3 rows=3 instances=1199711 buckets ref=40253 new=43051 bound=43051 max_rel=7.57e-07
+.EQUIV scene=room_res mode=3 rows=3 instances=2311215 buckets ref=76336 new=80485 bound=80485 max_rel=8.72e-07
+.EQUIV scene=heavy_overlap mode=3 rows=3 instances=7050638 buckets ref=221118 new=221882 bound=221882 max_rel=4.66e-07
+.EQUIV scene=empty mode=3 rows=3 instances=0 buckets ref=0 new=0 bound=0 max_rel=0.00e+00
+..
+=================================== FAILURES ===================================
+__________________ test_equivalent[no_densify-macro-room_res] __________________
+
+scene = ('room_res', 300000, 1557, 1038, (0.002, 0.03), (0.02, 0.99), ...)
+mode = 3, rows = 0
+
+    @pytest.mark.parametrize('scene', SCENES, ids=[s[0] for s in SCENES])
+    @pytest.mark.parametrize('mode', [0, 3], ids=['taming', 'macro'])
+    @pytest.mark.parametrize('rows', [0, 3], ids=['no_densify', 'densify_abs'])
+    def test_equivalent(scene, mode, rows):
+        params, settings, grad_image = inputs(scene, seed=7)
+        # stock Faster-GS launches the taming backward with zero blocks when nothing is visible, which leaves a pending CUDA
+        # error that breaks the next call (the RB patch guards it, like the macro path already did): skip the reference's
+        # backward there and check only that the new build runs it cleanly
+        ref_bwd = not (scene[0] == 'empty' and mode == 0)
+        new = fwd_bwd(NEW, params, settings, grad_image, mode, rows)
+        ref = fwd_bwd(REF, params, settings, grad_image, mode, rows, backward=ref_bwd)
+        assert torch.equal(ref[0], new[0]), 'forward image differs'
+        assert ref[1] == new[1], f'instances {ref[1]} vs {new[1]}'
+        n_tiles = ((scene[2] + 15) // 16) * ((scene[3] + 11) // 12)  # 16x12 tiles (rasterization_config.h)
+        bound = 0 if new[1] == 0 else (new[1] + 31 * n_tiles) // 32
+        assert ref[2] <= new[2] <= bound, f'buckets ref {ref[2]} new {new[2]} bound {bound}'
+        if new[1] == 0:
+            assert new[2] == 0
+        if not ref_bwd:
+            assert all(torch.isfinite(t).all() and not t.any() for t in new[3] if t.numel()), 'empty scene: nonzero gradients'
+            print(f'EQUIV scene={scene[0]} mode={mode} rows={rows} instances=0 (reference backward skipped)')
+            return
+        errs = {f'g{i}': rel(a, b) for i, (a, b) in enumerate(zip(new[3], ref[3]))}
+        errs.update({f'densify{r}': rel(new[4][r], ref[4][r]) for r in range(rows)})
+        print(f'EQUIV scene={scene[0]} mode={mode} rows={rows} instances={new[1]} buckets ref={ref[2]} new={new[2]} '
+              f'bound={bound} max_rel={max(errs.values()) if errs else 0:.2e}')
+>       assert all(v <= TOL for v in errs.values()), errs
+E       AssertionError: {'g0': 1.058610871375973e-07, 'g1': 1.235087794149012e-06, 'g2': 4.7324963452886035e-07, 'g3': 1.056505353217256e-07, ...}
+E       assert False
+E        +  where False = all(<generator object test_equivalent.<locals>.<genexpr> at 0x7f6453a6ecf0>)
+
+/home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py:107: AssertionError
+_________________ test_equivalent[densify_abs-taming-room_res] _________________
+
+scene = ('room_res', 300000, 1557, 1038, (0.002, 0.03), (0.02, 0.99), ...)
+mode = 0, rows = 3
+
+    @pytest.mark.parametrize('scene', SCENES, ids=[s[0] for s in SCENES])
+    @pytest.mark.parametrize('mode', [0, 3], ids=['taming', 'macro'])
+    @pytest.mark.parametrize('rows', [0, 3], ids=['no_densify', 'densify_abs'])
+    def test_equivalent(scene, mode, rows):
+        params, settings, grad_image = inputs(scene, seed=7)
+        # stock Faster-GS launches the taming backward with zero blocks when nothing is visible, which leaves a pending CUDA
+        # error that breaks the next call (the RB patch guards it, like the macro path already did): skip the reference's
+        # backward there and check only that the new build runs it cleanly
+        ref_bwd = not (scene[0] == 'empty' and mode == 0)
+        new = fwd_bwd(NEW, params, settings, grad_image, mode, rows)
+        ref = fwd_bwd(REF, params, settings, grad_image, mode, rows, backward=ref_bwd)
+        assert torch.equal(ref[0], new[0]), 'forward image differs'
+        assert ref[1] == new[1], f'instances {ref[1]} vs {new[1]}'
+        n_tiles = ((scene[2] + 15) // 16) * ((scene[3] + 11) // 12)  # 16x12 tiles (rasterization_config.h)
+        bound = 0 if new[1] == 0 else (new[1] + 31 * n_tiles) // 32
+        assert ref[2] <= new[2] <= bound, f'buckets ref {ref[2]} new {new[2]} bound {bound}'
+        if new[1] == 0:
+            assert new[2] == 0
+        if not ref_bwd:
+            assert all(torch.isfinite(t).all() and not t.any() for t in new[3] if t.numel()), 'empty scene: nonzero gradients'
+            print(f'EQUIV scene={scene[0]} mode={mode} rows={rows} instances=0 (reference backward skipped)')
+            return
+        errs = {f'g{i}': rel(a, b) for i, (a, b) in enumerate(zip(new[3], ref[3]))}
+        errs.update({f'densify{r}': rel(new[4][r], ref[4][r]) for r in range(rows)})
+        print(f'EQUIV scene={scene[0]} mode={mode} rows={rows} instances={new[1]} buckets ref={ref[2]} new={new[2]} '
+              f'bound={bound} max_rel={max(errs.values()) if errs else 0:.2e}')
+>       assert all(v <= TOL for v in errs.values()), errs
+E       AssertionError: {'g0': 1.2538089526862974e-07, 'g1': 1.0761578146000714e-06, 'g2': 7.409247953303778e-07, 'g3': 1.2772304181481888e-07, ...}
+E       assert False
+E        +  where False = all(<generator object test_equivalent.<locals>.<genexpr> at 0x7f64539a8a00>)
+
+/home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py:107: AssertionError
+=========================== short test summary info ============================
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[no_densify-macro-room_res]
+FAILED ../home/h4/syas272h/3dgs-project/phase2/tests/test_readback_equiv.py::test_equivalent[densify_abs-taming-room_res]
+2 failed, 23 passed in 3.89s
