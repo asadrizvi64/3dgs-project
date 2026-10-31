@@ -233,3 +233,12 @@ Details: [`blend/README.md`](blend/README.md#step-2-step-5b-exact-ellipse-cullin
 - **The test costs more than the work it removes:** it runs for every bounding-box-passing pair, while the culled evaluations were cheap. This is a hypothesis; kernel times were not measured.
 - **Quality:** garden unchanged; room −0.23 dB on average (−0.28 / +0.08 / −0.49), outside step 4c's spread. Not investigated, since the patch is rejected on speed.
 - **Not adopted**; the subtile-aligned backward follow-up is dropped too.
+
+## Step 5c: Nsight Compute on the blend kernels (garden and room, step 20k)
+
+Details: [`blend/README.md`](blend/README.md#step-5c-nsight-compute-on-the-blend-kernels--why-culling-was-slower). Full ncu metrics for the forward blend and macro backward of 2 steps, A+B+C vs the culling build.
+
+- **Culling's forward kernel ran at half the occupancy** (75% → 37.5%, limited by barriers), and took 21–42% longer. The extra branch made the compiler emit a collective-sync path with a register barrier ID (`BAR.SYNC R14, R14`), which costs occupancy. A compiler artifact, not the culling work itself.
+- **Both kernels executed more instructions with culling** (forward +2–7%, backward +4–6%). The test runs on nearly every chunk and costs more than the cheap evaluations it removes. So culling would not pay off even without the occupancy loss.
+- **A+B+C's backward (about 2/3 of blend time) is issue-bound** (80% of issue slots busy, IPC 3.2); only fewer instructions per evaluation will speed it up. Forward's largest stall is the per-batch block barrier.
+- The ncu totals (+0.27 / +0.16 ms per step at training clock) agree with step 5b's measured +0.2 ms.

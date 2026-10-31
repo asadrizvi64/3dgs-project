@@ -81,3 +81,40 @@ These are upper bounds. Part of each kernel's time is loading and checkpoint wri
 - **Likely cause (not measured per kernel):** the estimate assumed kernel time scales with the pairs evaluated. But the added test runs for every bbox-passing pair, which is about 30 instructions plus a `logf` and two divisions, in the forward ballot stage and six times per splat in the backward staging. The removed pairs were cheap: the forward loop skips them in a few cycles and the backward drops only about 10% of rows. The kernels are evidently not limited by the evaluations that culling removes.
 - **Quality:** garden is unchanged. Room is 0.23 dB lower on average, driven by two seeds (−0.28, −0.49 dB). In step 4c, two builds whose images were also bit-identical differed by at most 0.14 dB on room. Three seeds can't tell whether this is seed noise or something the synthetic equivalence test misses. Since the patch is slower anyway, this was not investigated further.
 - **Decision: not adopted.** The subtile-aligned backward layout (the follow-up that depended on this step landing near its bound) is dropped as well. Any further culling would need a much cheaper test, for example one precomputed per splat and tile in `create_instances` instead of per warp in the blend loop.
+
+# Step 5c: Nsight Compute on the blend kernels — why culling was slower
+
+2026-10-31, job 4503800 (stage `ncublend`; the first attempt, 4503798, failed because `/projects` is read-only on compute nodes). Each run trains A+B+C or FasterGSPlusCull normally to step 20,000 (garden and room, seed 0). Nsight Compute then captures the forward blend and the macro backward of 2 steps with `--set full`. Script: [`../analyze_ncublend.py`](../analyze_ncublend.py); full tables, including stall reasons: [`ncublend-analysis.md`](ncublend-analysis.md). Reports: `$DATA/ncu/4503800/`.
+
+**Clock:** ncu locks the SM clock (1.6 GHz) and runs kernels one at a time, so its durations are about 20% above training values. Compare arms, not absolute times.
+
+| per kernel, mean of 2 launches | garden A+B+C → culling | room A+B+C → culling |
+|---|---|---|
+| forward: duration | 685 → 972 µs (**+42%**) | 750 → 907 µs (**+21%**) |
+| forward: instructions executed | +7.4% | +2.3% |
+| forward: theoretical occupancy | **75% → 37.5%** | **75% → 37.5%** |
+| forward: issue slots busy | 75% → 54% | 80% → 63% |
+| backward: duration | 1597 → 1643 µs (+2.9%) | 1423 → 1463 µs (+2.8%) |
+| backward: instructions executed | +5.7% | +4.4% |
+| backward: issue slots busy | 80% → 83% | 80% → 82% |
+| backward: registers / theoretical occupancy | 71 → 64 / 44% → 50% | same |
+
+Converted to the training clock, the per-step totals (forward + backward) come to about +0.27 ms on garden and +0.16 ms on room. That is in line with the +0.2 ms per step measured in step 5b.
+
+**Why the forward pass got slower: half the occupancy, from a compiler artifact.**
+- The culling kernel is limited to 4 blocks per SM by **barriers**, where the original allows 32. Registers (40) and shared memory are unchanged.
+- In the SASS, the culling variant contains a `WARPSYNC.COLLECTIVE` … `BAR.SYNC R14, R14` fallback: a block barrier whose ID is held in a register. The original uses only `BAR.SYNC 0x0`. The extra branch around the ellipse test appears to keep the compiler from proving that the warp is converged at `__syncthreads_and` / `block.sync`, so it emits this collective path. The occupancy calculation then reserves the full barrier set.
+- The variant also spills one register to the stack (`STACK:8`).
+- With occupancy halved, the forward kernel can no longer hide its latency: issue slots busy fall from 75–80% to 54–63%.
+
+**Why the forward pass would not be faster even at full occupancy:** it executes 2–7% **more** instructions. SIMT runs the test whenever any lane's splat passes the bounding box, which is nearly every 32-splat chunk. The test costs about 50 instructions per chunk (`logf`, two reciprocals, the edge projection). The evaluations it removes are about 19% of a handful of pairs per chunk, at about 20 instructions each.
+
+**Why the backward pass got slower:** it is issue-bound (80% of issue slots busy; the top stall is `not_selected`, meaning eligible warps are waiting for an issue slot). So its time follows instruction count, and culling adds 4–6% instructions. Six rectangle tests per staged splat plus a per-lane cell check in every row cost more than the roughly 10% of rows they skip, many of which the `j >= lim[r]` check already skipped cheaply. The better occupancy (fewer registers) can't help an issue-bound kernel.
+
+**What limits the A+B+C kernels:**
+- **Backward (about 2/3 of blend time):** issue-bound at about 80% of peak issue, IPC 3.2 of 4. Only fewer instructions per pixel-splat evaluation will speed it up. Occupancy (44%, register-limited) and memory (L1 62–69%, DRAM 9–12%) are not the limit.
+- **Forward:** 75–80% of issue slots busy at 68% achieved occupancy. The largest stall is `barrier` (2.9–4.8 warps per issued instruction): warps wait at the per-batch `__syncthreads_and` / `block.sync` for the slowest warp in the tile.
+
+**Implications for further blend work:**
+- **Culling** only pays off if the per-subtile test is nearly free inside the blend loop. One option is to compute a 6-bit subtile mask once per tile instance in `create_instances`, which already runs the per-tile ellipse test, and store it with the instance; blend kernels would then only read bits. It would also have to keep the forward kernel's barriers at fixed IDs: check the SASS for `BAR.SYNC 0x0` only and the ncu block limit before timing.
+- **Backward instruction count** is the main lever: the per-row exponent, alpha and gradient arithmetic, and the reduction. Counting instructions per evaluation from the SASS is the next measurement if blend work continues.

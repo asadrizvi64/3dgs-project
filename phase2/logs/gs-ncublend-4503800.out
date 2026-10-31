@@ -1,0 +1,11 @@
+node=c28 job=4503800 gpu=NVIDIA H100 stages=ncublend repo=32001a2
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+##### u_garden_abc_20000: method=FasterGSPlus seed=0 window=20000-20002 15:09:30
+NCU u_garden_abc_20000 kernels=4 rep /data/cat/ws/syas272h-3dgs-data/ncu/4503800/u_garden_abc_20000.ncu-rep
+##### u_garden_abce_20000: method=FasterGSPlusCull seed=0 window=20000-20002 15:13:26
+NCU u_garden_abce_20000 kernels=4 rep /data/cat/ws/syas272h-3dgs-data/ncu/4503800/u_garden_abce_20000.ncu-rep
+##### u_room_abc_20000: method=FasterGSPlus seed=0 window=20000-20002 15:17:14
+NCU u_room_abc_20000 kernels=4 rep /data/cat/ws/syas272h-3dgs-data/ncu/4503800/u_room_abc_20000.ncu-rep
+##### u_room_abce_20000: method=FasterGSPlusCull seed=0 window=20000-20002 15:20:29
+NCU u_room_abce_20000 kernels=4 rep /data/cat/ws/syas272h-3dgs-data/ncu/4503800/u_room_abce_20000.ncu-rep
+JOB OK
