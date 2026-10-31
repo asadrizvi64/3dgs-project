@@ -152,10 +152,14 @@ def run_eval(trainer, iteration: int, dataset) -> None:
             tgt = st.gt[i].float().div(255.0)[None]
             if i == 0:
                 mem('render image 0')
-            for k, m in st.metrics.items():
-                vals[k].append(float(m(res, tgt)))
-                if i == 0:
-                    mem(f'metric {k} image 0')
+            # NeRFICG sets cudnn.benchmark = True; its algorithm search for LPIPS-VGG at full resolution peaked at about
+            # 65 GiB on the first call (job 4504356). Heuristic algorithm choice here; values agree to ~1e-6 (r2smoke).
+            with torch.backends.cudnn.flags(enabled=True, benchmark=False, deterministic=False,
+                                            allow_tf32=torch.backends.cudnn.allow_tf32):
+                for k, m in st.metrics.items():
+                    vals[k].append(float(m(res, tgt)))
+                    if i == 0:
+                        mem(f'metric {k} image 0')
             del out, res, tgt
     finally:
         for m in st.metrics.values():
