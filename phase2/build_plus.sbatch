@@ -28,12 +28,15 @@
 #            benchmark protocol: device sync after every step) and OFF; interleaved, order rotated by seed. Every run
 #            also logs FGS_WALL (unprofiled wall time over 0-15k and 15k-30k, device synced only at those boundaries)
 #            and a hash of the training-view sequence, so matched runs can be checked to have seen the same views
+#   blendstats (step 5) SCENES (default garden room), seed 0, A+B+C built as FasterGSPlusStats (BUILD_VARIANT=FasterGSPlusStats
+#            BUILD_SRC_PATCHES=phase2/blend_stats.patch): blend-kernel work counters over 50-step windows (BS_STARTS)
 #   sbatch phase2/build_plus.sbatch      (from the repo root)
 #   STAGES=factorial sbatch --job-name=gs-phase2-factorial --time=03:30:00 phase2/build_plus.sbatch
 #   STAGES=bench SCENE=room sbatch --job-name=gs-bench-room --time=02:30:00 phase2/build_plus.sbatch
 #   STAGES=stages SCENE=room sbatch --job-name=gs-stages-room --time=02:30:00 phase2/build_plus.sbatch
 #   STAGES=profile SCENE=room sbatch --job-name=gs-prof-room --time=02:00:00 phase2/build_plus.sbatch
 #   STAGES=timerctl SCENE=room sbatch --job-name=gs-timer-room --time=01:30:00 phase2/build_plus.sbatch
+#   STAGES="build unit blendstats" BUILD_VARIANT=FasterGSPlusStats BUILD_SRC_PATCHES=phase2/blend_stats.patch sbatch --job-name=gs-blendstats phase2/build_plus.sbatch
 #SBATCH --job-name=gs-phase2-build
 #SBATCH --nodes=1
 #SBATCH --account=p_scads_mlhpc
@@ -269,6 +272,19 @@ if has rbbench; then   # A+B+C vs A+B+C with the readback patch (FasterGSPlusRB)
       if [ $(( (k + seed) % 2 )) = 0 ]; then arm=abc; m=FasterGSPlus; else arm=abcr; m=FasterGSPlusRB; fi
       TRAIN_ENV="FGS_WALL=0,15000,30000" train "x_${BSCENE}_${arm}_s$seed" $m "$seed" 30000 "SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true" macro
     done
+  done
+fi
+
+if has blendstats; then   # step 5 (blend kernels): how much blend work is wasted; counters of phase2/blend_stats.patch
+  # one A+B+C run per scene (seed 0, 30k) with FasterGSPlusStats; the rasterizer prints BLENDSTATS_FWD / _BWD lines,
+  # each summing 50 steps from every start in BS_STARTS. Timing of these runs is not a benchmark value.
+  for BSCENE in ${SCENES:-garden room}; do
+    case $BSCENE in room|counter|kitchen|bonsai) BSCALE=0.5 ;; *) BSCALE=0.25 ;; esac
+    echo "########## blendstats (scene $BSCENE scale $BSCALE, seed 0, A+B+C with blend counters)"
+    TRAIN_ENV="FGS_BLENDSTATS=${BS_STARTS:-2000,5000,10000,15000,20000,29000}" train "p_${BSCENE}_abcstats_s0" FasterGSPlusStats 0 30000 "SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true" macro
+    tr '\r' '\n' < "$OUT/p_${BSCENE}_abcstats_s0.log" | grep -E '^BLENDSTATS_(FWD|BWD) ' > "$OUT/p_${BSCENE}_abcstats_s0.stats" || true
+    echo "STATS p_${BSCENE}_abcstats_s0 $(grep -c '^BLENDSTATS_FWD' "$OUT/p_${BSCENE}_abcstats_s0.stats" || true) fwd windows, $(grep -c '^BLENDSTATS_BWD' "$OUT/p_${BSCENE}_abcstats_s0.stats" || true) bwd windows"
+    [ "$(grep -c '^BLENDSTATS_' "$OUT/p_${BSCENE}_abcstats_s0.stats" || true)" -gt 0 ] || FAILED+=("stats_${BSCENE}")
   done
 fi
 

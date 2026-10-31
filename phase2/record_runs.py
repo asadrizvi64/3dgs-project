@@ -45,6 +45,8 @@ def describe(method, flags, blend):
     parts.append('C bf16 SH-rest moments' if 'SH_REST_BF16_MOMENTS=true' in flags else 'fp32 moments')
     if method == 'FasterGSPlusRB':
         parts.append('fewer host read-backs (phase2/fastergs_readback.patch)')
+    if method == 'FasterGSPlusStats':
+        parts.append('blend work counters (phase2/blend_stats.patch)')
     return f'{method} ({", ".join(parts)})'
 
 
@@ -123,7 +125,9 @@ for path in args.logs:
                 notes.append(f'VRAM {res.group(6)} GiB allocated, read after the final evaluation (not training-only)')
         if per:
             notes.append(f'lowest test image {per.group(2)} at {per.group(3)} dB ({per.group(1)} images)')
-        if b['name'].startswith('p_'):
+        if b['name'].startswith('p_') and b['method'] == 'FasterGSPlusStats':
+            notes.append('blend-counter run (phase2/blend_stats.patch: extra atomics and an ellipse test per splat in both blend kernels), so its timing is not a benchmark value')
+        elif b['name'].startswith('p_'):
             notes.append('profiling run (FGS_PROF=1: host sync every step, CUDA events every 250 steps), so its timing is not a benchmark value')
         if b['name'].startswith('r_'):
             notes.append('stage-render run: test renders and metrics every 1000 iterations, so its timing and quality are not benchmark values')
@@ -134,7 +138,7 @@ for path in args.logs:
         notes.append('LPIPS is VGG')
         hook = 'v5' if walls else ('v4 or later' if (clk and clk.group(5)) else 'v3')
         commit = (f'FasterGS@1144604 + sparse_from {hook} hooks' if b['method'] == 'FasterGS'
-                  else f'{b["method"]} (1144604 + phase1 macro' + (' + phase2 readback patch' if b['method'] == 'FasterGSPlusRB' else '') + f' + sparse_from {hook})') + f'; 3dgs-project {repo}'
+                  else f'{b["method"]} (1144604 + phase1 macro' + (' + phase2 readback patch' if b['method'] == 'FasterGSPlusRB' else ' + phase2 blend counters' if b['method'] == 'FasterGSPlusStats' else '') + f' + sparse_from {hook})') + f'; 3dgs-project {repo}'
         row = dict(date=dm.group(1) if dm else '', commit=commit, instance_type=f'ZIH Capella node {node} (job {job})',
                    scene=scene, method=describe(b['method'], b['flags'], b['blend']), seed=b['seed'],
                    train_time_s=f'{float(clk.group(2)):.1f}' if clk else '',

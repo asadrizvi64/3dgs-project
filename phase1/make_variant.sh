@@ -38,7 +38,8 @@ REV=$(cat "$REPO/.phase1-rev" 2>/dev/null || git -C "$REPO" rev-parse --short HE
 git commit -qam "Phase 1: macro blend backward (3dgs-project $REV)"
 for sp in ${SRC_PATCHES:-}; do   # repo-relative source patches on top of the macro patch (FasterGS names, before the rename)
   git apply "$REPO/$sp"
-  git commit -qam "source patch $sp"
+  git add -A   # the patch may add files
+  git commit -qm "source patch $sp"
 done
 
 git mv FasterGSCudaBackend/FasterGSCudaBackend FasterGSCudaBackend/${VARIANT}CudaBackend
