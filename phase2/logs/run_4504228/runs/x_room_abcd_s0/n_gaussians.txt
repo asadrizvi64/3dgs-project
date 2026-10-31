@@ -1,0 +1,3 @@
+Final number of Gaussians: 1,351,429
+
+N_Gaussians:1351429

@@ -250,3 +250,12 @@ Details: [`blend/README.md`](blend/README.md#step-5d-where-the-backward-kernels-
 - **The per-splat warp reduction is a third of the kernel** (36.7% garden, 31.8% room): 132 instructions (9 sums × 5 shuffles, adds, 9 atomics) on 92–95% of splat steps. More than the row arithmetic it reduces.
 - **Pixel evaluation and gradient math: 40–48%** (17 + 30 instructions per row). Staging is 4–5% of instructions but 15–17% of stall samples (load latency).
 - **Candidate: a deferred reduction through shared memory** (about 30 instead of 132 instructions per step). Estimated −25–30% of backward instructions, up to about 0.3 ms or 5–7% of the step, at the cost of shared memory (occupancy) and a different summation order (gradients within 10⁻⁵, not bit-identical).
+
+## Step 5e: deferred warp reduction (garden and room, 3 seeds)
+
+Details: [`blend/README.md`](blend/README.md#step-5e-deferred-warp-reduction--slower-not-adopted). The macro backward stores per-splat sums in shared memory and reduces them in batches instead of 45 shuffles per splat step (FasterGSPlusDR, [`deferred_reduce.patch`](deferred_reduce.patch)). Tests: 92 unit and 25/25 equivalence cases passed; images bit-identical, gradients within 1.1 × 10⁻⁶.
+
+- **Slower: wall time garden +7.00%, room +9.26%** (every seed; the per-step clock agrees). Quality unchanged.
+- **Instructions did not fall** (+1–3%): the removed shuffles, adds and atomics (about −260M per launch) were replaced by integer address math for the rotated shared-memory reads (about +200M).
+- **Occupancy fell from 44% to 25%** (47 KB shared memory per block, registers 71 → 84). Issue-slot use dropped from 80% to 60%, so the backward kernel took 34–35% longer.
+- **Not adopted in this form.** A revised version (padded, fully unrolled reads with immediate offsets; 3-step window, about 11 KB) is estimated at −14% backward instructions without the occupancy loss, about 2–3% of the step. Untested.

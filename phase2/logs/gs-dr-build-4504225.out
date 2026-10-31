@@ -1,0 +1,21 @@
+node=c60 job=4504225 gpu=NVIDIA H100 stages=build unit repo=b55066e
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## build
+patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSPlusDR/Trainer.py
+patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSPlusDR/Trainer.py
+f8af8bf trainer patch cluster/patches/fastergs_sparse_from.py
+197c35e fgs-prof hooks (cluster/patches/fastergs_profiling.py)
+595d1f9 Rename FasterGS -> FasterGSPlusDR
+15a4836 source patch phase2/deferred_reduce.patch
+48b3a11 Phase 1: macro blend backward (3dgs-project b55066e)
+1144604 Lean Adam: visibility-sparse update and bf16 SH-rest moments (stochastic rounding)
+FasterGSPlusDRCudaBackend ok, default blend backward mode 3
+########## unit
+.PARITY mode=15 scene=garden_res n=200000 buckets=39878 abs=True pa=True max=1.174e-06 means=7.07e-07 scales=1.17e-06 rotations=1.14e-06 opacities=7.00e-07 sh0=2.89e-07 sh_rest=2.90e-07 densify0=0.00e+00 densify1=6.64e-07 densify2=1.06e-07
+...
+92 passed in 4.09s
+lean-adam PASS count: 15
+EQUIV scene=tiny mode=0 rows=0 instances=2275 buckets ref=102 new=102 bound=167 max_rel=1.14e-07 ref_noise=1.03e-07
+..
+25 passed in 3.32s
+JOB OK

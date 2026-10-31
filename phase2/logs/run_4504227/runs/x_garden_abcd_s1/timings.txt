@@ -1,0 +1,91 @@
+Dataset loading:
+	Total execution time: 0:00:01
+	Time per iteration [ms]: 691.30
+	Number of iterations: 1
+
+_commit_wandb:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+_log_test_metrics_wandb:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+_prepare_dataset:
+	Total execution time: 0:00:16
+	Time per iteration [ms]: 16257.91
+	Number of iterations: 1
+
+_save_final_checkpoint:
+	Total execution time: 0:00:42
+	Time per iteration [ms]: 42152.98
+	Number of iterations: 1
+
+_save_intermediate_checkpoint:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+create_sampler:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 17.79
+	Number of iterations: 1
+
+densify:
+	Total execution time: 0:00:02
+	Time per iteration [ms]: 14.67
+	Number of iterations: 144
+
+finalize:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 30.23
+	Number of iterations: 1
+
+hard_pruning:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+increase_sh_degree:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.02
+	Number of iterations: 29
+
+log_wandb:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+morton_ordering:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 10.68
+	Number of iterations: 4
+
+recompute_3d_filter:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.00
+	Number of iterations: 0
+
+reset_opacities:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 0.11
+	Number of iterations: 4
+
+reset_opacities_extra:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 14.51
+	Number of iterations: 1
+
+setup_gaussians:
+	Total execution time: 0:00:00
+	Time per iteration [ms]: 94.52
+	Number of iterations: 1
+
+training_iteration:
+	Total execution time: 0:03:26
+	Time per iteration [ms]: 6.86
+	Number of iterations: 30000
+
+Time:208.096699

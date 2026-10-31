@@ -154,3 +154,50 @@ That is about 30 instructions per step instead of 132, which would cut the backw
 - an incremental exponent down a lane's column (dy changes by a constant 2 px per row band);
 - `exp2` on a pre-scaled conic.
 Each would save a few of the 17 evaluate instructions, about 3–5% of the kernel together.
+
+# Step 5e: deferred warp reduction — slower, not adopted
+
+2026-10-31. Patch: [`../deferred_reduce.patch`](../deferred_reduce.patch), built as FasterGSPlusDR (A+B+C plus the patch; mode bit 32, `FGS_DEFERRED_REDUCE=0` turns it off).
+- **Jobs:** build and tests 4504225; Nsight Compute 4504226; timing 4504227 (garden) and 4504228 (room). The first build (4504195) failed: 8 steps per flush exceeded the 48 KB static shared-memory limit per block.
+- **Design:** each lane stores its 9 per-splat sums (11 with |mean2d|) to shared memory. Every 7 steps (5 with |mean2d|), each lane sums one (splat, value) column over the 32 lanes, reading in rotated order `(i + lane) & 31` to avoid bank conflicts, and issues that column's atomic. 63 or 55 columns fill 2 rounds of 32 lanes. 4-warp blocks only.
+
+**Tests:** 92 unit and 25/25 equivalence cases passed. Images are bit-identical. Gradients are within 1.1 × 10⁻⁶ in the macro cases, the same level as A+B+C against itself (heavy overlap, partial tiles and |mean2d| included).
+
+**Timing** (timer on; seeds 0 / 1 / 2, interleaved with the order rotated by seed; identical training views per seed):
+
+| scene | wall time A+B+C → deferred | wall change | per-step clock | test PSNR change |
+|---|---|---|---|---|
+| garden | 193.42 → 206.95 s | **+7.00%** (+6.58 / +8.69 / +5.74) | +7.08% | +0.003 dB |
+| room | 122.60 → 133.96 s | **+9.26%** (+9.57 / +8.78 / +9.43) | +9.23% | +0.066 dB |
+
+Quality and LPIPS unchanged. Slower on every seed.
+
+**Nsight Compute, macro backward at step 20k** (full tables: [`ncu-dr-analysis.md`](ncu-dr-analysis.md)):
+
+| | garden A+B+C → deferred | room A+B+C → deferred |
+|---|---|---|
+| duration (ncu clock) | 1603 → 2161 µs (**+35%**) | 1415 → 1895 µs (**+34%**) |
+| warp instructions executed | **+1.4%** | **+2.6%** |
+| registers per thread | 71 → 84 | 71 → 84 |
+| theoretical / achieved occupancy | 44% / 39% → **25% / 23%** | 44% / 38% → **25% / 22%** |
+| issue slots busy | 80% → 60% | 80% → 61% |
+
+Executed instructions by opcode (garden, one launch, from `../logs/run_4504226/garden_abcd.bwd_sass.csv`):
+
+| | A+B+C | deferred | change |
+|---|---|---|---|
+| SHFL | 132.9M | 0 | −132.9M |
+| FADD | 187.9M | 84.3M | −103.6M |
+| global atomics (REDG, warp instructions) | 26.6M | 1.0M | −25.6M |
+| integer address math (IMAD, LOP3, LEA, IADD3, VIADD, SHF) | 92.0M | 295.5M | **+203.5M** |
+| LDS / STS | 48.6M | 106.5M | +57.9M |
+
+**Why it is slower:**
+1. **The instruction savings were eaten by address arithmetic.** The shuffles, adds and atomics went away as planned (about −260M). But the rotated column read `col[(i + lane) & 31]` needs its own address computation for each of the 32 loads, about 3 integer instructions per load, about +200M. My estimate of about 30 instructions per step counted only the loads and adds. This is a flaw in the implementation, not in the idea.
+2. **Occupancy fell from 44% to 25%.** At 47 KB of shared memory, only 4 blocks of 4 warps fit per SM, and the flush code raised registers from 71 to 84. The kernel was issue-bound with about 2.4 eligible warps per scheduler. With fewer warps, issue slots busy fell from 80% to 60%, so even equal instruction counts take a third longer.
+
+**Decision: not adopted in this form.** A revised version would need to fix both causes:
+- **Address math:** pad the column to stride 33 and fully unroll the 32 loads, so each is one `LDS` with an immediate offset.
+- **Occupancy:** a 3-step window (27 columns, 1 round). That is about 11 KB per block instead of 32 KB, so shared memory no longer limits occupancy; registers must stay near 71.
+
+By the same opcode accounting, that would be roughly −250M + 100M ≈ −14% backward instructions at unchanged occupancy, about 2–3% of the step. This estimate is untested, and smaller than the original 5–7% hope.
