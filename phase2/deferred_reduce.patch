@@ -1,5 +1,5 @@
 diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh
-index 9422834..fc514a3 100644
+index 9422834..b97a6e6 100644
 --- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh
 +++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh
 @@ -505,7 +505,11 @@ namespace faster_gs::rasterization::kernels::backward {
@@ -8,26 +8,29 @@ index 9422834..fc514a3 100644
      //                     value; the atomics are then issued by 8-11 lanes in parallel
 -    template <bool compute_abs_grad, int n_warps, bool subtile_skip, bool transpose_reduce>
 +    //   deferred_reduce   (phase2) instead of reducing each splat's sums across the warp right away (9-11 values x 5
-+    //                     shuffles), each lane stores them to shared memory; every 8 splat steps the warp sums the
-+    //                     columns (each lane one (splat, value) column, rotated reads: no bank conflicts) and issues the
++    //                     shuffles), each lane stores them to shared memory; every 7 splat steps (5 with |mean2d|) the warp
++    //                     sums the columns (each lane one (splat, value) column, rotated reads: no bank conflicts) and issues the
 +    //                     atomics. Overrides transpose_reduce. Same values, different summation order.
 +    template <bool compute_abs_grad, int n_warps, bool subtile_skip, bool transpose_reduce, bool deferred_reduce>
      __global__ void __launch_bounds__(32 * n_warps) blend_backward_macro_cu(
          const uint2* __restrict__ tile_instance_ranges,
          const uint* __restrict__ tile_bucket_offsets,
-@@ -547,6 +551,11 @@ namespace faster_gs::rasterization::kernels::backward {
+@@ -547,6 +551,14 @@ namespace faster_gs::rasterization::kernels::backward {
          __shared__ uint s_primitive_idx[n_warps][32];
          __shared__ uint s_flags[n_warps][32]; // bits 0-2: color >= 0 mask; 3-4: x subtile halves hit; 5-7: subtile rows hit
          __shared__ float3 s_grad[n_warps][config::block_size_blend];
-+        constexpr int dr_k = 8; // splat steps per flush
++        // 4 warps per block only: static shared memory is capped at 48 KB. Splat steps per flush chosen so the columns
++        // fill 2 rounds of 32 lanes: 7 x 9 = 63 (47.1 KB per block), with |mean2d| 5 x 11 = 55 (43.0 KB)
++        constexpr bool dr = deferred_reduce && n_warps == 4;
 +        constexpr int dr_nv = compute_abs_grad ? 11 : 9; // mean2d 2, conic 3, colour 3, opacity, (|mean2d| 2)
-+        constexpr int dr_cols = deferred_reduce ? dr_k * dr_nv : 1;
++        constexpr int dr_k = compute_abs_grad ? 5 : 7;
++        constexpr int dr_cols = dr ? dr_k * dr_nv : 1;
 +        constexpr int dr_rounds = (dr_cols + 31) / 32;
 +        __shared__ float s_part[n_warps][dr_cols][32]; // [slot * dr_nv + value][lane]
  
          const uint warp_idx = threadIdx.x / 32;
          const uint lane_idx = threadIdx.x % 32;
-@@ -624,6 +633,39 @@ namespace faster_gs::rasterization::kernels::backward {
+@@ -624,6 +636,39 @@ namespace faster_gs::rasterization::kernels::backward {
          }
          __syncwarp();
  
@@ -67,11 +70,11 @@ index 9422834..fc514a3 100644
          for (int j = 0; j < bucket_size; ++j) {
              const float2 mean2d = s_mean2d[warp_idx][j];
              const float4 conic_opacity = s_conic_opacity[warp_idx][j];
-@@ -677,6 +719,22 @@ namespace faster_gs::rasterization::kernels::backward {
+@@ -677,6 +722,22 @@ namespace faster_gs::rasterization::kernels::backward {
                  }
                  T[r] *= one_minus_alpha;
              }
-+            if constexpr (deferred_reduce) {
++            if constexpr (dr) {
 +                const int slot = j % dr_k;
 +                if (__ballot_sync(full_mask, used) != 0u) { // warp-uniform
 +                    float* const p = &s_part[warp_idx][slot * dr_nv][lane_idx];
