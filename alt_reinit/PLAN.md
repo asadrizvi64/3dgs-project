@@ -57,6 +57,39 @@ selected for both scenes before evaluating reconstruction quality."
   - it restores every RNG state and aborts if the model changed;
   - the `r2smoke` stage checks it against `metrics_8bit.txt`.
 
+## R6 (2026-11-01, after the track stopped; user-approved follow-up, pre-registered before any R6 run)
+
+**A new, separate hypothesis; it does not reopen track R.** Hypothesis S: garden's SSIM loss in the R2 intervention arms
+(SSIM 0.8618 / 0.8654 vs ref 0.8668, with LPIPS better in the reinit arms) comes from the opacity resets that
+`end_densify` also ends. Stock Faster-GS resets at callback iterations 3000, 6000, 9000 and 12000 (the reset callback ends
+at `DENSIFICATION_END_ITERATION`); the R2 arms ended at 5000, so they keep only the reset at 3000.
+
+**Design:**
+- Garden only, seeds 0 1 2, k = 5000, the R2 evaluator schedule (`FGS_EVAL=every=500,from=5000`), 30k steps. 6 runs:
+  - `stop+resets` (`stopr`): `mode=stop,iters=5000,keep_resets=1`;
+  - `reinit-target+resets` (`targetr`): `mode=apply,iters=5000,target=4166000,end_densify=1,keep_resets=1`.
+- `keep_resets=1` adds one gated callback that resets opacities on stock's schedule after k (6000, 9000, 12000: every
+  `OPACITY_RESET_INTERVAL` after k, up to the stock `DENSIFICATION_END_ITERATION`). Densification, and with it the
+  pruning that follows stock resets, stays off after k: the arms differ from R2's `stop` / `reinit-target` only in the
+  resets.
+- Comparators are the R2 garden runs (job 4504373), same seeds: `ref`, `stop`, `reinit-target`.
+- Budget: at most 1 GPU-hour (a two-run smoke to 6500 plus the 6 runs).
+
+**Primary rule (3-seed means at 30k), per pair X -> X+resets (stop -> stopr, reinit-target -> targetr):**
+- gap closed g = (SSIM(X+resets) - SSIM(X)) / (SSIM(ref) - SSIM(X));
+- S is **supported for the pair** when g >= 0.5 and SSIM(X+resets) - SSIM(X) exceeds the larger of the two arms' seed
+  standard deviations;
+- S is **supported** when it holds for both pairs, **partly supported** for one, **not supported** for neither.
+
+**Reported, deciding nothing alone:**
+- PSNR and LPIPS differences X+resets - X (does the LPIPS gain survive?), and N at 30k;
+- the R2 outcome category of each new arm against R2's ref target. Track times come from a different job than R2's ref
+  (same node type, CUDA-event clock), so any time comparison is marked cross-job.
+
+**What R6 does not do:** it does not restore the pruning after the resets, so "not supported" does not rule out the
+reset-plus-prune combination. If a new arm reaches "improves time-to-quality", that is a candidate only; confirming it
+(same-job ref timing and R4-style single-evaluation runs) needs the user's go-ahead.
+
 ## Decisions (2026-10-29)
 
 | decision | choice |

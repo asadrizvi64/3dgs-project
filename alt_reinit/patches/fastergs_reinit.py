@@ -15,6 +15,8 @@ FGS_REINIT=spec   reinitialization (reinit_core.parse_env), e.g. 'mode=apply,ite
 FGS_EVAL=spec     metrics-only test-set evaluation outside the clock (reinit_eval.parse_eval), e.g. 'every=500,from=5000'
                   or 'at=12500': callback reinit_eval (priority 60, after the training step), inactive without it.
                   mode=stop / end_densify=1 in FGS_REINIT set DENSIFICATION_END_ITERATION to k (R2 arms).
+                  keep_resets=1 (with end_densify) adds reinit_reset_opacities (priority 90, as stock's reset): stock's
+                  resets after k up to the stock DENSIFICATION_END_ITERATION (R6 arms), inactive otherwise.
 FGS_CBCLOCK=1     per-call synchronized wall time of the callbacks that run between training steps (CBCLOCK lines),
                   installed at the first training step.
 FGS_LOG=path      where both write (as the clock hooks do).
@@ -36,8 +38,12 @@ INIT_HOOK = INIT_ANCHOR + '''        # >>> fgs-reinit init
         _fgs_spec = __import__('os').environ.get('FGS_REINIT', '')
         self._fgs_rcfg = __import__('importlib').import_module(__package__ + '.reinit_core').parse_env(_fgs_spec) if _fgs_spec else None
         _fgs_on = self._fgs_rcfg is not None and self._fgs_rcfg.mode != 'off'
+        _fgs_dens_end_stock = self.DENSIFICATION_END_ITERATION
         if _fgs_on and self._fgs_rcfg.end_densify:
             self.DENSIFICATION_END_ITERATION = self._fgs_rcfg.start
+        self._fgs_resets_start = (self._fgs_rcfg.start // self.OPACITY_RESET_INTERVAL + 1) * self.OPACITY_RESET_INTERVAL if _fgs_on else 0
+        self._fgs_resets_end = _fgs_dens_end_stock
+        self._fgs_resets_active = _fgs_on and self._fgs_rcfg.end_densify and self._fgs_rcfg.keep_resets and not self.USE_MCMC and self._fgs_resets_start <= self._fgs_resets_end
         self._fgs_reinit_active = _fgs_on and self._fgs_rcfg.mode in ('apply', 'audit')
         self._fgs_reinit_start = self._fgs_rcfg.start if _fgs_on else 0
         self._fgs_reinit_end = self._fgs_rcfg.end if _fgs_on else 0
@@ -72,6 +78,12 @@ CB_HOOK = '''    # >>> fgs-reinit callbacks
     def reinit_eval(self, iteration: int, dataset: 'BaseDataset') -> None:
         """Alternative track R: metrics-only test-set evaluation, outside the clock (FGS_EVAL runs only)."""
         __import__('importlib').import_module(__package__ + '.reinit_eval').run_eval(self, iteration, dataset)
+
+    @training_callback(active='_fgs_resets_active', priority=90, start_iteration='_fgs_resets_start', end_iteration='_fgs_resets_end', iteration_stride='OPACITY_RESET_INTERVAL')
+    @torch.no_grad()
+    def reinit_reset_opacities(self, *_) -> None:
+        """Alternative track R (R6): stock's opacity resets after k, when end_densify ended the stock reset callback there."""
+        self.model.gaussians.reset_opacities()
 
     # <<< fgs-reinit callbacks
 ''' + CB_ANCHOR

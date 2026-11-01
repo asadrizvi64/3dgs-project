@@ -61,6 +61,8 @@ class ReinitConfig:
     nbr_samples: int = 1024    # points per view used to choose neighbours
     end_densify: bool = False  # set DENSIFICATION_END_ITERATION = start (R2 arms; implied by mode=stop). In Faster-GS this
                                # also ends opacity resets and densification-info accumulation there
+    keep_resets: bool = False  # with end_densify: keep stock's opacity resets after start (every OPACITY_RESET_INTERVAL up to
+                               # the stock DENSIFICATION_END_ITERATION) through a separate callback; densification stays off (R6)
 
     def describe(self) -> str:
         return ','.join(f'{k}={v}' for k, v in asdict(self).items())
@@ -97,7 +99,7 @@ def parse_env(spec: str) -> ReinitConfig:
             setattr(cfg, key, int(val))
         elif key in _FLOAT:
             setattr(cfg, key, float(val))
-        elif key in ('check', 'end_densify'):
+        elif key in ('check', 'end_densify', 'keep_resets'):
             setattr(cfg, key, val not in ('0', 'false', 'False', 'no'))
         elif key in ('mode', 'target'):
             setattr(cfg, key, val)
@@ -114,6 +116,8 @@ def parse_env(spec: str) -> ReinitConfig:
             raise ValueError(f'FGS_REINIT: {cfg.mode} mode runs once (iters=k)')
     if cfg.end_densify and cfg.mode not in ('apply', 'stop'):
         raise ValueError('FGS_REINIT: end_densify needs mode apply or stop')
+    if cfg.keep_resets and not cfg.end_densify:
+        raise ValueError('FGS_REINIT: keep_resets needs end_densify (or mode=stop)')
     if cfg.stride < 1 or cfg.n_nbr < 1 or cfg.min_agree < 0 or cfg.min_agree > cfg.n_nbr:
         raise ValueError('FGS_REINIT: need stride >= 1, n_nbr >= 1, 0 <= min_agree <= n_nbr')
     for t in cfg.target.split('/'):

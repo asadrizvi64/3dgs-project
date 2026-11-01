@@ -19,6 +19,9 @@
 #   r2      R2 (PLAN.md, k = 5000 for both scenes, amended 2026-10-31): per scene in SCENES and seed in SEEDS (default 0 1 2),
 #           the four arms ref / stop / same / target, 30k each, arm order rotated by seed, FGS_EVAL every 500 from k
 #   r4      R4 confirmation: CONFIRM="scene:arm:step ..." (from analyze_r2.py), 3 seeds each, FGS_EVAL=at=step only
+#   r6smoke R6 (PLAN.md): the keep_resets arms stopr / targetr, garden seed 0, to 6500 (check_r6smoke.py)
+#   r6      R6: garden, seeds SEEDS (default 0 1 2), stopr / targetr, 30k, FGS_EVAL every 500 from 5000; skipped if an
+#           earlier stage failed. STAGES="build unit r6smoke r6" sbatch --job-name=gs-alt-r6 --time=01:30:00 ...
 #   STAGES="build unit smoke" sbatch alt_reinit/build_reinit.sbatch        (from the repo root)
 #   STAGES=audit sbatch --job-name=gs-alt-audit --time=01:30:00 alt_reinit/build_reinit.sbatch
 #SBATCH --job-name=gs-alt-r0
@@ -62,7 +65,7 @@ fi
 if has unit; then
   echo "########## unit"
   ( cd "$REPO" && python -m pytest -q -p no:cacheprovider alt_reinit/tests/test_core_cpu.py alt_reinit/tests/test_trainer_cpu.py \
-      alt_reinit/tests/test_analyze_record.py alt_reinit/tests/test_check_variant.py alt_reinit/tests/test_eval_cpu.py alt_reinit/tests/test_analyze_r2.py ) > "$OUT/cpu_tests.log" 2>&1 \
+      alt_reinit/tests/test_analyze_record.py alt_reinit/tests/test_check_variant.py alt_reinit/tests/test_eval_cpu.py alt_reinit/tests/test_analyze_r2.py alt_reinit/tests/test_analyze_r6.py ) > "$OUT/cpu_tests.log" 2>&1 \
     && tail -1 "$OUT/cpu_tests.log" | sed 's/^/CPU tests: /' || { echo "FAILED cpu tests"; tail -30 "$OUT/cpu_tests.log"; FAILED+=(cpu_tests); }
   python3 "$REPO/alt_reinit/tests/check_variant.py" tree "$METHODS/FasterGSReinit" --base 1144604 > "$OUT/check_tree.log" 2>&1 \
     && grep -c '^PASS' "$OUT/check_tree.log" | sed 's/^/static tree checks PASS: /' || { echo "FAILED static tree"; cat "$OUT/check_tree.log"; FAILED+=(check_tree); }
@@ -179,6 +182,8 @@ arm_spec() {  # arm k target15k -> FGS_REINIT spec ("" for ref)
     stop) echo "mode=stop,iters=$2" ;;
     same) echo "mode=apply,iters=$2,target=match,end_densify=1" ;;
     target) echo "mode=apply,iters=$2,target=$3,end_densify=1" ;;
+    stopr) echo "mode=stop,iters=$2,keep_resets=1" ;;                              # R6
+    targetr) echo "mode=apply,iters=$2,target=$3,end_densify=1,keep_resets=1" ;;   # R6
   esac
 }
 scene_setup() {  # sets BSCALE and N15 for BSCENE
@@ -237,6 +242,33 @@ if has r4; then   # R4 confirmation: CONFIRM="garden:target:12500 garden:ref:300
       EVALSPEC=
     done
   done
+fi
+
+if has r6smoke; then   # R6 (PLAN.md): the two keep_resets arms, garden seed 0, to 6500
+  echo "########## r6smoke (garden seed 0, k=5000, to 6500, keep_resets, evaluator every 500 from 5000)"
+  BSCENE=garden; scene_setup; EVALSPEC="every=500,from=5000"
+  for arm in stopr targetr; do
+    train "ar0_garden_r6${arm}_s0" FasterGSReinit 0 6500 "$(arm_spec $arm 5000 $N15)" 1 100
+  done
+  EVALSPEC=
+  python3 "$REPO/alt_reinit/check_r6smoke.py" "$OUT" || FAILED+=(r6smoke_checks)
+fi
+
+if has r6; then   # R6 (PLAN.md): garden, seeds SEEDS, arms stopr / targetr (order rotated by seed), 30k
+  if [ ${#FAILED[@]} -gt 0 ]; then
+    echo "FAILED r6 not started: earlier stages failed (${FAILED[*]})"; FAILED+=(r6)
+  else
+    K=5000; BSCENE=garden; scene_setup; ARMS=(stopr targetr)
+    echo "########## R6 garden scale $BSCALE: k=$K, arms ${ARMS[*]}, seeds ${SEEDS:-0 1 2}"
+    for seed in ${SEEDS:-0 1 2}; do
+      for j in 0 1; do
+        arm=${ARMS[$(( (j + seed) % 2 ))]}
+        EVALSPEC="every=500,from=$K"
+        train "ar6_garden_${arm}_s${seed}" FasterGSReinit "$seed" 30000 "$(arm_spec $arm $K $N15)" 1 500
+        EVALSPEC=
+      done
+    done
+  fi
 fi
 
 if [ ${#FAILED[@]} -gt 0 ]; then echo "JOB FAILED: ${FAILED[*]}"; exit 1; fi

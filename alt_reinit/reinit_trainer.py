@@ -68,7 +68,7 @@ class _CallbackClock:
 
 # callbacks that run between training steps and belong to the method (evaluation and checkpointing do not)
 CLOCKED = ('increase_sh_degree', 'densify', 'morton_ordering', 'recompute_3d_filter', 'reset_opacities',
-           'reset_opacities_extra', 'hard_pruning', 'reinit_gaussians')
+           'reset_opacities_extra', 'hard_pruning', 'reinit_gaussians', 'reinit_reset_opacities')
 
 
 def install_cbclock(trainer) -> None:

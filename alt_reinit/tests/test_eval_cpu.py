@@ -17,7 +17,12 @@ def test_stop_and_end_densify():
     c = rc.parse_env('mode=apply,iters=5000,target=4166000,end_densify=1')
     assert c.end_densify and c.target == '4166000'
     assert not rc.parse_env('mode=apply,iters=5000').end_densify
-    for bad in ('mode=stop,iters=2000:5000', 'mode=audit,iters=5000,end_densify=1', 'mode=stop'):
+    c = rc.parse_env('mode=stop,iters=5000,keep_resets=1')
+    assert c.keep_resets and c.end_densify
+    assert rc.parse_env('mode=apply,iters=5000,target=4166000,end_densify=1,keep_resets=1').keep_resets
+    assert not rc.parse_env('mode=stop,iters=5000').keep_resets
+    for bad in ('mode=stop,iters=2000:5000', 'mode=audit,iters=5000,end_densify=1', 'mode=stop',
+                'mode=apply,iters=5000,keep_resets=1', 'mode=audit,iters=5000,keep_resets=1'):
         with pytest.raises(ValueError):
             rc.parse_env(bad)
 

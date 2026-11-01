@@ -65,9 +65,12 @@ def check_trainer(stock: Path, variant: Path) -> list[tuple[str, bool]]:
     results.append(('init block parses FGS_REINIT only when set', "if _fgs_spec else None" in blocks.get('init', '')))
     results.append(('init block parses FGS_EVAL only when set', "if _fgs_ev else None" in blocks.get('init', '')))
     cb = blocks.get('callbacks', '')
-    results.append(('callbacks are gated by _fgs_reinit_active / _fgs_audit_final_active / _fgs_eval_active',
+    results.append(('callbacks are gated by _fgs_reinit_active / _fgs_audit_final_active / _fgs_eval_active / _fgs_resets_active',
                     cb.count("active='_fgs_reinit_active'") == 1 and cb.count("active='_fgs_audit_final_active'") == 1
-                    and cb.count("active='_fgs_eval_active'") == 1 and cb.count('@training_callback(') == 3))
+                    and cb.count("active='_fgs_eval_active'") == 1 and cb.count("active='_fgs_resets_active'") == 1
+                    and cb.count('@training_callback(') == 4))
+    results.append(('keep_resets callback needs end_densify and keep_resets',
+                    'self._fgs_rcfg.end_densify and self._fgs_rcfg.keep_resets' in blocks.get('init', '')))
     results.append(('cbclock installs only with FGS_CBCLOCK', "environ.get('FGS_CBCLOCK')" in blocks.get('cbclock', '')))
     return results
 
