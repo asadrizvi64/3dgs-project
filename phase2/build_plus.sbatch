@@ -45,6 +45,8 @@
 #   STAGES=ncublend sbatch --job-name=gs-ncublend --time=00:40:00 phase2/build_plus.sbatch
 #   STAGES="build unit" BUILD_VARIANT=FasterGSPlusDR BUILD_SRC_PATCHES=phase2/deferred_reduce.patch sbatch --job-name=gs-dr-build phase2/build_plus.sbatch
 #   STAGES=ncublend CMP_VARIANT=FasterGSPlusDR CMP_ARM=abcd sbatch --job-name=gs-dr-ncu phase2/build_plus.sbatch
+#   STAGES="build unit" BUILD_VARIANT=FasterGSPlusDR2 BUILD_SRC_PATCHES=phase2/deferred_reduce_v2.patch sbatch --job-name=gs-dr2-build phase2/build_plus.sbatch
+#   STAGES=ncublend CMP_VARIANT=FasterGSPlusDR2 CMP_ARM=abcd2 sbatch --job-name=gs-dr2-ncu phase2/build_plus.sbatch
 #   STAGES="build unit blendstats" BUILD_VARIANT=FasterGSPlusStats BUILD_SRC_PATCHES=phase2/blend_stats.patch sbatch --job-name=gs-blendstats phase2/build_plus.sbatch
 #SBATCH --job-name=gs-phase2-build
 #SBATCH --nodes=1
@@ -80,6 +82,11 @@ python "$REPO/cluster/patches/fastergs_sparse_from.py" "$DATA/nerficg/src/Method
 if has build; then
   echo "########## build"
   VARIANT=${BUILD_VARIANT:-FasterGSPlus} SRC_PATCHES="${BUILD_SRC_PATCHES:-}" TRAINER_PATCHES=cluster/patches/fastergs_sparse_from.py bash "$REPO/phase1/make_variant.sh"
+  # per-kernel registers / spills of the macro backward instantiations (mangled names; template args at the end)
+  pkg=$(cd /tmp && python -c "import ${BUILD_VARIANT:-FasterGSPlus}CudaBackend as m, os; print(os.path.dirname(m.__file__))" 2>/dev/null)
+  for so in $(find "${pkg:-/nonexistent}" -name "*.so" 2>/dev/null); do
+    cuobjdump --dump-resource-usage "$so" 2>/dev/null | grep -A1 "blend_backward_macro" | grep -o "Function [^:]*:\|REG:[0-9]*\|STACK:[0-9]*\|SHARED:[0-9]*\|LOCAL:[0-9]*" | paste -d" " - - - - - | sed "s/^/RESOURCES /"
+  done
 fi
 
 if has unit; then
