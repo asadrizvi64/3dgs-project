@@ -85,7 +85,7 @@ if has build; then
   # per-kernel registers / spills of the macro backward instantiations (mangled names; template args at the end)
   so=$(ls "$DATA"/fastergs-venv/lib/python3.12/site-packages/${BUILD_VARIANT:-FasterGSPlus}CudaBackend/_C*.so 2>/dev/null | head -1) || true
   if [ -n "$so" ]; then   # diagnostics only, never fails the job; first block = first embedded arch
-    { cuobjdump --dump-resource-usage "$so" 2>/dev/null | grep -A1 "macro" | grep -v "^--" | paste - -       | sed -E "s/.*macro_cuILb([01])ELi([48])ELb([01])ELb([01])ELb([01])E[^ ]*/abs= warps= skip= tr= dr=/; s/Resource usage://; s/ +/ /g"       | cut -d" " -f1-9 | sed "s/^/RESOURCES /"; } || true
+    { cuobjdump --dump-resource-usage "$so" 2>/dev/null | grep -A1 "macro" | grep -v "^--" | paste - -       | sed -E "s/.*macro_cuILb([01])ELi([48])ELb([01])ELb([01])ELb([01])E[^ ]*/abs=\1 warps=\2 skip=\3 tr=\4 dr=\5/; s/Resource usage://; s/ +/ /g"       | cut -d" " -f1-9 | sed "s/^/RESOURCES /"; } || true
   fi
 fi
 
