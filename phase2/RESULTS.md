@@ -259,3 +259,11 @@ Details: [`blend/README.md`](blend/README.md#step-5e-deferred-warp-reduction--sl
 - **Instructions did not fall** (+1–3%): the removed shuffles, adds and atomics (about −260M per launch) were replaced by integer address math for the rotated shared-memory reads (about +200M).
 - **Occupancy fell from 44% to 25%** (47 KB shared memory per block, registers 71 → 84). Issue-slot use dropped from 80% to 60%, so the backward kernel took 34–35% longer.
 - **Not adopted in this form.** A revised version (padded, fully unrolled reads with immediate offsets; 3-step window, about 11 KB) is estimated at −14% backward instructions without the occupancy loss, about 2–3% of the step. Untested.
+
+## Step 5f: deferred warp reduction v2 (garden and room, 3 seeds)
+
+Details: [`blend/README.md`](blend/README.md#step-5f-deferred-warp-reduction-v2--faster-on-both-scenes). Step 5e's deferred reduction is redone with padded shared-memory rows, loads at fixed offsets, a 3-step window and a register cap that keeps the base occupancy (FasterGSPlusDR2, [`deferred_reduce_v2.patch`](deferred_reduce_v2.patch)). Tests: 92 unit and 25/25 equivalence cases passed; gradients within 1.2 × 10⁻⁶.
+
+- **Faster: wall time garden −0.92% (194.11 → 192.32 s), room −1.45% (122.19 → 120.42 s)**, on all 6 paired seeds. Quality unchanged.
+- **Macro backward −8% duration, −9 to −10% instructions** (ncu, step 20k). Registers 72 and occupancy 43.8% are unchanged from A+B+C. The reduction now costs 84 instructions per splat step instead of 132.
+- **Candidate for adoption into the stack** (user's decision). The gain is small; one garden seed is within seed noise.

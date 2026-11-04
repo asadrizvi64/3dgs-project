@@ -1,0 +1,15 @@
+node=c112 job=4525313 gpu=NVIDIA H100 stages=build unit repo=7cb490d
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## build
+patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSPlusDR2/Trainer.py
+patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSPlusDR2/Trainer.py
+d288908 trainer patch cluster/patches/fastergs_sparse_from.py
+9b53cab fgs-prof hooks (cluster/patches/fastergs_profiling.py)
+e232467 Rename FasterGS -> FasterGSPlusDR2
+873342f source patch phase2/deferred_reduce_v2.patch
+7e67ad9 Phase 1: macro blend backward (3dgs-project 7cb490d)
+1144604 Lean Adam: visibility-sparse update and bf16 SH-rest moments (stochastic rounding)
+
+[notice] A new release of pip is available: 26.2.2 -> 26.3
+[notice] To update, run: pip install --upgrade pip
+FasterGSPlusDR2CudaBackend ok, default blend backward mode 3

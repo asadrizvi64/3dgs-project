@@ -201,3 +201,43 @@ Executed instructions by opcode (garden, one launch, from `../logs/run_4504226/g
 - **Occupancy:** a 3-step window (27 columns, 1 round). That is about 11 KB per block instead of 32 KB, so shared memory no longer limits occupancy; registers must stay near 71.
 
 By the same opcode accounting, that would be roughly −250M + 100M ≈ −14% backward instructions at unchanged occupancy, about 2–3% of the step. This estimate is untested, and smaller than the original 5–7% hope.
+
+# Step 5f: deferred warp reduction v2 — faster on both scenes
+
+2026-11-04. Patch: [`../deferred_reduce_v2.patch`](../deferred_reduce_v2.patch), built as FasterGSPlusDR2 (A+B+C plus the patch; mode bit 32, `FGS_DEFERRED_REDUCE=0` turns it off). It replaces step 5e's version and fixes its two costs.
+- **Jobs:** build and tests 4525396; Nsight Compute 4525397; timing 4525398 (garden) and 4525399 (room). The first build (4525313) compiled but stopped on a faulty diagnostic line in the job script, fixed in 496f7e5.
+- **Design changes from 5e:**
+  - Each lane's sums go in its own shared-memory row, padded to an odd stride (27; 23 with |mean2d|). Stores and column sums are then free of bank conflicts, and each column sum is 32 loads at fixed offsets, with no per-load address math.
+  - The warp flushes every 3 steps (2 with |mean2d|), so all columns fit in one round of 32 lanes. Shared memory is 13.5 KB per block (28.7 KB in total, was 47 KB).
+  - The register cap is set for 7 blocks per SM, matching the base kernel. The compiler uses 68–72 registers (71 in A+B+C, 84 in 5e), with no spills.
+
+**Tests:** 92 unit and 25/25 equivalence cases passed. No image differences were reported. Gradients are within 1.2 × 10⁻⁶, the same level as 5e and as A+B+C against itself.
+
+**Timing** (timer on; seeds 0 / 1 / 2, interleaved with the order rotated by seed; identical training views per seed):
+
+| scene | wall time A+B+C → v2 | wall change (per seed, s) | test PSNR change |
+|---|---|---|---|
+| garden | 194.11 → 192.32 s | **−0.92%** (−2.43 / −2.76 / −0.17) | +0.025 dB |
+| room | 122.19 → 120.42 s | **−1.45%** (−2.09 / −0.94 / −2.27) | +0.105 dB |
+
+Faster on all 6 paired seeds. SSIM and LPIPS unchanged (all within ±0.001). The gain is small: garden seed 2 is within the base arm's seed-to-seed spread (about 1 s).
+
+**Nsight Compute, macro backward at step 20k** (SM clock locked by ncu; full tables: [`ncu-dr2-analysis.md`](ncu-dr2-analysis.md)):
+
+| | garden A+B+C → v2 | room A+B+C → v2 |
+|---|---|---|
+| duration | 1601 → 1471 µs (−8.1%) | 1420 → 1308 µs (−7.9%) |
+| warp instructions | 1074 → 963M (−10.3%) | 952 → 867M (−8.9%) |
+| issue slots busy | 80.2 → 78.5% | 80.2 → 79.3% |
+| theoretical / achieved occupancy | 43.8 / 39.0 → 43.8 / 39.1% | 43.8 / 37.5 → 43.8 / 37.7% |
+| L1/TEX throughput | 69.3 → 45.5% | 62.7 → 42.2% |
+
+The forward blend is unchanged (same instruction count).
+
+**Where the instructions went** (per-SASS counts, `../logs/run_4525397/<scene>_abcd2.bwd_sass.csv`, against 5d's A+B+C counts; [`../analyze_bwd_sass.py`](../analyze_bwd_sass.py)):
+- **Reduction plus loop tail**, which now holds the stores and the flush: garden 421 → 267M (132 → 84 per splat step), room 375 → 236M.
+- **Loop head, row check and vote:** together +34M (garden) and +29M (room), from the slot counter and flush test.
+- **Evaluate and gradient:** unchanged within 4%.
+- Net: −110M garden, −100M room per launch. That is about two-thirds of the −14% estimated in 5e. Issue-slot use fell slightly because wait and long-scoreboard stalls rose, from the shared-memory loads in the flush.
+
+**Verdict:** a small, consistent gain, −0.9% garden and −1.5% room, at unchanged quality. It is a candidate for the A+B+C stack; adoption is the user's decision. The remaining reduction cost is about 84 instructions per step, mostly the 32 loads and adds per column, plus the stores.

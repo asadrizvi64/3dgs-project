@@ -1,0 +1,72 @@
+node=c112 job=4525396 gpu=NVIDIA H100 stages=build unit repo=496f7e5
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## build
+patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSPlusDR2/Trainer.py
+patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSPlusDR2/Trainer.py
+ee4ef7b trainer patch cluster/patches/fastergs_sparse_from.py
+4aabfd2 fgs-prof hooks (cluster/patches/fastergs_profiling.py)
+3a18130 Rename FasterGS -> FasterGSPlusDR2
+f1cdaee source patch phase2/deferred_reduce_v2.patch
+b2683d3 Phase 1: macro blend backward (3dgs-project 496f7e5)
+1144604 Lean Adam: visibility-sparse update and bf16 SH-rest moments (stochastic rounding)
+
+[notice] A new release of pip is available: 26.2.2 -> 26.3
+[notice] To update, run: pip install --upgrade pip
+FasterGSPlusDR2CudaBackend ok, default blend backward mode 3
+RESOURCES abs=0 warps=4 skip=0 tr=0 dr=0 REG:71 STACK:0 SHARED:14848 LOCAL:0
+RESOURCES abs=0 warps=4 skip=0 tr=1 dr=0 REG:72 STACK:0 SHARED:14848 LOCAL:0
+RESOURCES abs=0 warps=4 skip=0 tr=0 dr=1 REG:68 STACK:0 SHARED:28672 LOCAL:0
+RESOURCES abs=0 warps=4 skip=1 tr=0 dr=0 REG:72 STACK:0 SHARED:14848 LOCAL:0
+RESOURCES abs=0 warps=4 skip=1 tr=1 dr=0 REG:75 STACK:0 SHARED:14848 LOCAL:0
+RESOURCES abs=0 warps=4 skip=1 tr=0 dr=1 REG:68 STACK:0 SHARED:28672 LOCAL:0
+RESOURCES abs=0 warps=8 skip=0 tr=0 dr=0 REG:71 STACK:0 SHARED:29696 LOCAL:0
+RESOURCES abs=0 warps=8 skip=0 tr=1 dr=0 REG:68 STACK:0 SHARED:29696 LOCAL:0
+RESOURCES abs=0 warps=8 skip=0 tr=0 dr=1 REG:71 STACK:0 SHARED:29696 LOCAL:0
+RESOURCES abs=0 warps=8 skip=1 tr=0 dr=0 REG:71 STACK:0 SHARED:29696 LOCAL:0
+RESOURCES abs=0 warps=8 skip=1 tr=1 dr=0 REG:66 STACK:0 SHARED:29696 LOCAL:0
+RESOURCES abs=0 warps=8 skip=1 tr=0 dr=1 REG:71 STACK:0 SHARED:29696 LOCAL:0
+RESOURCES abs=1 warps=4 skip=0 tr=0 dr=0 REG:72 STACK:0 SHARED:14848 LOCAL:0
+RESOURCES abs=1 warps=4 skip=0 tr=1 dr=0 REG:72 STACK:0 SHARED:14848 LOCAL:0
+RESOURCES abs=1 warps=4 skip=0 tr=0 dr=1 REG:71 STACK:0 SHARED:26624 LOCAL:0
+RESOURCES abs=1 warps=4 skip=1 tr=0 dr=0 REG:72 STACK:0 SHARED:14848 LOCAL:0
+RESOURCES abs=1 warps=4 skip=1 tr=1 dr=0 REG:72 STACK:0 SHARED:14848 LOCAL:0
+RESOURCES abs=1 warps=4 skip=1 tr=0 dr=1 REG:71 STACK:0 SHARED:26624 LOCAL:0
+RESOURCES abs=1 warps=8 skip=0 tr=0 dr=0 REG:68 STACK:0 SHARED:29696 LOCAL:0
+RESOURCES abs=1 warps=8 skip=0 tr=1 dr=0 REG:70 STACK:0 SHARED:29696 LOCAL:0
+RESOURCES abs=1 warps=8 skip=0 tr=0 dr=1 REG:68 STACK:0 SHARED:29696 LOCAL:0
+RESOURCES abs=1 warps=8 skip=1 tr=0 dr=0 REG:68 STACK:0 SHARED:29696 LOCAL:0
+RESOURCES abs=1 warps=8 skip=1 tr=1 dr=0 REG:70 STACK:0 SHARED:29696 LOCAL:0
+RESOURCES abs=1 warps=8 skip=1 tr=0 dr=1 REG:68 STACK:0 SHARED:29696 LOCAL:0
+RESOURCES abs=0 warps=4 skip=0 tr=0 dr=0 REG:77 STACK:0 SHARED:15872 LOCAL:0
+RESOURCES abs=0 warps=4 skip=0 tr=1 dr=0 REG:79 STACK:0 SHARED:15872 LOCAL:0
+RESOURCES abs=0 warps=4 skip=0 tr=0 dr=1 REG:72 STACK:0 SHARED:29696 LOCAL:0
+RESOURCES abs=0 warps=4 skip=1 tr=0 dr=0 REG:77 STACK:0 SHARED:15872 LOCAL:0
+RESOURCES abs=0 warps=4 skip=1 tr=1 dr=0 REG:79 STACK:0 SHARED:15872 LOCAL:0
+RESOURCES abs=0 warps=4 skip=1 tr=0 dr=1 REG:72 STACK:0 SHARED:29696 LOCAL:0
+RESOURCES abs=0 warps=8 skip=0 tr=0 dr=0 REG:77 STACK:0 SHARED:30720 LOCAL:0
+RESOURCES abs=0 warps=8 skip=0 tr=1 dr=0 REG:78 STACK:0 SHARED:30720 LOCAL:0
+RESOURCES abs=0 warps=8 skip=0 tr=0 dr=1 REG:77 STACK:0 SHARED:30720 LOCAL:0
+RESOURCES abs=0 warps=8 skip=1 tr=0 dr=0 REG:77 STACK:0 SHARED:30720 LOCAL:0
+RESOURCES abs=0 warps=8 skip=1 tr=1 dr=0 REG:79 STACK:0 SHARED:30720 LOCAL:0
+RESOURCES abs=0 warps=8 skip=1 tr=0 dr=1 REG:77 STACK:0 SHARED:30720 LOCAL:0
+RESOURCES abs=1 warps=4 skip=0 tr=0 dr=0 REG:80 STACK:0 SHARED:15872 LOCAL:0
+RESOURCES abs=1 warps=4 skip=0 tr=1 dr=0 REG:80 STACK:0 SHARED:15872 LOCAL:0
+RESOURCES abs=1 warps=4 skip=0 tr=0 dr=1 REG:72 STACK:0 SHARED:27648 LOCAL:0
+RESOURCES abs=1 warps=4 skip=1 tr=0 dr=0 REG:80 STACK:0 SHARED:15872 LOCAL:0
+RESOURCES abs=1 warps=4 skip=1 tr=1 dr=0 REG:80 STACK:0 SHARED:15872 LOCAL:0
+RESOURCES abs=1 warps=4 skip=1 tr=0 dr=1 REG:72 STACK:0 SHARED:27648 LOCAL:0
+RESOURCES abs=1 warps=8 skip=0 tr=0 dr=0 REG:78 STACK:0 SHARED:30720 LOCAL:0
+RESOURCES abs=1 warps=8 skip=0 tr=1 dr=0 REG:80 STACK:0 SHARED:30720 LOCAL:0
+RESOURCES abs=1 warps=8 skip=0 tr=0 dr=1 REG:78 STACK:0 SHARED:30720 LOCAL:0
+RESOURCES abs=1 warps=8 skip=1 tr=0 dr=0 REG:77 STACK:0 SHARED:30720 LOCAL:0
+RESOURCES abs=1 warps=8 skip=1 tr=1 dr=0 REG:80 STACK:0 SHARED:30720 LOCAL:0
+RESOURCES abs=1 warps=8 skip=1 tr=0 dr=1 REG:77 STACK:0 SHARED:30720 LOCAL:0
+########## unit
+.PARITY mode=15 scene=garden_res n=200000 buckets=39878 abs=True pa=True max=1.159e-06 means=7.07e-07 scales=1.04e-06 rotations=1.16e-06 opacities=6.99e-07 sh0=2.87e-07 sh_rest=2.87e-07 densify0=0.00e+00 densify1=6.65e-07 densify2=1.08e-07
+...
+92 passed in 5.50s
+lean-adam PASS count: 15
+EQUIV scene=tiny mode=0 rows=0 instances=2275 buckets ref=102 new=102 bound=167 max_rel=9.02e-08 ref_noise=9.78e-08
+..
+25 passed in 4.35s
+JOB OK
