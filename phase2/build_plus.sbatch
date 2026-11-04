@@ -83,10 +83,10 @@ if has build; then
   echo "########## build"
   VARIANT=${BUILD_VARIANT:-FasterGSPlus} SRC_PATCHES="${BUILD_SRC_PATCHES:-}" TRAINER_PATCHES=cluster/patches/fastergs_sparse_from.py bash "$REPO/phase1/make_variant.sh"
   # per-kernel registers / spills of the macro backward instantiations (mangled names; template args at the end)
-  pkg=$(cd /tmp && python -c "import ${BUILD_VARIANT:-FasterGSPlus}CudaBackend as m, os; print(os.path.dirname(m.__file__))" 2>/dev/null)
-  for so in $(find "${pkg:-/nonexistent}" -name "*.so" 2>/dev/null); do
-    cuobjdump --dump-resource-usage "$so" 2>/dev/null | grep -A1 "blend_backward_macro" | grep -o "Function [^:]*:\|REG:[0-9]*\|STACK:[0-9]*\|SHARED:[0-9]*\|LOCAL:[0-9]*" | paste -d" " - - - - - | sed "s/^/RESOURCES /"
-  done
+  so=$(ls "$DATA"/fastergs-venv/lib/python3.12/site-packages/${BUILD_VARIANT:-FasterGSPlus}CudaBackend/_C*.so 2>/dev/null | head -1) || true
+  if [ -n "$so" ]; then   # diagnostics only, never fails the job; first block = first embedded arch
+    { cuobjdump --dump-resource-usage "$so" 2>/dev/null | grep -A1 "macro" | grep -v "^--" | paste - -       | sed -E "s/.*macro_cuILb([01])ELi([48])ELb([01])ELb([01])ELb([01])E[^ ]*/abs= warps= skip= tr= dr=/; s/Resource usage://; s/ +/ /g"       | cut -d" " -f1-9 | sed "s/^/RESOURCES /"; } || true
+  fi
 fi
 
 if has unit; then
