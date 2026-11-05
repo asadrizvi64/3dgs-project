@@ -240,4 +240,4 @@ The forward blend is unchanged (same instruction count).
 - **Evaluate and gradient:** unchanged within 4%.
 - Net: −110M garden, −100M room per launch. That is about two-thirds of the −14% estimated in 5e. Issue-slot use fell slightly because wait and long-scoreboard stalls rose, from the shared-memory loads in the flush.
 
-**Verdict:** a small, consistent gain, −0.9% garden and −1.5% room, at unchanged quality. It is a candidate for the A+B+C stack; adoption is the user's decision. The remaining reduction cost is about 84 instructions per step, mostly the 32 loads and adds per column, plus the stores.
+**Verdict:** a small, consistent gain, −0.9% garden and −1.5% room, at unchanged quality. **Adopted 2026-11-05 as D**: the stack is A+B+C+D, built as FasterGSPlusD (arm `abcd`), the default reference build in `../build_plus.sbatch` (build check job 4535861: 92 unit and 25/25 equivalence cases passed against A+B+C, gradients within 1.9 × 10⁻⁶). The remaining reduction cost is about 84 instructions per step, mostly the 32 loads and adds per column, plus the stores.

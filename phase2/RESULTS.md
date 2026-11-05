@@ -266,4 +266,4 @@ Details: [`blend/README.md`](blend/README.md#step-5f-deferred-warp-reduction-v2-
 
 - **Faster: wall time garden −0.92% (194.11 → 192.32 s), room −1.45% (122.19 → 120.42 s)**, on all 6 paired seeds. Quality unchanged.
 - **Macro backward −8% duration, −9 to −10% instructions** (ncu, step 20k). Registers 72 and occupancy 43.8% are unchanged from A+B+C. The reduction now costs 84 instructions per splat step instead of 132.
-- **Candidate for adoption into the stack** (user's decision). The gain is small; one garden seed is within seed noise.
+- **Adopted (2026-11-05) as D: the stack is now A+B+C+D**, built as FasterGSPlusD (arm `abcd`). It is the default build and the reference arm for later comparisons, timer and profile stages ([`build_plus.sbatch`](build_plus.sbatch); `BASE=FasterGSPlus` reproduces the A+B+C setup). Build check job 4535861: 92 unit and 25/25 equivalence cases passed against A+B+C (gradients within 1.9 × 10⁻⁶). The gain is small; one garden seed is within seed noise.

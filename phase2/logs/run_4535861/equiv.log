@@ -1,0 +1,26 @@
+EQUIV scene=tiny mode=0 rows=0 instances=2275 buckets ref=102 new=102 bound=167 max_rel=1.02e-07 ref_noise=1.08e-07
+.EQUIV scene=partial_tiles mode=0 rows=0 instances=75692 buckets ref=2576 new=2576 bound=2792 max_rel=2.18e-07 ref_noise=2.52e-07
+.EQUIV scene=garden_res mode=0 rows=0 instances=1199711 buckets ref=40253 new=40253 bound=43051 max_rel=9.29e-07 ref_noise=8.18e-07
+.EQUIV scene=room_res mode=0 rows=0 instances=2311215 buckets ref=76336 new=76336 bound=80485 max_rel=8.81e-07 ref_noise=1.87e-06
+.EQUIV scene=heavy_overlap mode=0 rows=0 instances=7050638 buckets ref=221118 new=221118 bound=221882 max_rel=6.73e-07 ref_noise=5.53e-07
+.EQUIV scene=empty mode=0 rows=0 instances=0 (reference backward skipped)
+.EQUIV scene=tiny mode=3 rows=0 instances=2275 buckets ref=102 new=102 bound=167 max_rel=2.57e-07 ref_noise=5.29e-08
+.EQUIV scene=partial_tiles mode=3 rows=0 instances=75692 buckets ref=2576 new=2576 bound=2792 max_rel=4.78e-07 ref_noise=1.92e-07
+.EQUIV scene=garden_res mode=3 rows=0 instances=1199711 buckets ref=40253 new=40253 bound=43051 max_rel=8.30e-07 ref_noise=8.01e-07
+.EQUIV scene=room_res mode=3 rows=0 instances=2311215 buckets ref=76336 new=76336 bound=80485 max_rel=1.33e-06 ref_noise=4.86e-07
+.EQUIV scene=heavy_overlap mode=3 rows=0 instances=7050638 buckets ref=221118 new=221118 bound=221882 max_rel=5.52e-07 ref_noise=4.97e-07
+.EQUIV scene=empty mode=3 rows=0 instances=0 buckets ref=0 new=0 bound=0 max_rel=0.00e+00 ref_noise=0.00e+00
+.EQUIV scene=tiny mode=0 rows=3 instances=2275 buckets ref=102 new=102 bound=167 max_rel=8.22e-08 ref_noise=1.03e-07
+.EQUIV scene=partial_tiles mode=0 rows=3 instances=75692 buckets ref=2576 new=2576 bound=2792 max_rel=2.97e-07 ref_noise=2.29e-07
+.EQUIV scene=garden_res mode=0 rows=3 instances=1199711 buckets ref=40253 new=40253 bound=43051 max_rel=6.97e-07 ref_noise=7.77e-07
+.EQUIV scene=room_res mode=0 rows=3 instances=2311215 buckets ref=76336 new=76336 bound=80485 max_rel=1.08e-06 ref_noise=1.10e-06
+.EQUIV scene=heavy_overlap mode=0 rows=3 instances=7050638 buckets ref=221118 new=221118 bound=221882 max_rel=6.80e-07 ref_noise=6.80e-07
+.EQUIV scene=empty mode=0 rows=3 instances=0 (reference backward skipped)
+.EQUIV scene=tiny mode=3 rows=3 instances=2275 buckets ref=102 new=102 bound=167 max_rel=2.56e-07 ref_noise=4.96e-08
+.EQUIV scene=partial_tiles mode=3 rows=3 instances=75692 buckets ref=2576 new=2576 bound=2792 max_rel=5.10e-07 ref_noise=1.89e-07
+.EQUIV scene=garden_res mode=3 rows=3 instances=1199711 buckets ref=40253 new=40253 bound=43051 max_rel=1.09e-06 ref_noise=6.67e-07
+.EQUIV scene=room_res mode=3 rows=3 instances=2311215 buckets ref=76336 new=76336 bound=80485 max_rel=1.90e-06 ref_noise=7.92e-07
+.EQUIV scene=heavy_overlap mode=3 rows=3 instances=7050638 buckets ref=221118 new=221118 bound=221882 max_rel=4.68e-07 ref_noise=4.67e-07
+.EQUIV scene=empty mode=3 rows=3 instances=0 buckets ref=0 new=0 bound=0 max_rel=0.00e+00 ref_noise=0.00e+00
+..
+25 passed in 3.43s
