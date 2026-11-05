@@ -4,6 +4,12 @@
 #   A  macro blend backward      env FGS_BLEND_BWD=macro (variant default) | taming (stock kernel)
 #   B  selective Adam from n     TRAINING.OPTIMIZER.SELECTIVE_FROM: n   (-1 / absent = off)
 #   C  bf16 SH-rest moments      TRAINING.OPTIMIZER.SH_REST_BF16_MOMENTS: true
+# Current stack (phase2 step 5f, adopted 2026-11-05): BASE (default FasterGSPlusD) = A+B+C + D, D = deferred warp reduction v2
+# (phase2/deferred_reduce_v2.patch, FGS_DEFERRED_REDUCE=0 turns it off at run time); arm label BASE_ARM (default abcd).
+# The build stage builds BASE by default; any BUILD_VARIANT is built on top of BASE's patches (STACK_ON_BASE=0: plain
+# A+B+C + BUILD_SRC_PATCHES, as in steps 4c-5f) and checked for equivalence against BASE. rbbench, ncublend, timerctl,
+# profile and hostprof use BASE as their A+B+C(+D) arm. BASE=FasterGSPlus reproduces the pre-5f setup (arm abc).
+# switch, sanity, factorial, bench and stages stay on FasterGSPlus (A+B+C, historical steps 1-3).
 # Stages (STAGES="..."):
 #   build    phase1/make_variant.sh with VARIANT=FasterGSPlus and the switch/clock trainer patch
 #   unit     phase1 parity tests and the lean-Adam kernel tests, both against FasterGSPlusCudaBackend
@@ -45,7 +51,10 @@
 #   STAGES=ncublend sbatch --job-name=gs-ncublend --time=00:40:00 phase2/build_plus.sbatch
 #   STAGES="build unit" BUILD_VARIANT=FasterGSPlusDR BUILD_SRC_PATCHES=phase2/deferred_reduce.patch sbatch --job-name=gs-dr-build phase2/build_plus.sbatch
 #   STAGES=ncublend CMP_VARIANT=FasterGSPlusDR CMP_ARM=abcd sbatch --job-name=gs-dr-ncu phase2/build_plus.sbatch
-#   STAGES="build unit" BUILD_VARIANT=FasterGSPlusDR2 BUILD_SRC_PATCHES=phase2/deferred_reduce_v2.patch sbatch --job-name=gs-dr2-build phase2/build_plus.sbatch
+#   STAGES="build unit" sbatch --job-name=gs-base-build phase2/build_plus.sbatch   (builds BASE = FasterGSPlusD, the adopted stack)
+#   STAGES="build unit" BUILD_VARIANT=FasterGSPlusX BUILD_SRC_PATCHES=phase2/x.patch sbatch ...  (X on top of the stack, vs BASE)
+#   historical (pre-5f, plain A+B+C): BASE=FasterGSPlus ..., or STACK_ON_BASE=0 for a variant build, e.g.
+#   STAGES="build unit" STACK_ON_BASE=0 BUILD_VARIANT=FasterGSPlusDR2 BUILD_SRC_PATCHES=phase2/deferred_reduce_v2.patch sbatch --job-name=gs-dr2-build phase2/build_plus.sbatch
 #   STAGES=ncublend CMP_VARIANT=FasterGSPlusDR2 CMP_ARM=abcd2 sbatch --job-name=gs-dr2-ncu phase2/build_plus.sbatch
 #   STAGES="build unit blendstats" BUILD_VARIANT=FasterGSPlusStats BUILD_SRC_PATCHES=phase2/blend_stats.patch sbatch --job-name=gs-blendstats phase2/build_plus.sbatch
 #SBATCH --job-name=gs-phase2-build
@@ -75,15 +84,28 @@ echo "node=$(hostname) job=${SLURM_JOB_ID:-local} gpu=$(nvidia-smi --query-gpu=n
 FAILED=()
 BSCENE=garden; BSCALE=0.25
 has() { [[ " $STAGES " == *" $1 "* ]]; }
+BASE=${BASE:-FasterGSPlusD}
+case $BASE in
+  FasterGSPlusD) BASE_PATCHES=${BASE_PATCHES-phase2/deferred_reduce_v2.patch}; BASE_ARM=${BASE_ARM:-abcd} ;;
+  FasterGSPlus)  BASE_PATCHES=${BASE_PATCHES-}; BASE_ARM=${BASE_ARM:-abc} ;;
+  *) : "${BASE_PATCHES?set BASE_PATCHES for BASE=$BASE}"; BASE_ARM=${BASE_ARM:?set BASE_ARM for BASE=$BASE} ;;
+esac
+BV=${BUILD_VARIANT:-$BASE}
+if [ "$BV" = FasterGSPlus ]; then BPATCHES="${BUILD_SRC_PATCHES:-}"
+elif [ "$BV" = "$BASE" ]; then BPATCHES="$BASE_PATCHES"
+elif [ "${STACK_ON_BASE:-1}" = 0 ]; then BPATCHES="${BUILD_SRC_PATCHES:-}"
+else BPATCHES="$BASE_PATCHES ${BUILD_SRC_PATCHES:-}"; fi
+echo "base=$BASE ($BASE_ARM, patches: ${BASE_PATCHES:-none})"
 
 # the stock checkout gets the same clock hook (and the B switch, off by default) so all arms are timed alike
 python "$REPO/cluster/patches/fastergs_sparse_from.py" "$DATA/nerficg/src/Methods/FasterGS/Trainer.py"
 
 if has build; then
   echo "########## build"
-  VARIANT=${BUILD_VARIANT:-FasterGSPlus} SRC_PATCHES="${BUILD_SRC_PATCHES:-}" TRAINER_PATCHES=cluster/patches/fastergs_sparse_from.py bash "$REPO/phase1/make_variant.sh"
+  echo "variant=$BV source patches: ${BPATCHES:-none}"
+  VARIANT=$BV SRC_PATCHES="$BPATCHES" TRAINER_PATCHES=cluster/patches/fastergs_sparse_from.py bash "$REPO/phase1/make_variant.sh"
   # per-kernel registers / spills of the macro backward instantiations (mangled names; template args at the end)
-  so=$(ls "$DATA"/fastergs-venv/lib/python3.12/site-packages/${BUILD_VARIANT:-FasterGSPlus}CudaBackend/_C*.so 2>/dev/null | head -1) || true
+  so=$(ls "$DATA"/fastergs-venv/lib/python3.12/site-packages/${BV}CudaBackend/_C*.so 2>/dev/null | head -1) || true
   if [ -n "$so" ]; then   # diagnostics only, never fails the job; first block = first embedded arch
     { cuobjdump --dump-resource-usage "$so" 2>/dev/null | grep -A1 "macro" | grep -v "^--" | paste - -       | sed -E "s/.*macro_cuILb([01])ELi([48])ELb([01])ELb([01])ELb([01])E[^ ]*/abs=\1 warps=\2 skip=\3 tr=\4 dr=\5/; s/Resource usage://; s/ +/ /g"       | cut -d" " -f1-9 | sed "s/^/RESOURCES /"; } || true
   fi
@@ -91,13 +113,16 @@ fi
 
 if has unit; then
   echo "########## unit"
-  ( cd /tmp && FGS_BACKEND=${BUILD_VARIANT:-FasterGSPlus}CudaBackend python -m pytest -q -s -p no:cacheprovider "$REPO/phase1/tests/test_parity.py" ) \
+  ( cd /tmp && FGS_BACKEND=${BV}CudaBackend python -m pytest -q -s -p no:cacheprovider "$REPO/phase1/tests/test_parity.py" ) \
     > "$OUT/parity.log" 2>&1 && tail -3 "$OUT/parity.log" || { echo "FAILED parity"; tail -30 "$OUT/parity.log"; FAILED+=(parity); }
-  ( cd /tmp && FGS_BACKEND=${BUILD_VARIANT:-FasterGSPlus}CudaBackend python -I "$REPO/cluster/tests/test_lean_adam.py" ) \
+  ( cd /tmp && FGS_BACKEND=${BV}CudaBackend python -I "$REPO/cluster/tests/test_lean_adam.py" ) \
     > "$OUT/lean_adam.log" 2>&1 && grep -c "^PASS" "$OUT/lean_adam.log" | sed 's/^/lean-adam PASS count: /' || { echo "FAILED lean adam"; grep -E "FAIL|Error" "$OUT/lean_adam.log" | head; FAILED+=(lean_adam); }
   grep "^FAIL" "$OUT/lean_adam.log" && FAILED+=(lean_adam_fail_lines) || true
-  if [ "${BUILD_VARIANT:-FasterGSPlus}" != FasterGSPlus ]; then   # the variant must reproduce FasterGSPlus on identical inputs
-    ( cd /tmp && FGS_REF=FasterGSPlusCudaBackend FGS_NEW=${BUILD_VARIANT}CudaBackend python -m pytest -q -s -p no:cacheprovider "$REPO/phase2/tests/test_readback_equiv.py" )       > "$OUT/equiv.log" 2>&1 && { grep "^EQUIV" "$OUT/equiv.log" | sort -u | head -30; tail -2 "$OUT/equiv.log"; } || { echo "FAILED equivalence"; tail -40 "$OUT/equiv.log"; FAILED+=(equivalence); }
+  if [ "$BV" != FasterGSPlus ]; then   # the variant must reproduce its reference on identical inputs: BASE, or A+B+C for BASE
+    # itself and for STACK_ON_BASE=0 builds
+    REF=$BASE; { [ "$BV" = "$BASE" ] || [ "${STACK_ON_BASE:-1}" = 0 ]; } && REF=FasterGSPlus
+    echo "equivalence: $BV vs $REF"
+    ( cd /tmp && FGS_REF=${REF}CudaBackend FGS_NEW=${BV}CudaBackend python -m pytest -q -s -p no:cacheprovider "$REPO/phase2/tests/test_readback_equiv.py" )       > "$OUT/equiv.log" 2>&1 && { grep "^EQUIV" "$OUT/equiv.log" | sort -u | head -30; tail -2 "$OUT/equiv.log"; } || { echo "FAILED equivalence"; tail -40 "$OUT/equiv.log"; FAILED+=(equivalence); }
   fi
 fi
 
@@ -249,13 +274,13 @@ run_timerctl() {  # scene, seeds, iterations: stock / A+B+C x NeRFICG timer on /
   BSCENE=$1; local seeds=$2 TC=$3
   case $BSCENE in room|counter|kitchen|bonsai) BSCALE=0.5 ;; *) BSCALE=0.25 ;; esac
   echo "########## timerctl (scene $BSCENE scale $BSCALE, seeds $seeds, $TC iterations; timer on/off x stock/A+B+C)"
-  local CONFIGS=(stock_on abc_on stock_off abc_off) seed k cfg arm tm off m fl bl
+  local CONFIGS=(stock_on ${BASE_ARM}_on stock_off ${BASE_ARM}_off) seed k cfg arm tm off m fl bl
   for seed in $seeds; do
     for k in 0 1 2 3; do
       cfg=${CONFIGS[$(( (k + seed) % 4 ))]}
       arm=${cfg%_*}; tm=${cfg#*_}
       off=0; [ "$tm" = off ] && off=1
-      if [ $arm = stock ]; then m=FasterGS; fl=""; bl=taming; else m=FasterGSPlus; fl="SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true"; bl=macro; fi
+      if [ $arm = stock ]; then m=FasterGS; fl=""; bl=taming; else m=$BASE; fl="SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true"; bl=macro; fi
       TRAIN_ENV="FGS_WALL=0,$(( TC / 2 )),$TC TIMING_OFF=$off" train "t_${BSCENE}_${arm}_${tm}_s$seed" $m "$seed" "$TC" "$fl" $bl
     done
   done
@@ -289,7 +314,7 @@ if has rbbench; then   # A+B+C vs A+B+C built with a source patch (CMP_VARIANT, 
   echo "########## rbbench (scene $BSCENE scale $BSCALE, seeds ${SEEDS:-0 1 2}; A+B+C vs A+B+C as $CMP_VARIANT)"
   for seed in ${SEEDS:-0 1 2}; do
     for k in 0 1; do
-      if [ $(( (k + seed) % 2 )) = 0 ]; then arm=abc; m=FasterGSPlus; else arm=$CMP_ARM; m=$CMP_VARIANT; fi
+      if [ $(( (k + seed) % 2 )) = 0 ]; then arm=$BASE_ARM; m=$BASE; else arm=$CMP_ARM; m=$CMP_VARIANT; fi
       TRAIN_ENV="FGS_WALL=0,15000,30000" train "x_${BSCENE}_${arm}_s$seed" $m "$seed" 30000 "SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true" macro
     done
   done
@@ -304,9 +329,9 @@ if has ncublend; then   # step 5c: Nsight Compute on the blend kernels, A+B+C vs
   NS=${NCU_STEP:-20000}; REP=$DATA/ncu/${SLURM_JOB_ID:-local}; mkdir -p "$REP"   # /projects is read-only on compute nodes
   for BSCENE in ${SCENES:-garden room}; do
     case $BSCENE in room|counter|kitchen|bonsai) BSCALE=0.5 ;; *) BSCALE=0.25 ;; esac
-    for arm in abc ${CMP_ARM:-abce}; do
+    for arm in $BASE_ARM ${CMP_ARM:-abce}; do
       [ -n "$NCU" ] || break
-      if [ $arm = abc ]; then m=FasterGSPlus; else m=${CMP_VARIANT:-FasterGSPlusCull}; fi
+      if [ $arm = "$BASE_ARM" ]; then m=$BASE; else m=${CMP_VARIANT:-FasterGSPlusCull}; fi
       name=u_${BSCENE}_${arm}_$NS
       echo "##### $name: method=$m seed=0 window=$NS-$(( NS + 2 )) $(date +%T)"
       env FGS_BLEND_BWD=macro FGS_PROF_RANGE=$NS,$(( NS + 2 )) FGS_PROF_EXIT=$(( NS + 2 )) SCENE=$BSCENE SCALE=$BSCALE SEED=0 METHOD=$m TAG=p2$name           OPT_FLAGS="SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true"           LAUNCHER="$NCU --profile-from-start off --kernel-name regex:blend_cu|blend_backward_macro_cu --launch-count 4 --set full --import-source no -f -o $REP/$name"           bash "$REPO/cluster/train_fastergs.sbatch" > "$OUT/$name.log" 2>&1 || true
@@ -344,7 +369,7 @@ if has hostprof; then   # where the host-side gaps come from: PyTorch op ranges 
   case $BSCENE in room|counter|kitchen|bonsai) BSCALE=0.5 ;; *) BSCALE=0.25 ;; esac
   module load CUDA/12.8.0 >/dev/null 2>&1 || true
   echo "########## hostprof (scene $BSCENE, A+B+C, nsys with --pytorch=autograd-nvtx --python-backtrace=cuda at 20000)"
-  NSYS_EXTRA="--pytorch=autograd-nvtx --python-backtrace=cuda --python-sampling=true "     nsys_window "h_${BSCENE}_abc_20000" FasterGSPlus "SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true" macro 20000
+  NSYS_EXTRA="--pytorch=autograd-nvtx --python-backtrace=cuda --python-sampling=true "     nsys_window "h_${BSCENE}_${BASE_ARM}_20000" $BASE "SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true" macro 20000
 fi
 
 if has profile; then
@@ -353,8 +378,8 @@ if has profile; then
   module load CUDA/12.8.0 >/dev/null 2>&1 || true
   echo "########## profile (scene $BSCENE scale $BSCALE, seed 0; stock vs A+B+C)"
   STEPS=$(seq -s, 250 250 29750)
-  for arm in stock abc; do
-    if [ $arm = stock ]; then m=FasterGS; fl=""; bl=taming; else m=FasterGSPlus; fl="SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true"; bl=macro; fi
+  for arm in stock $BASE_ARM; do
+    if [ $arm = stock ]; then m=FasterGS; fl=""; bl=taming; else m=$BASE; fl="SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true"; bl=macro; fi
     TRAIN_ENV="FGS_PROF=1 FGS_STAGE_STEPS=$STEPS FGS_CURVE_EVERY=500" train "p_${BSCENE}_${arm}_s0" $m 0 30000 "$fl" $bl 1000
     tr '\r' '\n' < "$OUT/p_${BSCENE}_${arm}_s0.log" | grep -E '^(STAGE|CURVE) ' > "$OUT/p_${BSCENE}_${arm}_s0.prof" || true
     echo "PROF p_${BSCENE}_${arm}_s0 $(grep -c '^STAGE' "$OUT/p_${BSCENE}_${arm}_s0.prof") STAGE lines, $(grep -c '^CURVE' "$OUT/p_${BSCENE}_${arm}_s0.prof") CURVE lines"

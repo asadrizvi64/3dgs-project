@@ -46,6 +46,9 @@ for path in args.logs:
     runs[sc.group(1)] = dict(job=m.group(1), base=os.path.join(os.path.dirname(path), f'run_{m.group(1)}'))
 if not runs:
     sys.exit('no profile logs')
+# stack arm: A+B+C+D (abcd, adopted in step 5f) when its profile files exist, else A+B+C (abc)
+if any(os.path.exists(os.path.join(r['base'], f'p_{sc}_abcd_s0.prof')) for sc, r in runs.items()):
+    ARMS = [('stock', 'stock Faster-GS'), ('abcd', 'A+B+C+D')]
 
 print('# Profiling: where the training step goes (seed 0)\n')
 split = {}

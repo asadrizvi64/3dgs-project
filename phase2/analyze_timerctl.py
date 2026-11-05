@@ -38,7 +38,7 @@ for path in args.logs:
     mj = re.search(r'^node=(\S+) job=(\S+)', text, re.M)
     cur = None
     for line in text.splitlines():
-        m = re.match(r'##### t_([a-z]+)_(stock|abc)_(on|off)_s(\d+):', line)
+        m = re.match(r'##### t_([a-z]+)_(stock|abcd|abc)_(on|off)_s(\d+):', line)
         if m:
             cur = (m.group(1), m.group(2), m.group(3), int(m.group(4)))
             blocks[cur].append([])
@@ -51,6 +51,10 @@ for path in args.logs:
             blocks[cur][-1].append(line)
 
 scenes = sorted({k[0] for k in blocks})
+# stack arm: A+B+C+D (abcd, adopted in step 5f) when the logs have it, else A+B+C (abc)
+STACK = 'abcd' if any(k[1] == 'abcd' for k in blocks) else 'abc'
+ARMS = ('stock', STACK)
+LABEL[STACK] = 'A+B+C+D' if STACK == 'abcd' else 'A+B+C'
 for sc in scenes:
     for arm in ARMS:
         for tm in TIMERS:
@@ -113,5 +117,5 @@ for sc in ok:
               f'SEGCLOCK {f3(pct(get(sc, arm, "off", "seg"), get(sc, arm, "on", "seg")), "%+.1f")}%, '
               f'ΔPSNR {f3([a - b for a, b in zip(get(sc, arm, "off", "psnr"), get(sc, arm, "on", "psnr"))], "%+.3f")}')
     for tm in TIMERS:
-        print(f'- A+B+C vs stock, timer {tm.upper()}: wall {f3(pct(get(sc, "abc", tm, "wall"), get(sc, "stock", tm, "wall")), "%+.1f")}%, '
-              f'SEGCLOCK {f3(pct(get(sc, "abc", tm, "seg"), get(sc, "stock", tm, "seg")), "%+.1f")}%')
+        print(f'- {LABEL[STACK]} vs stock, timer {tm.upper()}: wall {f3(pct(get(sc, STACK, tm, "wall"), get(sc, "stock", tm, "wall")), "%+.1f")}%, '
+              f'SEGCLOCK {f3(pct(get(sc, STACK, tm, "seg"), get(sc, "stock", tm, "seg")), "%+.1f")}%')
