@@ -1,0 +1,172 @@
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh
+index 4b5f3c2..4a6ea7f 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh
+@@ -43,17 +43,55 @@ namespace faster_gs::rasterization::kernels::backward {
+         const bool proper_antialiasing)
+     {
+         const uint primitive_idx = blockIdx.x * blockDim.x + threadIdx.x;
+-        if (primitive_idx >= n_primitives || primitive_n_touched_tiles[primitive_idx] == 0) return;
+-
+-        // load 3d mean
+-        const float3 mean3d = means[primitive_idx];
+-
+-        // sh evaluation backward
+-        const float3 dL_dmean3d_from_color = convert_sh_to_color_backward(
+-            sh_coefficients_rest, grad_sh_coefficients_0, grad_sh_coefficients_rest,
+-            mean3d, cam_position[0], primitive_idx,
+-            active_sh_bases, total_sh_bases
+-        );
++        // phase2 step 5h: the warp's 32 Gaussians have contiguous SH-rest blocks (and gradient blocks). Instead of 45
++        // scalar loads and stores per lane, 180 bytes apart across lanes, the warp copies its block to shared memory with
++        // 16-byte loads, each lane runs the SH backward on its row in place, and the warp writes the block back the same
++        // way. Lanes of invisible Gaussians write zeros, which the zero-initialised gradient buffer already holds.
++        constexpr uint sh_row = 45;   // 15 SH-rest coefficients x 3 channels (degree 3)
++        constexpr uint n_warps = config::block_size_preprocess_backward / 32;
++        __shared__ __align__(16) float s_sh[n_warps][32 * sh_row];
++        const bool active = primitive_idx < n_primitives && primitive_n_touched_tiles[primitive_idx] != 0;
++        const bool coop = active_sh_bases > 1 && total_sh_bases == 15
++            && (reinterpret_cast<uintptr_t>(sh_coefficients_rest) & 15) == 0
++            && (reinterpret_cast<uintptr_t>(grad_sh_coefficients_rest) & 15) == 0;   // uniform over the launch
++        if (!coop && !active) return;
++        float3 dL_dmean3d_from_color;
++        const float3 mean3d = active ? means[primitive_idx] : make_float3(0.0f);
++        if (coop) {
++            if (__ballot_sync(0xffffffffu, active) == 0) return;   // the whole warp is invisible: nothing to write
++            const uint lane = threadIdx.x & 31, warp = threadIdx.x >> 5;
++            const uint warp_first = primitive_idx - lane;
++            const uint n_valid = min(32u, n_primitives - warp_first);
++            const uint n_floats = n_valid * sh_row, n4 = n_floats / 4;
++            float* s_row = s_sh[warp];
++            const float* g_in = reinterpret_cast<const float*>(sh_coefficients_rest) + static_cast<size_t>(warp_first) * sh_row;
++            float* g_out = reinterpret_cast<float*>(grad_sh_coefficients_rest) + static_cast<size_t>(warp_first) * sh_row;
++            for (uint j = lane; j < n4; j += 32) reinterpret_cast<float4*>(s_row)[j] = __ldg(reinterpret_cast<const float4*>(g_in) + j);
++            for (uint j = 4 * n4 + lane; j < n_floats; j += 32) s_row[j] = __ldg(g_in + j);
++            __syncwarp();
++            if (active) {
++                dL_dmean3d_from_color = convert_sh_to_color_backward_row(
++                    s_row + lane * sh_row, grad_sh_coefficients_0,
++                    mean3d, cam_position[0], primitive_idx,
++                    active_sh_bases, total_sh_bases
++                );
++            }
++            else if (lane < n_valid) {
++                for (uint k = 0; k < sh_row; ++k) s_row[lane * sh_row + k] = 0.0f;
++            }
++            __syncwarp();
++            for (uint j = lane; j < n4; j += 32) reinterpret_cast<float4*>(g_out)[j] = reinterpret_cast<const float4*>(s_row)[j];
++            for (uint j = 4 * n4 + lane; j < n_floats; j += 32) g_out[j] = s_row[j];
++            if (!active) return;
++        }
++        else {
++            // sh evaluation backward
++            dL_dmean3d_from_color = convert_sh_to_color_backward(
++                sh_coefficients_rest, grad_sh_coefficients_0, grad_sh_coefficients_rest,
++                mean3d, cam_position[0], primitive_idx,
++                active_sh_bases, total_sh_bases
++            );
++        }
+ 
+         const float4 w2c_r3 = w2c[2];
+         const float depth = w2c_r3.x * mean3d.x + w2c_r3.y * mean3d.y + w2c_r3.z * mean3d.z + w2c_r3.w;
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/sh_utils.cuh b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/sh_utils.cuh
+index f28e1f7..cf67e68 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/sh_utils.cuh
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/sh_utils.cuh
+@@ -154,4 +154,96 @@ namespace faster_gs::rasterization::kernels {
+         return dcolor_dposition;
+     }
+ 
++    // phase2 step 5h: the same SH backward on one Gaussian's SH-rest row in shared memory (row[3k + c] = coefficient k,
++    // channel c). Each band's coefficients are read before its gradients overwrite them, so the row ends up holding the
++    // gradient. Bands above active_sh_bases get zero (the global gradient buffer starts at zero and the original kernel
++    // leaves them untouched). Arithmetic order matches convert_sh_to_color_backward.
++    __device__ inline float3 convert_sh_to_color_backward_row(
++        float* __restrict__ row,
++        float3* __restrict__ grad_sh_coefficients_0,
++        const float3& position,
++        const float3& cam_position,
++        const uint primitive_idx,
++        const uint active_sh_bases,
++        const uint total_sh_bases_rest)
++    {
++        auto c = [&](int k) { return make_float3(row[3 * k], row[3 * k + 1], row[3 * k + 2]); };
++        auto set = [&](int k, const float3 v) { row[3 * k] = v.x; row[3 * k + 1] = v.y; row[3 * k + 2] = v.z; };
++        const float3 grad_color = grad_sh_coefficients_0[primitive_idx];
++        grad_sh_coefficients_0[primitive_idx] = C0 * grad_color;
++        float3 dcolor_dposition = make_float3(0.0f);
++        uint written = 0;
++        if (active_sh_bases > 1) {
++            auto [x_raw, y_raw, z_raw] = position - cam_position;
++            auto [x, y, z] = normalize(make_float3(x_raw, y_raw, z_raw));
++            float3 grad_direction_x = -C1 * c(2);
++            float3 grad_direction_y = -C1 * c(0);
++            float3 grad_direction_z = C1 * c(1);
++            set(0, -C1 * y * grad_color);
++            set(1, C1 * z * grad_color);
++            set(2, -C1 * x * grad_color);
++            written = 3;
++            if (active_sh_bases > 4) {
++                const float xx = x * x, yy = y * y, zz = z * z;
++                const float xy = x * y, xz = x * z, yz = y * z;
++                grad_direction_x = grad_direction_x + C2a * y * c(3)
++                                                    - C2a * z * c(6)
++                                                    + C2a * x * c(7);
++                grad_direction_y = grad_direction_y + C2a * x * c(3)
++                                                    - C2a * z * c(4)
++                                                    - C2a * y * c(7);
++                grad_direction_z = grad_direction_z - C2a * y * c(4)
++                                                    + C2e * z * c(5)
++                                                    - C2a * x * c(6);
++                set(3, C2a * xy * grad_color);
++                set(4, -C2a * yz * grad_color);
++                set(5, (C2b * zz - C2c) * grad_color);
++                set(6, -C2a * xz * grad_color);
++                set(7, C2d * (xx - yy) * grad_color);
++                written = 8;
++                if (active_sh_bases > 9) {
++                    grad_direction_x = grad_direction_x - C3i * xy * c(8)
++                                                        + C3c * yz * c(9)
++                                                        + (C3d - C3e * zz) * c(12)
++                                                        + C3c * xz * c(13)
++                                                        + C3b * (yy - xx) * c(14);
++                    grad_direction_y = grad_direction_y + C3b * (yy - xx) * c(8)
++                                                        + C3c * xz * c(9)
++                                                        + (C3d - C3e * zz) * c(10)
++                                                        - C3c * yz * c(13)
++                                                        + C3i * xy * c(14);
++                    grad_direction_z = grad_direction_z + C3c * xy * c(9)
++                                                        - C3j * yz * c(10)
++                                                        + (C3k * zz - C3g) * c(11)
++                                                        - C3j * xz * c(12)
++                                                        + C3h * (xx - yy) * c(13);
++                    set(8, y * (C3a * yy - C3b * xx) * grad_color);
++                    set(9, C3c * xy * z * grad_color);
++                    set(10, y * (C3d - C3e * zz) * grad_color);
++                    set(11, z * (C3f * zz - C3g) * grad_color);
++                    set(12, x * (C3d - C3e * zz) * grad_color);
++                    set(13, C3h * z * (xx - yy) * grad_color);
++                    set(14, x * (C3b * yy - C3a * xx) * grad_color);
++                    written = 15;
++                }
++            }
++
++            const float3 grad_direction = make_float3(
++                dot(grad_direction_x, grad_color),
++                dot(grad_direction_y, grad_color),
++                dot(grad_direction_z, grad_color)
++            );
++            const float xx_raw = x_raw * x_raw, yy_raw = y_raw * y_raw, zz_raw = z_raw * z_raw;
++            const float xy_raw = x_raw * y_raw, xz_raw = x_raw * z_raw, yz_raw = y_raw * z_raw;
++            const float norm_sq = xx_raw + yy_raw + zz_raw;
++            dcolor_dposition = make_float3(
++                (yy_raw + zz_raw) * grad_direction.x - xy_raw * grad_direction.y - xz_raw * grad_direction.z,
++                -xy_raw * grad_direction.x + (xx_raw + zz_raw) * grad_direction.y - yz_raw * grad_direction.z,
++                -xz_raw * grad_direction.x - yz_raw * grad_direction.y + (xx_raw + yy_raw) * grad_direction.z
++            ) * rsqrtf(norm_sq * norm_sq * norm_sq);
++        }
++        for (uint k = 3 * written; k < 3 * total_sh_bases_rest; ++k) row[k] = 0.0f;
++        return dcolor_dposition;
++    }
++
+ }

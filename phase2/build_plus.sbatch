@@ -60,6 +60,9 @@
 #   STAGES="build unit" STACK_ON_BASE=0 BUILD_VARIANT=FasterGSPlusDR2 BUILD_SRC_PATCHES=phase2/deferred_reduce_v2.patch sbatch --job-name=gs-dr2-build phase2/build_plus.sbatch
 #   STAGES=ncublend CMP_VARIANT=FasterGSPlusDR2 CMP_ARM=abcd2 sbatch --job-name=gs-dr2-ncu phase2/build_plus.sbatch
 #   STAGES=ncupre sbatch --job-name=gs-ncupre --time=00:40:00 phase2/build_plus.sbatch
+#   STAGES="build unit" BUILD_VARIANT=FasterGSPlusDS BUILD_SRC_PATCHES=phase2/sh_coalesce.patch sbatch --job-name=gs-ds-build phase2/build_plus.sbatch
+#   STAGES=ncupre BASE=FasterGSPlusDS BASE_ARM=abcds BASE_PATCHES="phase2/deferred_reduce_v2.patch phase2/sh_coalesce.patch" sbatch --job-name=gs-ds-ncu ...
+#   STAGES=rbbench SCENE=garden CMP_VARIANT=FasterGSPlusDS CMP_ARM=abcds sbatch --job-name=gs-ds-garden --time=00:50:00 phase2/build_plus.sbatch
 #   STAGES="build unit blendstats" BUILD_VARIANT=FasterGSPlusStats BUILD_SRC_PATCHES=phase2/blend_stats.patch sbatch --job-name=gs-blendstats phase2/build_plus.sbatch
 #SBATCH --job-name=gs-phase2-build
 #SBATCH --nodes=1
