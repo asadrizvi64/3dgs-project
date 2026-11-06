@@ -38,6 +38,9 @@
 #            timer ON, FGS_WALL; interleaved, order rotated by seed. Step 5b: CMP_VARIANT=FasterGSPlusCull (ellipse culling)
 #   ncublend (step 5c) SCENES (default garden room), seed 0: Nsight Compute (--set full) on the forward blend and macro
 #            backward of 2 steps at NCU_STEP (default 20000), A+B+C vs FasterGSPlusCull. Not timing runs.
+#   ncupre   (step 5g) SCENES (default garden room), seed 0, BASE only: Nsight Compute (--set full) on the forward and
+#            backward preprocess kernels of 2 steps at NCU_STEP (default 20000), plus a per-SASS export of one preprocess
+#            backward launch (<scene>_<arm>.pre_sass.csv). Not timing runs.
 #   blendstats (step 5) SCENES (default garden room), seed 0, A+B+C built as FasterGSPlusStats (BUILD_VARIANT=FasterGSPlusStats
 #            BUILD_SRC_PATCHES=phase2/blend_stats.patch): blend-kernel work counters over 50-step windows (BS_STARTS)
 #   sbatch phase2/build_plus.sbatch      (from the repo root)
@@ -56,6 +59,7 @@
 #   historical (pre-5f, plain A+B+C): BASE=FasterGSPlus ..., or STACK_ON_BASE=0 for a variant build, e.g.
 #   STAGES="build unit" STACK_ON_BASE=0 BUILD_VARIANT=FasterGSPlusDR2 BUILD_SRC_PATCHES=phase2/deferred_reduce_v2.patch sbatch --job-name=gs-dr2-build phase2/build_plus.sbatch
 #   STAGES=ncublend CMP_VARIANT=FasterGSPlusDR2 CMP_ARM=abcd2 sbatch --job-name=gs-dr2-ncu phase2/build_plus.sbatch
+#   STAGES=ncupre sbatch --job-name=gs-ncupre --time=00:40:00 phase2/build_plus.sbatch
 #   STAGES="build unit blendstats" BUILD_VARIANT=FasterGSPlusStats BUILD_SRC_PATCHES=phase2/blend_stats.patch sbatch --job-name=gs-blendstats phase2/build_plus.sbatch
 #SBATCH --job-name=gs-phase2-build
 #SBATCH --nodes=1
@@ -344,6 +348,31 @@ if has ncublend; then   # step 5c: Nsight Compute on the blend kernels, A+B+C vs
 ' < "$OUT/$name.log" | grep -E "==ERROR==|==WARNING==|Traceback|Error" | head; FAILED+=("$name")
       fi
     done
+  done
+fi
+
+if has ncupre; then   # step 5g: Nsight Compute on the preprocess kernels of BASE (forward preprocess_cu, preprocess_backward_cu)
+  NCU=$(command -v ncu || true)
+  [ -n "$NCU" ] || { echo "FAILED ncupre: ncu not found"; FAILED+=(ncupre); }
+  NS=${NCU_STEP:-20000}; REP=$DATA/ncu/${SLURM_JOB_ID:-local}; mkdir -p "$REP"   # /projects is read-only on compute nodes
+  for BSCENE in ${SCENES:-garden room}; do
+    [ -n "$NCU" ] || break
+    case $BSCENE in room|counter|kitchen|bonsai) BSCALE=0.5 ;; *) BSCALE=0.25 ;; esac
+    name=q_${BSCENE}_${BASE_ARM}_$NS
+    echo "##### $name: method=$BASE seed=0 window=$NS-$(( NS + 2 )) $(date +%T)"
+    env FGS_BLEND_BWD=macro FGS_PROF_RANGE=$NS,$(( NS + 2 )) FGS_PROF_EXIT=$(( NS + 2 )) SCENE=$BSCENE SCALE=$BSCALE SEED=0 METHOD=$BASE TAG=p2$name \
+      OPT_FLAGS="SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true" \
+      LAUNCHER="$NCU --profile-from-start off --kernel-name regex:preprocess --launch-count 4 --set full --import-source no -f -o $REP/$name" \
+      bash "$REPO/cluster/train_fastergs.sbatch" > "$OUT/$name.log" 2>&1 || true
+    if [ -f "$REP/$name.ncu-rep" ]; then
+      "$NCU" --import "$REP/$name.ncu-rep" --page details --csv > "$OUT/$name.details.csv" 2>/dev/null || true
+      "$NCU" --import "$REP/$name.ncu-rep" --page raw --csv > "$OUT/$name.raw.csv" 2>/dev/null || true
+      "$NCU" --import "$REP/$name.ncu-rep" --page source --csv --print-source sass --kernel-name regex:preprocess_backward \
+        --launch-count 1 > "$OUT/${BSCENE}_${BASE_ARM}.pre_sass.csv" 2>/dev/null || true
+      echo "NCU $name kernels=$(python3 -c "import csv,sys; print(len({r['ID'] for r in csv.DictReader(open(sys.argv[1]))}))" "$OUT/$name.details.csv" 2>/dev/null || echo 0) sass_lines=$(wc -l < "$OUT/${BSCENE}_${BASE_ARM}.pre_sass.csv") rep $REP/$name.ncu-rep"
+    else
+      echo "FAILED $name: no report"; tr '\r' '\n' < "$OUT/$name.log" | grep -E "==ERROR==|==WARNING==|Traceback|Error" | head; FAILED+=("$name")
+    fi
   done
 fi
 
