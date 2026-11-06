@@ -267,3 +267,14 @@ Details: [`blend/README.md`](blend/README.md#step-5f-deferred-warp-reduction-v2-
 - **Faster: wall time garden −0.92% (194.11 → 192.32 s), room −1.45% (122.19 → 120.42 s)**, on all 6 paired seeds. Quality unchanged.
 - **Macro backward −8% duration, −9 to −10% instructions** (ncu, step 20k). Registers 72 and occupancy 43.8% are unchanged from A+B+C. The reduction now costs 84 instructions per splat step instead of 132.
 - **Adopted (2026-11-05) as D: the stack is now A+B+C+D**, built as FasterGSPlusD (arm `abcd`). It is the default build and the reference arm for later comparisons, timer and profile stages ([`build_plus.sbatch`](build_plus.sbatch); `BASE=FasterGSPlus` reproduces the A+B+C setup). Build check job 4535861: 92 unit and 25/25 equivalence cases passed against A+B+C (gradients within 1.9 × 10⁻⁶). The gain is small; one garden seed is within seed noise.
+
+## Step 5g: profiling preprocess backward on A+B+C+D (garden and room, seed 0)
+
+Details: [`preprocess/README.md`](preprocess/README.md). Nsight Compute job 4537266 (`STAGES=ncupre`), steps 20,000–20,001; not timing runs.
+
+- **Preprocess backward is limited by scattered memory access.** Garden: 1213 µs at ncu clocks, versus 271 µs for the forward preprocess. Room: 346 µs.
+  - L2 is the bottleneck, at 79% (room 75%) of peak.
+  - DRAM reaches only 30% of peak bandwidth, and issue slots are busy 4% of the time.
+  - Stalls are mostly load/store-queue throttling and waits on outstanding loads.
+- **Cause:** each thread reads and writes its Gaussian's 15 SH-rest coefficients (180 bytes) with 4-byte scalar accesses. Neighbouring lanes are 180 bytes apart, and stores touch 27 of 32 possible sectors per request.
+- **Next lever (not tested):** warp-cooperative, coalesced loads and stores of the SH-rest blocks through shared memory. The estimated ceiling is about 0.6–0.7 ms per garden step (bytes over the forward kernel's bandwidth); it is an upper bound, not a measurement.

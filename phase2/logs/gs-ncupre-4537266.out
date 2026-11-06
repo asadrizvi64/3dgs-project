@@ -1,0 +1,8 @@
+node=c154 job=4537266 gpu=NVIDIA H100 stages=ncupre repo=d626787
+base=FasterGSPlusD (abcd, patches: phase2/deferred_reduce_v2.patch)
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+##### q_garden_abcd_20000: method=FasterGSPlusD seed=0 window=20000-20002 01:59:15
+NCU q_garden_abcd_20000 kernels=4 sass_lines=1876 rep /data/cat/ws/syas272h-3dgs-data/ncu/4537266/q_garden_abcd_20000.ncu-rep
+##### q_room_abcd_20000: method=FasterGSPlusD seed=0 window=20000-20002 02:03:27
+NCU q_room_abcd_20000 kernels=4 sass_lines=1876 rep /data/cat/ws/syas272h-3dgs-data/ncu/4537266/q_room_abcd_20000.ncu-rep
+JOB OK
