@@ -289,3 +289,18 @@ Details: [`preprocess/README.md`](preprocess/README.md#step-5h-coalesced-sh-rest
   - quality unchanged.
 - **Preprocess backward is 72–73% shorter** (ncu, step 20k): garden 1213 → 341 µs, room 346 → 94 µs. It now reaches 79–85% of DRAM peak, so it is bandwidth-bound.
 - **Adopted (2026-11-07) as S: the stack is now A+B+C+D+S**, built as FasterGSPlusDS (arm `abcds`). It is the default build and reference arm in [`build_plus.sbatch`](build_plus.sbatch); `BASE=FasterGSPlusD` gives A+B+C+D. Build check job 4549143: 92 unit and 25/25 equivalence cases passed against A+B+C.
+
+## Step 6a: A+B+C+D+S vs stock, timer on/off control (garden and room, 3 seeds)
+
+Jobs 4549164 (garden) and 4549165 (room) follow the step 4b protocol: stock and the adopted stack run in the same job, interleaved, with NeRFICG's per-step timer on and off. Output: [`logs/run_4549164/timerctl-analysis.md`](logs/run_4549164/timerctl-analysis.md).
+
+| scene | timer | stock wall | A+B+C+D+S wall | reduction (per seed) | speedup | A+B+C in step 4b |
+|---|---|---|---|---|---|---|
+| garden | on | 259.6 s | 171.5 s | −33.9% (−33.4 / −33.5 / −34.9) | **1.51×** | −23.9% |
+| garden | off | 255.9 s | 169.8 s | −33.6% (−34.9 / −33.5 / −32.6) | **1.51×** | −24.7% |
+| room | on | 153.3 s | 115.3 s | −24.8% (−25.0 / −24.9 / −24.3) | 1.33× | — |
+| room | off | 148.8 s | 113.2 s | −23.9% (−25.1 / −22.6 / −24.1) | 1.31× | — |
+
+- **Garden reaches 1.5× in a same-job comparison**, with the timer on or off. PSNR is +0.04 dB (on) and +0.02 dB (off) against stock.
+- Room is at 1.31–1.33×.
+- Two scenes do not establish the nine-scene result. Step 6b, the nine-scene benchmark (jobs 4549174–82), gives that.
