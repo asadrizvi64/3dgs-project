@@ -304,3 +304,44 @@ Jobs 4549164 (garden) and 4549165 (room) follow the step 4b protocol: stock and 
 - **Garden reaches 1.5× in a same-job comparison**, with the timer on or off. PSNR is +0.04 dB (on) and +0.02 dB (off) against stock.
 - Room is at 1.31–1.33×.
 - Two scenes do not establish the nine-scene result. Step 6b, the nine-scene benchmark (jobs 4549174–82), gives that.
+
+## Step 6b: nine-scene benchmark, A+B+C+D+S vs stock (9 scenes × 3 seeds, 54 runs)
+
+Jobs 4549174–82. The protocol is step 3's: one job per scene, arms interleaved with the order rotated by seed, timer on, train time = SEGCLOCK, and every run validated. Full output: [`logs/bench6-analysis.md`](logs/bench6-analysis.md) (`analyze_bench.py --arms stock abcds`). All 54 runs passed validation.
+
+**Pre-registered verdict: FAIL, on one criterion.**
+
+| criterion (phase2/PLAN.md) | result | |
+|---|---|---|
+| median time reduction ≥ 20% | **31.1%** | meets |
+| mean ΔPSNR ≥ −0.05 dB | +0.019 dB | meets |
+| no scene ΔPSNR < −0.10 dB | kitchen **−0.171 dB** | **misses** |
+| mean ΔLPIPS ≤ +0.002 | +0.0003 | meets |
+
+**Speed:**
+
+| group | median speedup | mean | range | aggregate (total stock ÷ total stack time) | median time reduction |
+|---|---|---|---|---|---|
+| all 9 scenes | **1.451×** | 1.423× | 1.321–1.509× | 1.433× | 31.1% |
+| outdoor (5) | **1.503×** | 1.485× | 1.451–1.509× | 1.488× | 33.5% |
+| indoor (4) | 1.333× | 1.345× | 1.321–1.394× | 1.349× | 25.0% |
+
+- All 27 paired runs are faster. Peak training VRAM is equal to stock or slightly lower in every scene.
+- Against step 3's A+B+C (nine-scene median 1.310×; outdoor 1.328×, indoor 1.239×), D+S adds most on the outdoor scenes, where Gaussian counts are larger.
+- **The original 1.5× target is met on the outdoor scenes but not across all nine; the nine-scene median is 1.45×.**
+
+**Quality, and the kitchen miss:**
+- Kitchen's −0.171 dB (per seed −0.316 / −0.174 / −0.023) comes from two one-view failures in the stack's runs:
+  - s0 image 21: 26.06 dB, vs 33.10 dB for stock on the same seed;
+  - s1 image 4: 26.27 dB, vs 31.11 dB.
+- With the images that fail in any run removed from every run of the scene (the secondary analysis, not the verdict), kitchen is −0.046 dB and all tolerances are met: mean ΔPSNR +0.033 dB, ΔLPIPS +0.0002.
+- Kitchen image 4 also failed in step 3, in stock (s0) and in A+B+C (s1).
+- Step 3's stock kitchen runs had failures of their own: mean 31.138 dB there, vs 31.579 dB here. That is why A+B and A+B+C looked +0.43 / +0.19 dB on kitchen in step 3.
+- D and S reproduce A+B+C's gradients to about 10⁻⁷, so they are not expected to change quality by themselves. Their effect on which runs hit a one-view failure is unknown.
+- One-view failures (test image > 3 dB below the same image in the scene's other runs) in this benchmark:
+  - stock: 3 images in 3 of 27 runs;
+  - A+B+C+D+S: 7 images in 5 of 27 runs;
+  - in step 3: stock 7 in 4 runs, A+B 2 in 2, A+B+C 1 in 1.
+
+  These counts are too small to say whether any arm changes how often they happen.
+- The verdict stands as registered. Whether kitchen's miss is a systematic effect needs a separately registered follow-up, for example more kitchen seeds. Excluding images after seeing the results does not settle it.

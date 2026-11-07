@@ -1,0 +1,63 @@
+node=c5 job=4549175 gpu=NVIDIA H100 stages=bench repo=84d6cbf
+base=FasterGSPlusDS (abcds, patches: phase2/deferred_reduce_v2.patch phase2/sh_coalesce.patch)
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## bench (scene flowers scale 0.25, seeds 0 1 2, 30k; train time = SEGCLOCK cum_s)
+arms: stock abcds
+##### b_flowers_stock_s0: method=FasterGS seed=0 iters=30000 flags= blend=taming 15:29:01
+FGS_N iteration=15000 N=2846566
+FGS_WALL from=0 to=15000 s=78.191 views=115f1aad58fb8854
+FGS_WALL from=15000 to=30000 s=99.151 views=86e23cbaf9a065c
+SEGCLOCK step=30000 seg_s=174.064 cum_s=174.064 sparse=0 N=2846566 peak_alloc_gib=4.86
+FGS_TRAIN_END N=2846566 peak_alloc_gib=4.86 peak_reserved_gib=6.13
+RUNDIR b_flowers_stock_s0 output/FasterGS/fastergs_flowers_1144604_s0p2b_flowers_stock_s0_2026-11-07-15-29-10
+PERIMG b_flowers_stock_s0 n_images=22 min_image=21 min_psnr=20.08
+RESULT b_flowers_stock_s0 PSNR:21.6363468170166 SSIM:0.603739241307432 LPIPS:0.3648380853913047 N_Gaussians:2825679 ms_it=5.85  allocated: 4.86 GiB
+##### b_flowers_abcds_s0: method=FasterGSPlusDS seed=0 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 15:32:52
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=2831643
+FGS_WALL from=0 to=15000 s=62.596 views=115f1aad58fb8854
+FGS_WALL from=15000 to=30000 s=62.151 views=86e23cbaf9a065c
+SEGCLOCK step=30000 seg_s=121.597 cum_s=121.597 sparse=1 visfrac=0.186 N=2831643 peak_alloc_gib=4.77
+FGS_TRAIN_END N=2831643 peak_alloc_gib=4.77 peak_reserved_gib=5.94
+RUNDIR b_flowers_abcds_s0 output/FasterGSPlusDS/fastergsplusds_flowers_7d2ec29_s0p2b_flowers_abcds_s0_2026-11-07-15-32-59
+PERIMG b_flowers_abcds_s0 n_images=22 min_image=21 min_psnr=20.03
+RESULT b_flowers_abcds_s0 PSNR:21.61289509859952 SSIM:0.6027416478503834 LPIPS:0.3669317906553095 N_Gaussians:2828652 ms_it=4.09  allocated: 4.77 GiB
+##### b_flowers_abcds_s1: method=FasterGSPlusDS seed=1 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 15:35:49
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=2882465
+FGS_WALL from=0 to=15000 s=61.252 views=547ef1b9195f15d
+FGS_WALL from=15000 to=30000 s=61.722 views=17dcd80ec5058955
+SEGCLOCK step=30000 seg_s=119.951 cum_s=119.951 sparse=1 visfrac=0.193 N=2882465 peak_alloc_gib=4.87
+FGS_TRAIN_END N=2882465 peak_alloc_gib=4.87 peak_reserved_gib=5.90
+RUNDIR b_flowers_abcds_s1 output/FasterGSPlusDS/fastergsplusds_flowers_7d2ec29_s1p2b_flowers_abcds_s1_2026-11-07-15-35-58
+PERIMG b_flowers_abcds_s1 n_images=22 min_image=21 min_psnr=20.06
+RESULT b_flowers_abcds_s1 PSNR:21.614229028875176 SSIM:0.6035805683244359 LPIPS:0.36546514386480505 N_Gaussians:2879446 ms_it=4.04  allocated: 4.87 GiB
+##### b_flowers_stock_s1: method=FasterGS seed=1 iters=30000 flags= blend=taming 15:38:46
+FGS_N iteration=15000 N=2863328
+FGS_WALL from=0 to=15000 s=78.311 views=547ef1b9195f15d
+FGS_WALL from=15000 to=30000 s=100.617 views=17dcd80ec5058955
+SEGCLOCK step=30000 seg_s=175.402 cum_s=175.402 sparse=0 N=2863328 peak_alloc_gib=4.88
+FGS_TRAIN_END N=2863328 peak_alloc_gib=4.88 peak_reserved_gib=6.35
+RUNDIR b_flowers_stock_s1 output/FasterGS/fastergs_flowers_1144604_s1p2b_flowers_stock_s1_2026-11-07-15-38-53
+PERIMG b_flowers_stock_s1 n_images=22 min_image=21 min_psnr=20.02
+RESULT b_flowers_stock_s1 PSNR:21.609033497897062 SSIM:0.6025419235229492 LPIPS:0.36582148616964166 N_Gaussians:2843433 ms_it=5.89  allocated: 4.88 GiB
+##### b_flowers_stock_s2: method=FasterGS seed=2 iters=30000 flags= blend=taming 15:42:40
+FGS_N iteration=15000 N=2925050
+FGS_WALL from=0 to=15000 s=79.916 views=28c68a74564a4df
+FGS_WALL from=15000 to=30000 s=100.917 views=1c09de60c3e3cdf6
+SEGCLOCK step=30000 seg_s=177.053 cum_s=177.053 sparse=0 N=2925050 peak_alloc_gib=4.95
+FGS_TRAIN_END N=2925050 peak_alloc_gib=4.95 peak_reserved_gib=6.35
+RUNDIR b_flowers_stock_s2 output/FasterGS/fastergs_flowers_1144604_s2p2b_flowers_stock_s2_2026-11-07-15-42-47
+PERIMG b_flowers_stock_s2 n_images=22 min_image=21 min_psnr=20.08
+RESULT b_flowers_stock_s2 PSNR:21.685923316261984 SSIM:0.604151728478345 LPIPS:0.364645546132868 N_Gaussians:2903972 ms_it=5.96  allocated: 4.95 GiB
+##### b_flowers_abcds_s2: method=FasterGSPlusDS seed=2 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 15:46:35
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=2910506
+FGS_WALL from=0 to=15000 s=61.945 views=28c68a74564a4df
+FGS_WALL from=15000 to=30000 s=62.710 views=1c09de60c3e3cdf6
+SEGCLOCK step=30000 seg_s=121.345 cum_s=121.345 sparse=1 visfrac=0.255 N=2910506 peak_alloc_gib=4.92
+FGS_TRAIN_END N=2910506 peak_alloc_gib=4.92 peak_reserved_gib=6.19
+RUNDIR b_flowers_abcds_s2 output/FasterGSPlusDS/fastergsplusds_flowers_7d2ec29_s2p2b_flowers_abcds_s2_2026-11-07-15-46-43
+PERIMG b_flowers_abcds_s2 n_images=22 min_image=21 min_psnr=20.02
+RESULT b_flowers_abcds_s2 PSNR:21.64268788424405 SSIM:0.6025289581580595 LPIPS:0.36629945175214246 N_Gaussians:2907720 ms_it=4.09  allocated: 4.92 GiB
+JOB OK
