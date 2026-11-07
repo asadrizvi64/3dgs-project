@@ -298,8 +298,8 @@ Jobs 4549164 (garden) and 4549165 (room) follow the step 4b protocol: stock and 
 |---|---|---|---|---|---|---|
 | garden | on | 259.6 s | 171.5 s | −33.9% (−33.4 / −33.5 / −34.9) | **1.51×** | −23.9% |
 | garden | off | 255.9 s | 169.8 s | −33.6% (−34.9 / −33.5 / −32.6) | **1.51×** | −24.7% |
-| room | on | 153.3 s | 115.3 s | −24.8% (−25.0 / −24.9 / −24.3) | 1.33× | — |
-| room | off | 148.8 s | 113.2 s | −23.9% (−25.1 / −22.6 / −24.1) | 1.31× | — |
+| room | on | 153.3 s | 115.3 s | −24.8% (−25.0 / −24.9 / −24.3) | 1.33× | −19.4% |
+| room | off | 148.8 s | 113.2 s | −23.9% (−25.1 / −22.6 / −24.1) | 1.31× | −20.5% |
 
 - **Garden reaches 1.5× in a same-job comparison**, with the timer on or off. PSNR is +0.04 dB (on) and +0.02 dB (off) against stock.
 - Room is at 1.31–1.33×.
