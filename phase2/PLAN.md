@@ -75,6 +75,35 @@ Before it starts: rebuild FasterGSPlus with clock hook v4 (`STAGES="build unit s
 3. **The densification half is now the larger cost:** 114 s of 231 s. Profile steps 0–15k of the stacked build to find what dominates there. The optimizer is still dense in that phase.
 4. **Macro kernel follow-ups:** an nsys capture of a full step (open item in Phase 1), and the forward pass (7%), which is low priority.
 
+## Step 7 — kitchen follow-up (pre-registered 2026-11-07, before any run)
+
+Step 6b (A+B+C+D+S vs stock, 9 scenes x 3 seeds) failed its pre-registered criterion on one scene: kitchen ΔPSNR −0.171 dB
+against the −0.10 dB per-scene limit, driven by two one-view failures in the stack's runs. **The step 6b verdict stays FAIL
+whatever this follow-up shows.** The follow-up asks one question: is the kitchen deficit reproducible on fresh seeds, or was it
+noise from rare one-view failures?
+
+- **Design:** kitchen only (1/2 resolution, as in step 6b), stock Faster-GS vs A+B+C+D+S (`abcds`, build of step 6),
+  **10 new seeds, 3–12** (seeds 0–2 are excluded because their results were seen). One job, so all 20 runs share a node;
+  arms interleaved per seed with the order rotated by seed, as in step 6b. Same training settings, same timing hook
+  (`FGS_WALL=0,15000,30000`).
+  `STAGES=bench SCENE=kitchen BENCH_ARMS="stock abcds" SEEDS="3 4 5 6 7 8 9 10 11 12" sbatch --job-name=gs-kfollow-kitchen --time=02:30:00 phase2/build_plus.sbatch`
+- **Analysis:** `python phase2/analyze_bench.py phase2/logs/gs-kfollow-kitchen-<job>.out --arms stock abcds --seeds 3 4 5 6 7 8 9 10 11 12`
+  (the script reports it as a partial benchmark, which is expected for one scene). All 20 runs must pass its validation.
+  A run that fails validation for a technical reason (crash, node failure) is rerun with the same seed; no seeds are added
+  or dropped for any other reason.
+- **Primary criterion:** mean paired ΔPSNR (A+B+C+D+S − stock) over seeds 3–12, all test images.
+  - ≥ −0.10 dB: the step 6b kitchen deficit is **not reproduced**.
+  - < −0.10 dB: the deficit is **reproduced**; kitchen counts as a quality regression of the stack.
+- **Secondary, pre-specified, not part of the decision:**
+  - one-view failures with the step 6b definition (a test image > 3 dB below the median of the same image in the scene's
+    other runs, here the other 19): failing images and runs with at least one failure, per arm. An exact McNemar test on the
+    seeds where only one arm has a failing run (two-sided, α = 0.05). With 10 seeds this has little power, so a
+    non-significant result does not show the rates are equal;
+  - ΔPSNR with failing images removed from every run (as in step 6b);
+  - ΔSSIM, ΔLPIPS, per-seed ΔPSNR, time and speedup;
+  - pooled 13 seeds (0–12, step 6b job plus this one, descriptive only, since seeds 0–2 were seen).
+- **Cost:** 20 runs at about 4.3 min, about 1.5 GPU-hours.
+
 ## Decisions for you
 
 - Merge the Phase 1 branch and fast-forward `master` (step 0.2)?

@@ -46,7 +46,7 @@ IMG_DROP = 1.0   # flag a test image this many dB below the median of the same i
 fin = lambda x: x is not None and math.isfinite(x)
 
 blocks = defaultdict(list)          # (scene, arm, seed) -> [lines] per header occurrence
-jobs, archives = {}, {}
+jobs, archives = {}, {}   # archives: per run (scene, arm, seed), so several jobs of one scene can be pooled
 for path in args.logs:
     cur = None
     head = open(path, encoding='utf-8', errors='replace').read()
@@ -58,7 +58,7 @@ for path in args.logs:
             blocks[cur].append([])
             if mjob:
                 jobs[cur[0]] = f'{mjob.group(2)} ({mjob.group(1)})'
-                archives[cur[0]] = os.path.join(os.path.dirname(path), f'run_{mjob.group(2)}', 'runs')
+                archives[cur] = os.path.join(os.path.dirname(path), f'run_{mjob.group(2)}', 'runs')
             continue
         if line.startswith('#####'):
             cur = None
@@ -115,7 +115,7 @@ for sc in scenes:
     # per-image comparison: the same test image across the scene's runs (archived metrics_8bit.txt of every run)
     for k in [k for k in runs if k[0] == sc]:
         name = f'b_{sc}_{k[1]}_s{k[2]}'
-        mf = os.path.join(archives.get(sc, ''), name, 'test_30000', 'metrics_8bit.txt')
+        mf = os.path.join(archives.get(k, ''), name, 'test_30000', 'metrics_8bit.txt')
         if not os.path.exists(mf):
             errors[sc].append(f'{name}: no archived per-image metrics ({mf})'); continue
         rows_ = list(re.finditer(r'^(\d+)\t([\d.]+)\t([\d.]+)\t([\d.]+)', open(mf).read().split('Image', 1)[-1], re.M))
