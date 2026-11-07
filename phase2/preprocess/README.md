@@ -104,3 +104,5 @@ The kernel is now limited by DRAM bandwidth. Little time is left to gain in it w
 - All 6 seeds are faster. Quality is unchanged: SSIM and LPIPS are within seed noise, and the Gaussian counts match.
 - On garden, the time saved per step (about 0.68 ms by the NeRFICG timer: 6.28 → 5.60 ms) matches the kernel saving measured under ncu.
 - This is the largest single step in phase 2.
+
+**Adopted 2026-11-07 as S.** The stack is now A+B+C+D+S (FasterGSPlusDS, arm `abcds`), the default `BASE` of [`../build_plus.sbatch`](../build_plus.sbatch). Build check job 4549143: 92 unit and 25/25 equivalence cases passed against A+B+C.

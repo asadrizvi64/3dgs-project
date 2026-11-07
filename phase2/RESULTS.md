@@ -288,4 +288,4 @@ Details: [`preprocess/README.md`](preprocess/README.md#step-5h-coalesced-sh-rest
   - room: −3.71% (120.66 → 116.18 s);
   - quality unchanged.
 - **Preprocess backward is 72–73% shorter** (ncu, step 20k): garden 1213 → 341 µs, room 346 → 94 µs. It now reaches 79–85% of DRAM peak, so it is bandwidth-bound.
-- This is not yet adopted into the default stack.
+- **Adopted (2026-11-07) as S: the stack is now A+B+C+D+S**, built as FasterGSPlusDS (arm `abcds`). It is the default build and reference arm in [`build_plus.sbatch`](build_plus.sbatch); `BASE=FasterGSPlusD` gives A+B+C+D. Build check job 4549143: 92 unit and 25/25 equivalence cases passed against A+B+C.
