@@ -1,6 +1,7 @@
 """Validate and analyze the Phase 2 step 3 benchmark (stock / A+B / A+B+C, one job per Mip-NeRF360 scene).
 
     python phase2/analyze_bench.py phase2/logs/gs-bench-*.out [--seeds 0 1 2]
+    python phase2/analyze_bench.py phase2/logs/gs-bench6-*.out --arms stock abcds   (step 6: stock vs A+B+C+D+S)
 
 Validation first, per scene. A scene is analyzed only if every run passes:
   - exactly one run block '##### b_<scene>_<arm>_s<seed>' per arm x seed, and no FAILED line for it;
@@ -14,11 +15,11 @@ required. Each test image is compared with the same image in the scene's other r
 other arms are listed): an image more than 1 dB below that median is flagged as a possible one-view artifact.
 Flagged runs stay in all results; the flags are reported next to them.
 
-The overall verdict is given only when all 9 scenes x 3 arms x 3 seeds (81 runs) pass validation. Otherwise the
+The overall verdict is given only when all 9 scenes x arms x 3 seeds (81 runs for 3 arms) pass validation. Otherwise the
 summary is printed as partial, the verdict reads 'incomplete - not evaluated', and the exit code is 2.
 
 Report: one table per scene (paired deltas against stock per seed), then a summary across scenes and the
-pre-registered win criterion from phase2/PLAN.md, for each of A+B and A+B+C:
+pre-registered win criterion from phase2/PLAN.md, for each arm other than stock (--arms, default A+B and A+B+C):
   median training-time reduction >= 20%, mean dPSNR >= -0.05 dB, no scene below -0.10 dB, mean dLPIPS <= +0.002.
 """
 import argparse
@@ -32,11 +33,14 @@ from collections import defaultdict
 ap = argparse.ArgumentParser()
 ap.add_argument('logs', nargs='+')
 ap.add_argument('--seeds', type=int, nargs='+', default=[0, 1, 2])
+ap.add_argument('--arms', nargs='+', default=['stock', 'ab', 'abc'])
 args = ap.parse_args()
 sys.stdout.reconfigure(encoding="utf-8")
 
-ARMS = ('stock', 'ab', 'abc')
-LABEL = {'stock': 'stock Faster-GS', 'ab': 'A+B', 'abc': 'A+B+C'}
+ARMS = tuple(args.arms)
+assert ARMS[0] == 'stock', 'the first arm must be stock (the reference)'
+TREAT = ARMS[1:]
+LABEL = {'stock': 'stock Faster-GS', 'ab': 'A+B', 'abc': 'A+B+C', 'abcd': 'A+B+C+D', 'abcds': 'A+B+C+D+S'}
 ORDER = ['bicycle', 'flowers', 'garden', 'stump', 'treehill', 'room', 'counter', 'kitchen', 'bonsai']
 IMG_DROP = 1.0   # flag a test image this many dB below the median of the same image in the scene's other runs
 fin = lambda x: x is not None and math.isfinite(x)
@@ -48,7 +52,7 @@ for path in args.logs:
     head = open(path, encoding='utf-8', errors='replace').read()
     mjob = re.search(r'^node=(\S+) job=(\S+)', head, re.M)
     for line in head.splitlines():
-        m = re.match(r'##### b_([a-z]+)_(stock|ab|abc)_s(\d+):', line)
+        m = re.match(r'##### b_([a-z]+)_(' + '|'.join(sorted(ARMS, key=len, reverse=True)) + r')_s(\d+):', line)
         if m:
             cur = (m.group(1), m.group(2), int(m.group(3)))
             blocks[cur].append([])
@@ -162,22 +166,22 @@ for sc in ok:
         cells += [f'{st.mean(get(sc, arm, k)) / 1e6:.3f} M' for k in ('n15', 'n_end', 'n')]
         cells += [f'{st.mean(get(sc, arm, "peak")):.2f}']
         print('| ' + ' | '.join(cells) + ' |')
-    print(f'\nC on top of A+B (A+B+C vs A+B, paired): time {f3(red(sc, "abc", "ab"), "%.1f")}% reduction, '
-          f'ΔPSNR {f3(dif(sc, "abc", "psnr", "ab"), "%+.3f")}, ΔLPIPS {st.mean(dif(sc, "abc", "lpips", "ab")):+.4f}')
+    if 'ab' in ARMS and 'abc' in ARMS:
+        print(f'\nC on top of A+B (A+B+C vs A+B, paired): time {f3(red(sc, "abc", "ab"), "%.1f")}% reduction, '
+              f'ΔPSNR {f3(dif(sc, "abc", "psnr", "ab"), "%+.3f")}, ΔLPIPS {st.mean(dif(sc, "abc", "lpips", "ab")):+.4f}')
     summary[sc] = {arm: dict(red=st.mean(red(sc, arm)), dpsnr=st.mean(dif(sc, arm, 'psnr')), dssim=st.mean(dif(sc, arm, 'ssim')),
                              dlpips=st.mean(dif(sc, arm, 'lpips')), seeds_faster=sum(x > 0 for x in red(sc, arm)))
-                   for arm in ('ab', 'abc')}
+                   for arm in TREAT}
 
 complete = set(ok) == set(ORDER) and all((sc, a, s) in runs for sc in ORDER for a in ARMS for s in S)
 verdicts = {}
 print('\n## Across scenes (each scene = mean of its paired seeds)' + ('' if complete else f' - PARTIAL, {len(ok)}/{len(ORDER)} scenes') + '\n')
-print('| scene | A+B time | A+B ΔPSNR | A+B ΔLPIPS | A+B+C time | A+B+C ΔPSNR | A+B+C ΔLPIPS |')
-print('|---|---|---|---|---|---|---|')
+print('| scene | ' + ' | '.join(f'{LABEL[a]} time | {LABEL[a]} ΔPSNR | {LABEL[a]} ΔLPIPS' for a in TREAT) + ' |')
+print('|---|' + '---|---|---|' * len(TREAT))
 for sc in ok:
-    a, b = summary[sc]['ab'], summary[sc]['abc']
-    print(f"| {sc} | −{a['red']:.1f}% | {a['dpsnr']:+.3f} | {a['dlpips']:+.4f} | −{b['red']:.1f}% | {b['dpsnr']:+.3f} | {b['dlpips']:+.4f} |")
+    print(f'| {sc} | ' + ' | '.join(f"−{summary[sc][a]['red']:.1f}% | {summary[sc][a]['dpsnr']:+.3f} | {summary[sc][a]['dlpips']:+.4f}" for a in TREAT) + ' |')
 print()
-for arm in ('ab', 'abc'):
+for arm in TREAT:
     reds = [summary[sc][arm]['red'] for sc in ok]
     dps = [summary[sc][arm]['dpsnr'] for sc in ok]
     dls = [summary[sc][arm]['dlpips'] for sc in ok]
@@ -210,19 +214,22 @@ for arm in ARMS:
     print(f'- {LABEL[arm]}: {len(count[arm])} failing image(s) in {nruns} of {len(ok) * len(S)} runs'
           + (': ' + '; '.join(t for _, t in count[arm]) if count[arm] else ''))
 print()
-print('These happen without B or C (stock has them), but these counts cannot show whether B or C change how often they '
-      'happen. The exclusion below is a secondary analysis; the verdict uses all images.')
+print('These happen without the changes (stock has them), but these counts cannot show whether the changes alter how often '
+      'they happen. The exclusion below is a secondary analysis; the verdict uses all images.')
 print('\nDeltas with those images removed from every run of the scene (paired per seed, mean of 3 seeds):\n')
-print('| scene | images removed | A+B ΔPSNR | A+B ΔLPIPS | A+B+C ΔPSNR | A+B+C ΔLPIPS | C on top of A+B ΔPSNR |')
-print('|---|---|---|---|---|---|---|')
+CTOP = 'ab' in ARMS and 'abc' in ARMS
+print('| scene | images removed | ' + ' | '.join(f'{LABEL[a]} ΔPSNR | {LABEL[a]} ΔLPIPS' for a in TREAT)
+      + (' | C on top of A+B ΔPSNR' if CTOP else '') + ' |')
+print('|---|---|' + '---|---|' * len(TREAT) + ('---|' if CTOP else ''))
 rob = defaultdict(dict)
 for sc in ok:
     keep = lambda k, key: st.mean(v for i, v in runs[k][key].items() if i not in severe[sc])
     d = lambda arm, key, ref='stock': st.mean(keep((sc, arm, s), key) - keep((sc, ref, s), key) for s in S)
-    rob[sc] = {arm: (d(arm, 'img'), d(arm, 'img_lpips')) for arm in ('ab', 'abc')}
-    print(f"| {sc} | {', '.join(map(str, sorted(severe[sc]))) or '-'} | {rob[sc]['ab'][0]:+.3f} | {rob[sc]['ab'][1]:+.4f} | "
-          f"{rob[sc]['abc'][0]:+.3f} | {rob[sc]['abc'][1]:+.4f} | {d('abc', 'img', 'ab'):+.3f} |")
-for arm in ('ab', 'abc'):
+    rob[sc] = {arm: (d(arm, 'img'), d(arm, 'img_lpips')) for arm in TREAT}
+    print(f"| {sc} | {', '.join(map(str, sorted(severe[sc]))) or '-'} | "
+          + ' | '.join(f'{rob[sc][a][0]:+.3f} | {rob[sc][a][1]:+.4f}' for a in TREAT)
+          + (f" | {d('abc', 'img', 'ab'):+.3f}" if CTOP else '') + ' |')
+for arm in TREAT:
     dps = [rob[sc][arm][0] for sc in ok]
     worst = min(ok, key=lambda sc: rob[sc][arm][0])
     print(f'\n{LABEL[arm]} with one-view failures removed: ΔPSNR mean {st.mean(dps):+.3f}, worst {worst} {min(dps):+.3f}, '
@@ -232,8 +239,8 @@ for arm in ('ab', 'abc'):
 n_valid = sum(1 for k in runs if k[0] in ok)
 print()
 if complete:
-    for arm in ('ab', 'abc'):
-        print(f'VERDICT {LABEL[arm]}: {"PASS" if verdicts[arm] else "FAIL"} (all 9 scenes, 81 runs validated)')
+    for arm in TREAT:
+        print(f'VERDICT {LABEL[arm]}: {"PASS" if verdicts[arm] else "FAIL"} (all 9 scenes, {len(ORDER) * len(ARMS) * len(S)} runs validated)')
 else:
     print(f'VERDICT: incomplete - not evaluated ({len(ok)}/{len(ORDER)} scenes and {n_valid}/{len(ORDER) * len(ARMS) * len(S)} runs validated)')
     sys.exit(2)

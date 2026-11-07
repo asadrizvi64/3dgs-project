@@ -21,7 +21,9 @@
 #   factorial  (step 2, not in the default STAGES) 8 arms A x B x C on/off on garden, SEEDS (default 0 1 2), 30k,
 #            interleaved per seed with the arm order rotated by seed; B = SELECTIVE_FROM=15000
 #   bench    (step 3, not in the default STAGES) one Mip-NeRF360 scene (SCENE, scale 0.25 outdoor / 0.5 indoor), SEEDS,
-#            30k: stock FasterGS, FasterGSPlus A+B, FasterGSPlus A+B+C, interleaved per seed, arm order rotated by seed
+#            30k: stock FasterGS, FasterGSPlus A+B, FasterGSPlus A+B+C, interleaved per seed, arm order rotated by seed.
+#            BENCH_ARMS picks the arms (default "stock ab abc"); step 6 uses BENCH_ARMS="stock $BASE_ARM" (stock vs the
+#            adopted stack). With BENCH_ARMS set, every run also logs FGS_WALL (sync only at 0, 15k and 30k).
 #   stages   (renders during training, not in the default STAGES) one scene, seed SEEDS (default 0), stock / A+B / A+B+C:
 #            full test-set renders and metrics every STAGE_EVERY (default 1000) iterations, training clock at each;
 #            renders copied to $ARCHIVE/stages/<scene>/<run>/ (outside the expiring workspace),
@@ -48,6 +50,7 @@
 #   sbatch phase2/build_plus.sbatch      (from the repo root)
 #   STAGES=factorial sbatch --job-name=gs-phase2-factorial --time=03:30:00 phase2/build_plus.sbatch
 #   STAGES=bench SCENE=room sbatch --job-name=gs-bench-room --time=02:30:00 phase2/build_plus.sbatch
+#   STAGES=bench SCENE=room BENCH_ARMS="stock abcds" sbatch --job-name=gs-bench6-room --time=01:30:00 phase2/build_plus.sbatch   (step 6)
 #   STAGES=stages SCENE=room sbatch --job-name=gs-stages-room --time=02:30:00 phase2/build_plus.sbatch
 #   STAGES=profile SCENE=room sbatch --job-name=gs-prof-room --time=02:00:00 phase2/build_plus.sbatch
 #   STAGES=timerctl SCENE=room sbatch --job-name=gs-timer-room --time=01:30:00 phase2/build_plus.sbatch
@@ -222,14 +225,18 @@ if has bench; then
   BSCENE=${SCENE:?set SCENE for the bench stage}
   case $BSCENE in room|counter|kitchen|bonsai) BSCALE=0.5 ;; *) BSCALE=0.25 ;; esac
   echo "########## bench (scene $BSCENE scale $BSCALE, seeds ${SEEDS:-0 1 2}, 30k; train time = SEGCLOCK cum_s)"
-  BARMS=(stock ab abc)
+  BARMS=(${BENCH_ARMS:-stock ab abc}); NA=${#BARMS[@]}
+  BWALL=""; [ -n "${BENCH_ARMS:-}" ] && BWALL="FGS_WALL=0,15000,30000"
+  echo "arms: ${BARMS[*]}"
   for seed in ${SEEDS:-0 1 2}; do
-    for k in 0 1 2; do
-      arm=${BARMS[$(( (k + seed) % 3 ))]}
+    for (( k = 0; k < NA; k++ )); do
+      arm=${BARMS[$(( (k + seed) % NA ))]}
       case $arm in
-        stock) train "b_${BSCENE}_stock_s$seed" FasterGS "$seed" 30000 "" taming ;;
-        ab)    train "b_${BSCENE}_ab_s$seed" FasterGSPlus "$seed" 30000 "SELECTIVE_FROM=15000" macro ;;
-        abc)   train "b_${BSCENE}_abc_s$seed" FasterGSPlus "$seed" 30000 "SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true" macro ;;
+        stock) TRAIN_ENV="$BWALL" train "b_${BSCENE}_stock_s$seed" FasterGS "$seed" 30000 "" taming ;;
+        ab)    TRAIN_ENV="$BWALL" train "b_${BSCENE}_ab_s$seed" FasterGSPlus "$seed" 30000 "SELECTIVE_FROM=15000" macro ;;
+        abc)   TRAIN_ENV="$BWALL" train "b_${BSCENE}_abc_s$seed" FasterGSPlus "$seed" 30000 "SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true" macro ;;
+        "$BASE_ARM") TRAIN_ENV="$BWALL" train "b_${BSCENE}_${arm}_s$seed" $BASE "$seed" 30000 "SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true" macro ;;
+        *) echo "FAILED bench: unknown arm $arm"; FAILED+=("bench_$arm") ;;
       esac
     done
   done
