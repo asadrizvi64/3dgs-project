@@ -84,14 +84,14 @@ def main(argv):
                 ok = False; lines.append(f'CHECK FAILED {scene} {arm} {k}: {len(d[k])} launches')
     for scene in sorted({s for s, _ in by}):
         for k, title in (('fwd', 'forward blend_cu'), ('bwd', 'backward macro')):
-            # reference arm: the adopted stack A+B+C+D (abcd, step 5f on) if present, else A+B+C (abc)
-            ref = next((r for r in ('abcd', 'abc') if (scene, r) in by), 'abc')
+            # reference arm: the adopted stack (abcds from step 5h, abcd from 5f) if present, else A+B+C (abc)
+            ref = next((r for r in ('abcds', 'abcd', 'abc') if (scene, r) in by), 'abc')
             other = next((arm for s2, arm in by if s2 == scene and arm != ref), None)
             a, c = by.get((scene, ref), {}).get(k, []), by.get((scene, other), {}).get(k, [])
             if not a or not c:
                 continue
             lines.append(f'### {scene}: {title}  ({a[0]["kernel"]} vs {c[0]["kernel"]})\n')
-            lines.append(f'| metric | {"A+B+C+D" if ref == "abcd" else "A+B+C"} | {other} | change |')
+            lines.append(f'| metric | {"A+B+C+D+S" if ref == "abcds" else "A+B+C+D" if ref == "abcd" else "A+B+C"} | {other} | change |')
             lines.append('|---|---|---|---|')
             for name, label, fmt in (('dur_us', 'duration (us, ncu clock)', '{:.0f}'), ('inst', 'warp instructions executed (M)', '{:.1f}'),
                                      ('issue_pct', 'issue slots busy (%)', '{:.1f}'), ('ipc', 'IPC (per SM)', '{:.2f}'),

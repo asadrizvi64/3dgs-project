@@ -38,7 +38,7 @@ for path in args.logs:
     mj = re.search(r'^node=(\S+) job=(\S+)', text, re.M)
     cur = None
     for line in text.splitlines():
-        m = re.match(r'##### t_([a-z]+)_(stock|abcd|abc)_(on|off)_s(\d+):', line)
+        m = re.match(r'##### t_([a-z]+)_(stock|abcds|abcd|abc)_(on|off)_s(\d+):', line)
         if m:
             cur = (m.group(1), m.group(2), m.group(3), int(m.group(4)))
             blocks[cur].append([])
@@ -52,9 +52,9 @@ for path in args.logs:
 
 scenes = sorted({k[0] for k in blocks})
 # stack arm: A+B+C+D (abcd, adopted in step 5f) when the logs have it, else A+B+C (abc)
-STACK = 'abcd' if any(k[1] == 'abcd' for k in blocks) else 'abc'
+STACK = next((a for a in ('abcds', 'abcd') if any(k[1] == a for k in blocks)), 'abc')   # abcds: A+B+C+D+S (step 5h)
 ARMS = ('stock', STACK)
-LABEL[STACK] = 'A+B+C+D' if STACK == 'abcd' else 'A+B+C'
+LABEL[STACK] = {'abcds': 'A+B+C+D+S', 'abcd': 'A+B+C+D'}.get(STACK, 'A+B+C')
 for sc in scenes:
     for arm in ARMS:
         for tm in TIMERS:

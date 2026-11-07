@@ -4,8 +4,10 @@
 #   A  macro blend backward      env FGS_BLEND_BWD=macro (variant default) | taming (stock kernel)
 #   B  selective Adam from n     TRAINING.OPTIMIZER.SELECTIVE_FROM: n   (-1 / absent = off)
 #   C  bf16 SH-rest moments      TRAINING.OPTIMIZER.SH_REST_BF16_MOMENTS: true
-# Current stack (phase2 step 5f, adopted 2026-11-05): BASE (default FasterGSPlusD) = A+B+C + D, D = deferred warp reduction v2
-# (phase2/deferred_reduce_v2.patch, FGS_DEFERRED_REDUCE=0 turns it off at run time); arm label BASE_ARM (default abcd).
+# Current stack (phase2 step 5h, adopted 2026-11-07): BASE (default FasterGSPlusDS) = A+B+C + D + S, D = deferred warp
+# reduction v2 (phase2/deferred_reduce_v2.patch, FGS_DEFERRED_REDUCE=0 turns it off at run time), S = coalesced SH-rest access
+# in preprocess backward (phase2/sh_coalesce.patch); arm label BASE_ARM (default abcds). BASE=FasterGSPlusD (arm abcd) is the
+# step 5f-5h stack A+B+C+D.
 # The build stage builds BASE by default; any BUILD_VARIANT is built on top of BASE's patches (STACK_ON_BASE=0: plain
 # A+B+C + BUILD_SRC_PATCHES, as in steps 4c-5f) and checked for equivalence against BASE. rbbench, ncublend, timerctl,
 # profile and hostprof use BASE as their A+B+C(+D) arm. BASE=FasterGSPlus reproduces the pre-5f setup (arm abc).
@@ -54,14 +56,14 @@
 #   STAGES=ncublend sbatch --job-name=gs-ncublend --time=00:40:00 phase2/build_plus.sbatch
 #   STAGES="build unit" BUILD_VARIANT=FasterGSPlusDR BUILD_SRC_PATCHES=phase2/deferred_reduce.patch sbatch --job-name=gs-dr-build phase2/build_plus.sbatch
 #   STAGES=ncublend CMP_VARIANT=FasterGSPlusDR CMP_ARM=abcd sbatch --job-name=gs-dr-ncu phase2/build_plus.sbatch
-#   STAGES="build unit" sbatch --job-name=gs-base-build phase2/build_plus.sbatch   (builds BASE = FasterGSPlusD, the adopted stack)
+#   STAGES="build unit" sbatch --job-name=gs-base-build phase2/build_plus.sbatch   (builds BASE = FasterGSPlusDS, the adopted stack)
 #   STAGES="build unit" BUILD_VARIANT=FasterGSPlusX BUILD_SRC_PATCHES=phase2/x.patch sbatch ...  (X on top of the stack, vs BASE)
 #   historical (pre-5f, plain A+B+C): BASE=FasterGSPlus ..., or STACK_ON_BASE=0 for a variant build, e.g.
 #   STAGES="build unit" STACK_ON_BASE=0 BUILD_VARIANT=FasterGSPlusDR2 BUILD_SRC_PATCHES=phase2/deferred_reduce_v2.patch sbatch --job-name=gs-dr2-build phase2/build_plus.sbatch
 #   STAGES=ncublend CMP_VARIANT=FasterGSPlusDR2 CMP_ARM=abcd2 sbatch --job-name=gs-dr2-ncu phase2/build_plus.sbatch
 #   STAGES=ncupre sbatch --job-name=gs-ncupre --time=00:40:00 phase2/build_plus.sbatch
 #   STAGES="build unit" BUILD_VARIANT=FasterGSPlusDS BUILD_SRC_PATCHES=phase2/sh_coalesce.patch sbatch --job-name=gs-ds-build phase2/build_plus.sbatch
-#   STAGES=ncupre BASE=FasterGSPlusDS BASE_ARM=abcds BASE_PATCHES="phase2/deferred_reduce_v2.patch phase2/sh_coalesce.patch" sbatch --job-name=gs-ds-ncu ...
+#   STAGES=ncupre sbatch --job-name=gs-ds-ncu ...   (step 5h ran this before adoption, with BASE=FasterGSPlusDS set explicitly)
 #   STAGES=rbbench SCENE=garden CMP_VARIANT=FasterGSPlusDS CMP_ARM=abcds sbatch --job-name=gs-ds-garden --time=00:50:00 phase2/build_plus.sbatch
 #   STAGES="build unit blendstats" BUILD_VARIANT=FasterGSPlusStats BUILD_SRC_PATCHES=phase2/blend_stats.patch sbatch --job-name=gs-blendstats phase2/build_plus.sbatch
 #SBATCH --job-name=gs-phase2-build
@@ -91,8 +93,9 @@ echo "node=$(hostname) job=${SLURM_JOB_ID:-local} gpu=$(nvidia-smi --query-gpu=n
 FAILED=()
 BSCENE=garden; BSCALE=0.25
 has() { [[ " $STAGES " == *" $1 "* ]]; }
-BASE=${BASE:-FasterGSPlusD}
+BASE=${BASE:-FasterGSPlusDS}
 case $BASE in
+  FasterGSPlusDS) BASE_PATCHES=${BASE_PATCHES-phase2/deferred_reduce_v2.patch phase2/sh_coalesce.patch}; BASE_ARM=${BASE_ARM:-abcds} ;;
   FasterGSPlusD) BASE_PATCHES=${BASE_PATCHES-phase2/deferred_reduce_v2.patch}; BASE_ARM=${BASE_ARM:-abcd} ;;
   FasterGSPlus)  BASE_PATCHES=${BASE_PATCHES-}; BASE_ARM=${BASE_ARM:-abc} ;;
   *) : "${BASE_PATCHES?set BASE_PATCHES for BASE=$BASE}"; BASE_ARM=${BASE_ARM:?set BASE_ARM for BASE=$BASE} ;;

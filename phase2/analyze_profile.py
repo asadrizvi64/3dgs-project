@@ -47,8 +47,10 @@ for path in args.logs:
 if not runs:
     sys.exit('no profile logs')
 # stack arm: A+B+C+D (abcd, adopted in step 5f) when its profile files exist, else A+B+C (abc)
-if any(os.path.exists(os.path.join(r['base'], f'p_{sc}_abcd_s0.prof')) for sc, r in runs.items()):
-    ARMS = [('stock', 'stock Faster-GS'), ('abcd', 'A+B+C+D')]
+for arm, label in (('abcds', 'A+B+C+D+S'), ('abcd', 'A+B+C+D')):   # abcds: adopted in step 5h
+    if any(os.path.exists(os.path.join(r['base'], f'p_{sc}_{arm}_s0.prof')) for sc, r in runs.items()):
+        ARMS = [('stock', 'stock Faster-GS'), (arm, label)]
+        break
 
 print('# Profiling: where the training step goes (seed 0)\n')
 split = {}
