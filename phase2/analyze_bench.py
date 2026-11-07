@@ -195,6 +195,24 @@ for arm in TREAT:
         print(f'  - {"meets" if v else "misses"} {k}' + ('' if complete else ' (partial data, not a verdict)'))
     verdicts[arm] = all(crit.values())
 
+# Outdoor / indoor split and speedup factors (descriptive, not part of the verdict). A scene's speedup is stock time /
+# arm time, from the mean of its paired per-seed ratios; "aggregate" is total stock time / total arm time over the scenes.
+OUT_SC, IN_SC = ORDER[:5], ORDER[5:]
+print('\n## Outdoor / indoor and speedup factors (descriptive; scene speedup = mean over seeds of stock time / arm time)\n')
+print('| arm | group | scenes | time reduction median / mean | speedup median / mean | speedup range | aggregate speedup | ΔPSNR mean |')
+print('|---|---|---|---|---|---|---|---|')
+for arm in TREAT:
+    for gname, grp in (('all', ORDER), ('outdoor', OUT_SC), ('indoor', IN_SC)):
+        g = [sc for sc in grp if sc in ok]
+        if not g:
+            continue
+        reds = [summary[sc][arm]['red'] for sc in g]
+        spd = [st.mean(b / a for a, b in zip(get(sc, arm, 't'), get(sc, 'stock', 't'))) for sc in g]
+        agg = sum(sum(get(sc, 'stock', 't')) for sc in g) / sum(sum(get(sc, arm, 't')) for sc in g)
+        print(f'| {LABEL[arm]} | {gname} | {len(g)} | {st.median(reds):.1f}% / {st.mean(reds):.1f}% | '
+              f'{st.median(spd):.3f}× / {st.mean(spd):.3f}× | {min(spd):.3f}–{max(spd):.3f}× | {agg:.3f}× | '
+              f'{st.mean(summary[sc][arm]["dpsnr"] for sc in g):+.3f} |')
+
 # Sensitivity (not the verdict): one-view failures, i.e. a test image more than SEVERE dB below the same image's
 # median in the scene's other runs. Count them per arm, then drop every such image from all runs of that scene and
 # recompute the paired deltas on the remaining images.
