@@ -278,3 +278,14 @@ Details: [`preprocess/README.md`](preprocess/README.md). Nsight Compute job 4537
   - Stalls are mostly load/store-queue throttling and waits on outstanding loads.
 - **Cause:** each thread reads and writes its Gaussian's 15 SH-rest coefficients (180 bytes) with 4-byte scalar accesses. Neighbouring lanes are 180 bytes apart, and stores touch 27 of 32 possible sectors per request.
 - **Next lever (not tested):** warp-cooperative, coalesced loads and stores of the SH-rest blocks through shared memory. The estimated ceiling is about 0.6–0.7 ms per garden step (bytes over the forward kernel's bandwidth); it is an upper bound, not a measurement.
+
+## Step 5h: coalesced SH-rest access in preprocess backward (garden and room, 3 seeds)
+
+Details: [`preprocess/README.md`](preprocess/README.md#step-5h-coalesced-sh-rest-access-in-preprocess-backward--garden-108-room-37). The patch is [`sh_coalesce.patch`](sh_coalesce.patch), built as FasterGSPlusDS on A+B+C+D: warp-cooperative 16-byte loads and stores of the SH-rest blocks through shared memory. Tests: 92 unit and 25/25 equivalence cases passed; gradients within 1.1 × 10⁻⁷.
+
+- **Faster on both scenes, all 6 paired seeds:**
+  - garden: wall time −10.75% (191.07 → 170.53 s), SEGCLOCK −10.95%;
+  - room: −3.71% (120.66 → 116.18 s);
+  - quality unchanged.
+- **Preprocess backward is 72–73% shorter** (ncu, step 20k): garden 1213 → 341 µs, room 346 → 94 µs. It now reaches 79–85% of DRAM peak, so it is bandwidth-bound.
+- This is not yet adopted into the default stack.

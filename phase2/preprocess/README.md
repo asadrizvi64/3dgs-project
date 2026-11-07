@@ -54,3 +54,53 @@ Step 4a found that preprocess backward was 20% of garden's kernel time at 20k un
 - That ceiling is roughly 0.6–0.7 ms per step on garden and less on room, against steps of about 6.3 ms and 4.0 ms.
 - This is an upper bound from bytes and bandwidth, not a measurement.
 - Shared memory needed: about 5.6 KB per warp for coefficients plus the same for gradients, unless the gradients are written in place.
+
+# Step 5h: coalesced SH-rest access in preprocess backward — garden −10.8%, room −3.7%
+
+2026-11-06/07.
+
+**Patch:** [`../sh_coalesce.patch`](../sh_coalesce.patch), built as FasterGSPlusDS, arm `abcds`, on top of A+B+C+D.
+- Each warp copies its 32 Gaussians' SH-rest block (5,760 bytes) to shared memory with 16-byte loads.
+- Each lane runs the SH backward in place on its own row. The function reads each band's coefficients before writing that band's gradients, in the original order of arithmetic.
+- The warp then writes the gradient block back with 16-byte stores.
+- Zeros are written for:
+  - lanes whose Gaussian is invisible;
+  - bands above the active SH degree.
+
+  The gradient buffer is created with `torch::zeros` (`rasterization_api.cu`), so these zeros match what the original kernel left there.
+- Warps with no visible Gaussian exit before touching memory, as before.
+- The old path is kept for these cases:
+  - SH degree 0;
+  - fewer than 15 SH-rest coefficients;
+  - unaligned buffers.
+
+**Tests (build job 4537424):**
+- 92 unit tests and 25/25 equivalence cases passed against FasterGSPlusD.
+- Largest relative difference: 1.1 × 10⁻⁷, at the level of the reference's own run-to-run noise (9.9 × 10⁻⁸).
+
+**Kernel (ncu job 4537425, step 20k, same protocol as step 5g; tables in [`ncu-pre-ds-analysis.md`](ncu-pre-ds-analysis.md)):**
+
+| preprocess backward | garden A+B+C+D → +S | room A+B+C+D → +S |
+|---|---|---|
+| duration | 1213 → **341 µs (−72%)** | 346 → **94 µs (−73%)** |
+| DRAM bandwidth reached (% of peak) | 30% → **85%** | 27% → **79%** |
+| L2 throughput (% of peak) | 79% → 55% | 75% → 55% |
+| DRAM read / write | 476 / 406 → 392 / 321 MB | 131 / 97 → 110 / 72 MB |
+| global load / store sectors per request | 22.8 / 27.4 → 9.0 / 12.0 | 22.1 / 26.6 → 8.8 / 11.9 |
+| stalls per issued instruction | 129 → 32 | 120 → 28 |
+| registers / theoretical occupancy | 80 / 37.5% → 72 / 43.8% | same |
+
+The kernel is now limited by DRAM bandwidth. Little time is left to gain in it without moving fewer bytes.
+
+**Timing (jobs 4537426 garden and 4537427 room):**
+- Step 5f protocol: timer on, 3 seeds, interleaved, order rotated by seed.
+- Wall time is FGS_WALL over 0–30k. SEGCLOCK is the CUDA-event clock.
+
+| scene | wall A+B+C+D → +S | change | per seed (s) | SEGCLOCK | PSNR |
+|---|---|---|---|---|---|
+| garden | 191.07 → **170.53 s** | **−10.75%** | −20.09 / −20.18 / −21.37 | 187.17 → 166.67 s (−10.95%) | 27.528 → 27.531 |
+| room | 120.66 → **116.18 s** | **−3.71%** | −5.76 / −4.88 / −2.79 | 118.17 → 113.70 s (−3.78%) | 31.664 → 31.688 |
+
+- All 6 seeds are faster. Quality is unchanged: SSIM and LPIPS are within seed noise, and the Gaussian counts match.
+- On garden, the time saved per step (about 0.68 ms by the NeRFICG timer: 6.28 → 5.60 ms) matches the kernel saving measured under ncu.
+- This is the largest single step in phase 2.
