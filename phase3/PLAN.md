@@ -196,3 +196,17 @@ These came from an outside review on 2026-11-08, also before any Experiment 1 ru
   is unchanged.
 - **Two clocks:** the decision stays on training-only time. Each arm also reports elapsed wall time from the branch
   to 30,000, including the 26 evaluations and all callbacks (`FGS_WALL`), so monitoring costs stay visible.
+
+These were noted on 2026-11-08 while Experiment 1 was running (jobs 4553942/3). Neither changes the arms, the target or the
+decision rule:
+
+- **Peak VRAM is not training-only.** The plan above promised training-only peak VRAM. The logged peak comes from
+  `torch.cuda.max_memory_allocated()` at the last training step, never reset. In the continuations it therefore includes the
+  26 test evaluations, and reads 69–71 GiB, against 5–6 GiB in the prefixes. The extra is about 64 GiB regardless of the
+  Gaussian count, which points to a fixed allocation in the evaluation path. VRAM is not a decision input. It is reported with
+  this caveat, and only the prefixes' values are training-only.
+- **Room job time limit.** Room continuations take about 28 minutes each, mostly the 26 evaluations, so the room job will
+  exceed its 4-hour limit during seed 1. Rule, fixed before any room seed-1 or seed-2 result is analysed: seed 0 is taken
+  from job 4553943; **seeds 1 and 2 are taken in full from reruns** (jobs 4554356 and 4554357, same code be935a0 and same
+  settings, queued to start after 4553943 ends), whatever 4553943 completed for them. Each rerun redoes that seed's prefix
+  and all four arms, so every arm of a seed branches from the same state.
