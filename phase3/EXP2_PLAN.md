@@ -82,12 +82,18 @@ resolution schedule changes the early trajectory and the population that grows f
   are fixed in pixels. A correct camera can therefore still give a different image, so image equality is not required.
   1. **Geometry (pass/fail):** project a set of 3D points, including the scene's Gaussian means, through the full and the
      k = 2 and k = 4 cameras. Every projected coordinate must satisfy u' = u / k and v' = v / k to within float precision.
-  2. **Alignment (pass/fail):** a small synthetic scene of a few sharp, distinctive Gaussians, rendered at full
-     resolution and through the k = 2 and k = 4 cameras. The centroid of each blob must sit where check 1 predicts, with no
-     systematic offset: mean offset below 0.05 low-resolution pixels in x and y.
+  2. **Alignment (pass/fail):** a synthetic scene of isolated, small, round, opaque Gaussians on a black background. Each
+     is at least 8 low-resolution pixels from the image border and from every other Gaussian, so there is no clipping or
+     overlap. They are rendered at full resolution and through the k = 2 and k = 4 cameras. Check 1 already covers the
+     projected centres. This check measures the rasterised image: the intensity-weighted centroid of each blob, within a
+     window around it, must sit where check 1 predicts. The pass criterion is the mean signed offset over all blobs, below
+     0.05 low-resolution pixels in x and y, so that a systematic shift fails. The spread per blob is reported, since
+     discrete pixels make single blobs scatter.
   3. **Training (pass/fail):** a short run through both switches (2,000 and 6,000 steps). Camera and photo sizes are equal
-     at every step, forward and backward run at each resolution, gradients are finite, and the loss shows no jump larger
-     than its normal step-to-step spread at a switch.
+     at every step, forward and backward run at each resolution, and gradients and parameters stay finite. Optimisation
+     continues after each switch: over the 500 steps after a switch, the mean loss falls or stays level relative to the
+     first 50 steps at the new resolution, with no divergence. The loss is expected to change at a switch, since the
+     photo gains fine detail. The size of that change is recorded as a diagnostic, not checked.
   - **Diagnostic only:** a trained garden model rendered through the k = 2 and k = 4 cameras, compared with the
     full-resolution render cropped and average-pooled the same way. The PSNR between them and the best-matching offset
     within ±1 pixel are reported. Neither is a requirement.
