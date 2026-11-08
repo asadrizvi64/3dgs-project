@@ -1,8 +1,9 @@
 # Phase 3 Experiment 2: training schedule, resolution × position learning rate (DRAFT, 2026-11-08)
 
 **Status: draft. Not pre-registered yet, and nothing in it has run.** It is written while Experiment 1 is running, and
-it does not depend on Experiment 1's results. It is finalised (the open decisions below fixed, this status line changed,
-committed) only after Experiment 1 has been analysed against its own rule. It is launched only after that commit. Anything
+it does not depend on Experiment 1's results. It is finalised (this status line changed, committed) only after Experiment 1
+has been analysed against its own rule and the engineering items below pass their smoke tests. The resolution schedule was
+settled on 2026-11-08 after a second review: the fixed schedule, no adaptive scheduler, no further arms. It is launched only after that commit. Anything
 changed after the finalising commit goes under "Changes after start", as in [PLAN.md](PLAN.md).
 
 ## Question
@@ -61,30 +62,43 @@ resolution schedule changes the early trajectory and the population that grows f
 
 ### Progressive resolution (`C1`, `C3`)
 
-- **Schedule (proposed default, fixed before launch):** downsampling factor 4 for steps 0–1,999, 2 for 2,000–5,999 and 1
-  (full) from 6,000 on. Integer factors keep downsampling exact. Full resolution comes well before densification ends at
-  14,900, so the last 9,000 densification steps and all later steps see full-resolution images.
-- **Mechanism:** each step renders through a copy of the training camera with width, height, focal lengths and principal
-  point divided by the factor. The photo is area-averaged on the GPU (average pooling by the factor). Both happen inside the
-  training clock.
+- **Schedule (chosen 2026-11-08, after review; fixed rather than adaptive):** downsampling factor k = 4 for steps
+  0–1,999, 2 for 2,000–5,999 and 1 (full) from 6,000 on. Full resolution comes well before densification ends at 14,900,
+  so the last 9,000 densification steps and all later steps see full-resolution images. DashGaussian's adaptive scheduler
+  is kept for a later experiment, because it also changes the growth schedule.
+- **Mechanism, with camera and photo agreeing exactly:**
+  - Output size first: w' = ⌊w / k⌋, h' = ⌊h / k⌋. The training image sizes are not all multiples of 4. A room height of
+    1,038, for example, gives 259 rows at k = 4.
+  - The photo is cropped to its top-left k·w' × k·h' pixels (at most k − 1 columns and rows dropped at the right and
+    bottom edges), then average-pooled by k on the GPU. Each output pixel is the exact mean of a k × k block.
+  - The camera copy gets width w', height h', and focal lengths and principal point divided by k. Faster-GS puts pixel
+    centres at (i + 0.5) with the origin at the image corner (`kernels_forward.cuh`, `kernels_backward.cuh`), and NeRFICG
+    scales intrinsics the same way when it loads downscaled images (`MipNeRF360.py`). Output pixel i' then covers original
+    pixels [k·i', k·i' + k), so its centre k·(i' + 0.5) is exactly where the scaled camera puts it. Cropping at the right
+    and bottom does not move the origin, so no half-pixel shift is needed.
+  - Both happen inside the training clock.
+- **Smoke test for the mapping:** render a trained garden model through the k = 2 and k = 4 cameras and compare each
+  result with the full-resolution render, cropped and average-pooled the same way. The two must agree to within
+  anti-aliasing differences, with no shift: the best match over ±1 pixel offsets must be at offset 0. The test also checks
+  that camera and photo sizes are equal at every switch.
 - **Test evaluation is always at full resolution.**
 - **Densification coupling (decided here, not tuned on results):**
   - Faster-GS accumulates the screen-space mean gradient after converting it from pixels to normalised screen units
     (`0.5 · width`, `0.5 · height` in `kernels_backward.cuh`). The loss is a per-pixel mean. To first order the accumulated
     gradient of a smooth image region is then the same at every resolution, so **the gradient threshold (0.0002), the
     interval (100) and the start and end steps are not rescaled.**
+  - First order is not invariance: image frequency content, the loss gradients and visibility all change with resolution.
+    So the population is measured rather than assumed to match (Gaussian count every 1,000 steps and at each switch).
   - What does change at low resolution is the missing fine detail: fewer Gaussians cross the threshold early. That is the
     intended effect of a coarse-to-fine schedule, not an error to correct.
   - Reading aid, not a gate: if `C1`'s Gaussian count at 15,000 differs from `C0`'s by more than 25% on a scene, that
     scene's `C1` result is read as "resolution schedule plus a changed population", not resolution alone.
   - Kept as they are: the 2D screen-space dilation and the 3D filter (computed once from the full-resolution focal length).
-- **Alternative to decide before finalising:** DashGaussian's own scheduler (resolution steps chosen from the images'
-  frequency content, coupled to a primitive-growth schedule) instead of the fixed schedule above. It is closer to the
-  published method, but it also changes the population schedule, which mixes in Experiment 1's question.
 
 ### Compressed position decay (`C2`, `C3`)
 
-- `LEARNING_RATE_MEANS_MAX_STEPS=15000`, everything else default.
+- `LEARNING_RATE_MEANS_MAX_STEPS=15000`, everything else default. This is a whole alternative trajectory, including its
+  low-rate second half, not an early-training speed-up alone.
 - NeRFICG's `LRDecayPolicy` clamps at the final rate, so from step 15,000 positions train at the final rate
   (1.6e-6 × scene extent) for the remaining 15,000 steps. This is the intended test: whether position updates in the second
   half matter for time to quality.
@@ -94,6 +108,10 @@ resolution schedule changes the early trajectory and the population that grows f
 - Test PSNR, SSIM and LPIPS at full resolution every 1,000 steps from 1,000 to 30,000, stamped with training-only time
   (SEGCLOCK, evaluations excluded). The test images are used only to measure.
 - Gaussian count every 1,000 steps.
+- **Rendering work, descriptive only:** at steps 1,000, 2,000, 5,000, 6,000, 10,000, 15,000 and 30,000, the number of
+  Gaussian–tile instances and the mean and maximum number of Gaussians per tile, averaged over 10 fixed training views at
+  that step's training resolution. This separates three possible sources of a speed-up: fewer pixels, a different
+  population, or less rasterisation work per Gaussian. It is not a decision input.
 - **Memory, measured separately (new instrumentation, see engineering list):** peak allocated memory during training steps
   only, and peak during each test evaluation, with the peak statistics reset around every evaluation.
 - Elapsed wall time including evaluations (`FGS_WALL`), as a second clock.
@@ -147,7 +165,12 @@ other scenes and GPUs. Two scenes, three seeds, one H100 type.
       test: logged rates at fixed steps match the formula.
 - [ ] Peak-memory instrumentation split into training and evaluation, reset around each evaluation.
 - [ ] **Find the cause of the 64 GiB evaluation peak** seen in Experiment 1 (next section), and why a room test evaluation
-      is slow. Experiment 2 has 30 evaluations per run, so evaluation cost sets the job length.
+      is slow. Experiment 2 has 30 evaluations per run, so evaluation cost sets the job length. Run after Experiment 1, as
+      its own short job on a saved state: one test evaluation, with `torch.cuda.synchronize()` and a peak reset at each
+      boundary, recording allocated memory before, the peak during, allocated and reserved memory after, and the peak
+      and time of each stage (rendering, post-processing, photo loading, each metric).
+- [ ] Tile-instance counters for the rendering-work measure, read from the forward pass's buffer sizes if the backend
+      exposes them; otherwise this measure is dropped and the plan says so.
 - [ ] `analyze_ttq.py`: arm names, `C0` as the reference arm, the factorial effects.
 
 ## Known measurement issue carried over from Experiment 1
