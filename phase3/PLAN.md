@@ -146,3 +146,27 @@ These are clarifications made on 2026-11-08 while building the code, before any 
   - the clock's cumulative time.
 
   Implementation: [cluster/patches/fastergs_resume.py](../cluster/patches/fastergs_resume.py).
+
+These came from an outside review on 2026-11-08, also before any Experiment 1 run:
+
+- **Bug fixed (v2 of the resume patch):** loading the saved optimizer state also restored the saved learning rates.
+  The MCMC arms would therefore have kept the control's opacity rate (0.025) instead of 0.05. After loading, every
+  group's rate is now set back to the current config's. The `FGS_RESUME` line lists the rates and regularisation
+  weights actually in use, and the smoke test checks them.
+- **Stricter resume test (exp1smoke):**
+  - The test now also checks:
+    - checksums of parameters and optimizer state, saved vs loaded, must be identical;
+    - the view sequence after the branch must be identical (`FGS_VIEW_TRACE`);
+    - the test metrics at the branch step must be identical.
+  - After 1,000 more steps, the branched control must match an uninterrupted run within a measured noise floor:
+    - The noise floor is a second uninterrupted run with the same seed.
+    - Tolerance is twice that run's difference, at least 0.02 dB PSNR and 0.1% of the Gaussian count.
+    - This replaces the earlier fixed 0.3 dB / 1%.
+  - Python and NumPy random states are now saved too. Training only draws from torch: Python's `random` is used
+    only for W&B sweeps, NumPy's only to pick a seed when none is given.
+- **Reading the MCMC arms:** `mcmc` and `oracle` change several things at once: relocation, noise injection,
+  regularisation and the opacity learning rate. A pass would show that this combined MCMC policy reaches quality
+  sooner, not that relocation alone does. Experiment 2 would then separate the parts with ablations. The decision rule
+  is unchanged.
+- **Two clocks:** the decision stays on training-only time. Each arm also reports elapsed wall time from the branch
+  to 30,000, including the 26 evaluations and all callbacks (`FGS_WALL`), so monitoring costs stay visible.

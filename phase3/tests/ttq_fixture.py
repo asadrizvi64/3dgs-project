@@ -27,6 +27,7 @@ for sc, base, job in (('garden', 27.5, 'j1'), ('room', 31.0, 'j2')):
                 lines.append(f'SEGCLOCK step={st} seg_s=1 cum_s={cum(a, st):.3f} sparse=0 N={n} peak_alloc_gib=5.00')
             nend = {'ctl': n0 + 2_000_000, 'stop': n0, 'mcmc': n0, 'oracle': n0 + 2_000_000}[a]
             lines.append(f'FGS_TRAIN_END N={nend} peak_alloc_gib=5.00 peak_reserved_gib=6.00')
+            lines.append(f'FGS_WALL from=5000 to=30000 s={cum(a, 30000) - 40.0 + 26 * 5.0:.3f} views=0')   # + 26 evals of 5 s
             lines.append(f'RESULT {name} PSNR:{psnr_at(a, 30000, base + 0.01 * s):.2f} SSIM:0.8 LPIPS:0.12 N_Gaussians:{nend} ms_it=6')
             for st in range(5000, 30001, 1000):
                 d = os.path.join(root, f'run_{job}', 'runs', name, f'test_{st}')

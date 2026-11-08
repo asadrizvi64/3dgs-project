@@ -533,45 +533,65 @@ if has exp1smoke || has exp1; then
 fi
 if has exp1smoke; then
   BSCENE=garden; BSCALE=0.25; EXP1_AT=2000
-  echo "########## exp1smoke (garden seed 0; prefix to 3000 with state at 2000, arms resumed 2000 -> 3000)"
-  TRAIN_ENV="FGS_SAVE_STATE=2000 FGS_EVAL_EVERY=1000 FGS_EVAL_FROM=2000" train xs_garden_pfx_s0 $M 0 3000 "" taming 1000
+  echo "########## exp1smoke (garden seed 0; two uninterrupted runs to 3000 (noise floor), state saved at 2000; ctl / stop / mcmc resumed 2000 -> 3000)"
+  for r in pfx pfx2; do
+    TRAIN_ENV="FGS_SAVE_STATE=2000 FGS_EVAL_EVERY=1000 FGS_EVAL_FROM=2000 FGS_VIEW_TRACE=$OUT/xs_garden_${r}_s0.views" train xs_garden_${r}_s0 $M 0 3000 "" taming 1000
+  done
   ST=$DATA/nerficg/$(cat "$OUT/runs/xs_garden_pfx_s0/rundir.txt" 2>/dev/null)/checkpoints/state_0002000.pt
   N2=$(sed -n 's/^FGS_SAVE_STATE step=2000 N=\([0-9]*\).*/\1/p' "$OUT/xs_garden_pfx_s0.seg")
   if [ ! -f "$ST" ] || [ -z "$N2" ]; then echo "FAILED exp1smoke: no state file / N"; FAILED+=(exp1smoke_state); else
     for arm in ctl stop mcmc; do
-      TRAIN_ENV="FGS_RESUME=$ST FGS_EVAL_EVERY=1000 FGS_EVAL_FROM=2000 CFG_SET=$(x_arm_cfg $arm $N2 $N2)" train xs_garden_${arm}_s0 $M 0 3000 "" taming 1000
+      TRAIN_ENV="FGS_RESUME=$ST FGS_EVAL_EVERY=1000 FGS_EVAL_FROM=2000 FGS_VIEW_TRACE=$OUT/xs_garden_${arm}_s0.views CFG_SET=$(x_arm_cfg $arm $N2 $N2)" train xs_garden_${arm}_s0 $M 0 3000 "" taming 1000
       x_clean xs_garden_${arm}_s0
     done
     python3 - "$OUT" <<'PY' || FAILED+=(exp1smoke_check)
-import re, sys, os
+import re, sys
 out = sys.argv[1]
 seg = lambda n: open(f'{out}/{n}.seg').read()
 met = lambda n, it: open(f'{out}/runs/{n}/test_{it}/metrics_8bit.txt').read().split('Image', 1)[-1].strip()
+psnr = lambda n: float(re.search(r'^PSNR\t(\S+)', open(f'{out}/runs/{n}/test_3000/metrics_8bit.txt').read(), re.M).group(1))
+nat = lambda n: int(re.search(r'SEGCLOCK step=3000 .* N=(\d+)', seg(n)).group(1))
+views = lambda n, lo, hi: [l for l in open(f'{out}/{n}.views').read().split('\n') if l and lo <= int(l.split()[0]) < hi]
 ok = {}
-p = seg('xs_garden_pfx_s0')
-ok['prefix wrote the state'] = 'FGS_SAVE_STATE step=2000' in p
+p, p2 = seg('xs_garden_pfx_s0'), seg('xs_garden_pfx2_s0')
+sv = re.search(r'^FGS_SAVE_STATE step=2000 N=(\d+) \S+ param_sum=(\S+) optim_sum=(\S+)', p, re.M)
+ok['prefix wrote the state'] = bool(sv)
+n2 = int(sv.group(1))
+ok['the two uninterrupted runs saw the same views 0-2999'] = views('xs_garden_pfx_s0', 0, 3000) == views('xs_garden_pfx2_s0', 0, 3000)
+d0, dn0 = abs(psnr('xs_garden_pfx2_s0') - psnr('xs_garden_pfx_s0')), abs(nat('xs_garden_pfx2_s0') - nat('xs_garden_pfx_s0'))
+tol_p, tol_n = max(2 * d0, 0.02), max(2 * dn0, 0.001 * nat('xs_garden_pfx_s0'))
+print(f'noise floor (uninterrupted vs uninterrupted, same seed): PSNR at 3000 differs {d0:.4f} dB, N differs {dn0}; '
+      f'tolerances for ctl: {tol_p:.4f} dB, {tol_n:.0f} Gaussians')
+lr = {}
 for a in ('ctl', 'stop', 'mcmc'):
     t = seg(f'xs_garden_{a}_s0')
-    ok[f'{a}: resumed at 2000'] = bool(re.search(r'^FGS_RESUME step=2000 ', t, re.M))
-    ok[f'{a}: clock continues (SEGCLOCK step=3000 cum_s > prefix cum at 2000)'] = (
+    r = re.search(r'^FGS_RESUME step=2000 N=(\d+) \S+ \S+ param_sum=(\S+) optim_sum=(\S+) .* lr=(\S+) lambda_opacity=(\S+) lambda_scale=(\S+)', t, re.M)
+    ok[f'{a}: resumed at 2000'] = bool(r)
+    if not r:
+        continue
+    ok[f'{a}: parameters and optimizer state after loading equal the saved ones (checksums)'] = (r.group(1), r.group(2), r.group(3)) == (sv.group(1), sv.group(2), sv.group(3))
+    lr[a] = dict(x.split(':') for x in r.group(4).split(','))
+    lr[a]['lambda'] = (float(r.group(5)), float(r.group(6)))
+    ok[f'{a}: same views 2000-2999 as the uninterrupted run'] = views(f'xs_garden_{a}_s0', 2000, 3000) == views('xs_garden_pfx_s0', 2000, 3000)
+    ok[f'{a}: clock continues (cum_s at 3000 > prefix cum_s at 2000)'] = (
         float(re.search(r'SEGCLOCK step=3000 \S+ cum_s=(\S+)', t).group(1)) > float(re.search(r'SEGCLOCK step=2000 \S+ cum_s=(\S+)', p).group(1)))
     ok[f'{a}: test_2000 identical to the prefix (same state)'] = met(f'xs_garden_{a}_s0', 2000) == met('xs_garden_pfx_s0', 2000)
-    print(f'{a}: ' + ' '.join(l for l in t.splitlines() if l.startswith(('FGS_RESUME', 'SEGCLOCK step=3000', 'FGS_TRAIN_END'))))
-n = lambda name: int(re.search(r'SEGCLOCK step=3000 .* N=(\d+)', seg(name)).group(1))
-n2 = int(re.search(r'FGS_SAVE_STATE step=2000 N=(\d+)', p).group(1))
-ok['ctl: N at 3000 within 1% of the uninterrupted prefix'] = abs(n('xs_garden_ctl_s0') / n('xs_garden_pfx_s0') - 1) < 0.01
-ok['stop: N at 3000 <= N at 2000 (no densification after 2000)'] = n('xs_garden_stop_s0') <= n2
-ok['mcmc: N at 3000 == N at 2000 (population held)'] = n('xs_garden_mcmc_s0') == n2
-psnr = lambda name: float(open(f'{out}/runs/{name}/test_3000/metrics_8bit.txt').read().split('PSNR')[1].split()[0])
-print('N at 2000', n2, ' N at 3000: ' + ' '.join(f'{a}={n(f"xs_garden_{a}_s0")}' for a in ('pfx', 'ctl', 'stop', 'mcmc')))
-print('PSNR at 3000: ' + ' '.join(f'{a}={psnr(f"xs_garden_{a}_s0"):.2f}' for a in ('pfx', 'ctl', 'stop', 'mcmc')))
-ok['ctl: PSNR at 3000 within 0.3 dB of the uninterrupted prefix'] = abs(psnr('xs_garden_ctl_s0') - psnr('xs_garden_pfx_s0')) < 0.3
+    print(f'{a}: ' + ' | '.join(l for l in t.splitlines() if l.startswith(('FGS_RESUME', 'SEGCLOCK step=3000'))))
+print('learning rates / regularisation after resume:', lr)
+ok['ctl: opacity lr 0.025, regularisation 0'] = float(lr['ctl']['opacities']) == 0.025 and lr['ctl']['lambda'] == (0.0, 0.0)
+ok['mcmc: opacity lr 0.05, regularisation 0.01 / 0.01'] = float(lr['mcmc']['opacities']) == 0.05 and lr['mcmc']['lambda'] == (0.01, 0.01)
+ok['ctl: PSNR at 3000 within the noise-floor tolerance of the uninterrupted run'] = abs(psnr('xs_garden_ctl_s0') - psnr('xs_garden_pfx_s0')) <= tol_p
+ok['ctl: N at 3000 within the noise-floor tolerance of the uninterrupted run'] = abs(nat('xs_garden_ctl_s0') - nat('xs_garden_pfx_s0')) <= tol_n
+ok['stop: N at 3000 <= N at 2000 (no densification after 2000)'] = nat('xs_garden_stop_s0') <= n2
+ok['mcmc: N at 3000 == N at 2000 (population held)'] = nat('xs_garden_mcmc_s0') == n2
+print('N at 2000', n2, ' N at 3000: ' + ' '.join(f'{a}={nat(f"xs_garden_{a}_s0")}' for a in ('pfx', 'pfx2', 'ctl', 'stop', 'mcmc')))
+print('PSNR at 3000: ' + ' '.join(f'{a}={psnr(f"xs_garden_{a}_s0"):.4f}' for a in ('pfx', 'pfx2', 'ctl', 'stop', 'mcmc')))
 for k, v in ok.items():
     print(('PASS ' if v else 'FAIL ') + k)
 sys.exit(0 if all(ok.values()) else 1)
 PY
   fi
-  x_clean xs_garden_pfx_s0
+  x_clean xs_garden_pfx_s0; x_clean xs_garden_pfx2_s0
 fi
 if has exp1; then
   BSCENE=${SCENE:?set SCENE for the exp1 stage}
@@ -588,14 +608,14 @@ if has exp1; then
     echo "EXP1_BRANCH $BSCENE s$seed step=$EXP1_AT N=$NB state=$ST"
     for (( k = 0; k < NA; k++ )); do
       arm=${XARMS[$(( (k + seed) % NA ))]}
-      TRAIN_ENV="FGS_RESUME=$ST FGS_EVAL_EVERY=1000 FGS_EVAL_FROM=$EXP1_AT CFG_SET=$(x_arm_cfg $arm $NB 0)" train x_${BSCENE}_${arm}_s$seed $M "$seed" 30000 "" taming 1000
+      TRAIN_ENV="FGS_RESUME=$ST FGS_EVAL_EVERY=1000 FGS_EVAL_FROM=$EXP1_AT FGS_WALL=$EXP1_AT,30000 CFG_SET=$(x_arm_cfg $arm $NB 0)" train x_${BSCENE}_${arm}_s$seed $M "$seed" 30000 "" taming 1000
       x_clean x_${BSCENE}_${arm}_s$seed
     done
     if [ "${EXP1_ORACLE:-1}" = 1 ]; then   # cap = ctl's count at the last step before the end-of-training cleanup
       NC=$(sed -n 's/^FGS_TRAIN_END N=\([0-9]*\).*/\1/p' "$OUT/x_${BSCENE}_ctl_s$seed.seg" 2>/dev/null)
       if [ -z "$NC" ]; then echo "FAILED exp1 oracle s$seed: no ctl count"; FAILED+=("x_${BSCENE}_oracle_s$seed"); else
         echo "EXP1_ORACLE_CAP $BSCENE s$seed N=$NC"
-        TRAIN_ENV="FGS_RESUME=$ST FGS_EVAL_EVERY=1000 FGS_EVAL_FROM=$EXP1_AT CFG_SET=$(x_arm_cfg oracle $NB $NC)" train x_${BSCENE}_oracle_s$seed $M "$seed" 30000 "" taming 1000
+        TRAIN_ENV="FGS_RESUME=$ST FGS_EVAL_EVERY=1000 FGS_EVAL_FROM=$EXP1_AT FGS_WALL=$EXP1_AT,30000 CFG_SET=$(x_arm_cfg oracle $NB $NC)" train x_${BSCENE}_oracle_s$seed $M "$seed" 30000 "" taming 1000
         x_clean x_${BSCENE}_oracle_s$seed
       fi
     fi

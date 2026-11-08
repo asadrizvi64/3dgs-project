@@ -16,6 +16,12 @@ FGS_RESUME=path     run the normal pre-training callbacks (dataset, sampler, mod
                     rates) therefore take effect from the resumed step on. With USE_MCMC the densification statistics
                     are dropped (MCMC does not use them). SEGCLOCK cum_s continues from the saved value, so training
                     time is counted from step 0.
+                    v2: the saved optimizer state is loaded, then every group's learning rate is set back to the
+                    current config's (load_state_dict would otherwise keep the saved ones, e.g. the opacity rate of
+                    the control config in an MCMC arm). Python and NumPy random states are saved and restored too
+                    (training itself only draws from torch). The FGS_RESUME line lists the groups' learning rates.
+FGS_VIEW_TRACE=path append '<iteration> <training view index>' for every step (to check that a resumed run sees the
+                    same view sequence as the uninterrupted one).
 FGS_EVAL_EVERY=k    at every step i with i % k == 0 and i >= FGS_EVAL_FROM (default k), render the test set with
                     metrics into test_<i>/: the state after exactly i steps. It is its own training callback with the
                     highest priority, so it runs before that step's SH-degree, densification, ordering and
@@ -24,17 +30,27 @@ FGS_EVAL_EVERY=k    at every step i with i % k == 0 and i >= FGS_EVAL_FROM (defa
 import sys
 from pathlib import Path
 
-MARK = '# >>> fgs-resume v1'
+import re
+
+MARK = '# >>> fgs-resume v2'
 path = Path(sys.argv[1])
 src = path.read_text()
 if MARK in src:
     print('already patched:', path)
     sys.exit(0)
+# upgrade: remove an older version's blocks
+src = re.sub(r'    # >>> fgs-resume v\d+ \(run\).*?    # <<< fgs-resume \(run\)\n\n', '', src, flags=re.S)
+src = re.sub(r'        # >>> fgs-resume v\d+ \(save\).*?        # <<< fgs-resume \(save\)\n', '', src, flags=re.S)
+assert 'fgs-resume' not in src, 'could not remove the older fgs-resume blocks'
 assert '# >>> fgs-sparse-from v5' in src and '        # <<< fgs-segclock\n' in src, 'apply fastergs_sparse_from.py v5 first'
 
 # 2. save hook: after the clock hook has booked the step
 A_SAVE = '        # <<< fgs-segclock\n'
-SAVE = A_SAVE + '''        # >>> fgs-resume v1 (save)
+SAVE = A_SAVE + '''        # >>> fgs-resume v2 (save)
+        if __import__('os').environ.get('FGS_VIEW_TRACE'):
+            if not hasattr(self, '_fgs_vt'):
+                self._fgs_vt = open(__import__('os').environ['FGS_VIEW_TRACE'], 'a', buffering=1)
+            print(iteration, int(getattr(view, 'global_frame_idx', None) or getattr(view, 'frame_idx', 0) or 0), file=self._fgs_vt)
         if __import__('os').environ.get('FGS_SAVE_STATE') and iteration + 1 == int(__import__('os').environ['FGS_SAVE_STATE']):
             _g = self.model.gaussians
             torch.cuda.synchronize()
@@ -49,9 +65,14 @@ SAVE = A_SAVE + '''        # >>> fgs-resume v1 (save)
                 'id_sampler': self.train_sampler.id_sampler,
                 'rng_cpu': torch.get_rng_state(),
                 'rng_cuda': torch.cuda.get_rng_state(),
+                'rng_python': __import__('random').getstate(),
+                'rng_numpy': __import__('numpy').random.get_state(),
                 'fgs_cum': getattr(self, '_fgs_cum', 0.0),
             }, self.checkpoint_directory / f'state_{iteration + 1:07d}.pt')
+            _osum = sum(sorted(float(v.double().sum()) for _s in _g.optimizer.state.values() for v in _s.values() if torch.is_tensor(v)))
+            _psum = sum(float(getattr(_g, k).double().sum()) for k in ('_means', '_sh_coefficients_0', '_sh_coefficients_rest', '_opacities', '_scales', '_rotations'))
             print(f'FGS_SAVE_STATE step={iteration + 1} N={_g._means.shape[0]} cum_s={getattr(self, "_fgs_cum", 0.0):.3f} '
+                  f'param_sum={_psum!r} optim_sum={_osum!r} '
                   f'path={self.checkpoint_directory / f"state_{iteration + 1:07d}.pt"}', file=getattr(self, '_fgs_log', None) or __import__('sys').stdout, flush=True)
         # <<< fgs-resume (save)
 '''
@@ -60,7 +81,7 @@ src = src.replace(A_SAVE, SAVE, 1)
 
 # 3. run() override: pre-training callbacks with the current config, then the saved state, then the normal loop
 A_RUN = '    @training_callback(priority=80)\n    def training_iteration('
-RUN = '''    # >>> fgs-resume v1 (run)
+RUN = '''    # >>> fgs-resume v2 (run)
     def run(self, dataset: 'BaseDataset') -> None:
         _os = __import__('os')
         _p = _os.environ.get('FGS_RESUME')
@@ -75,19 +96,30 @@ RUN = '''    # >>> fgs-resume v1 (run)
             for k, v in st['params'].items():
                 setattr(g, k, torch.nn.Parameter(v.contiguous().requires_grad_(True)))
         g.training_setup(self, st['extent'])
-        g.optimizer.load_state_dict(st['optimizer'])
+        _lr = {pg['name']: pg['lr'] for pg in g.optimizer.param_groups}   # from the current config
+        g.optimizer.load_state_dict(st['optimizer'])   # also restores the saved groups' learning rates ...
+        for pg in g.optimizer.param_groups:              # ... so put the current config's back (means: set every step anyway)
+            pg['lr'] = _lr[pg['name']]
         g.active_sh_degree = st['active_sh_degree']
         g.active_sh_bases = (g.active_sh_degree + 1) ** 2
         g._densification_info = None if (self.USE_MCMC or st['densification_info'] is None) else st['densification_info'].contiguous()
         self.train_sampler.id_sampler = st['id_sampler']
         torch.set_rng_state(st['rng_cpu'])
         torch.cuda.set_rng_state(st['rng_cuda'])
+        if 'rng_python' in st:
+            __import__('random').setstate(st['rng_python'])
+            __import__('numpy').random.set_state(st['rng_numpy'])
         self.model.num_iterations_trained = st['iteration']
         self._fgs_log = open(_os.environ['FGS_LOG'], 'a', buffering=1) if _os.environ.get('FGS_LOG') else __import__('sys').stdout
         self._fgs_evs, self._fgs_cum = [], float(st['fgs_cum'])
+        _osum = sum(sorted(float(v.double().sum()) for _s in g.optimizer.state.values() for v in _s.values() if torch.is_tensor(v)))
+        _psum = sum(float(getattr(g, k).double().sum()) for k in ('_means', '_sh_coefficients_0', '_sh_coefficients_rest', '_opacities', '_scales', '_rotations'))
         print(f'FGS_RESUME step={st["iteration"]} N={g._means.shape[0]} cum_s={self._fgs_cum:.3f} sh_degree={g.active_sh_degree} '
+              f'param_sum={_psum!r} optim_sum={_osum!r} '
               f'densification_info={"none" if g._densification_info is None else tuple(g._densification_info.shape)} '
-              f'use_mcmc={self.USE_MCMC} max_primitives={self.MAX_PRIMITIVES} densification_end={self.DENSIFICATION_END_ITERATION} from={_p}',
+              f'use_mcmc={self.USE_MCMC} max_primitives={self.MAX_PRIMITIVES} densification_end={self.DENSIFICATION_END_ITERATION} '
+              f'lr=' + ','.join(f'{pg["name"]}:{pg["lr"]:.6g}' for pg in g.optimizer.param_groups) + f' '
+              f'lambda_opacity={self.LOSS.LAMBDA_OPACITY_REGULARIZATION} lambda_scale={self.LOSS.LAMBDA_SCALE_REGULARIZATION} from={_p}',
               file=self._fgs_log, flush=True)
         return super().run(dataset)
 

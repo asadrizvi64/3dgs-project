@@ -7,6 +7,8 @@ Inputs: the exp1 job logs (build_plus.sbatch stage exp1: run blocks '##### x_<sc
 clock hook's lines) and the archived per-step test metrics phase2/logs/run_<job>/runs/<run>/test_<i>/metrics_8bit.txt.
 --ref: the upbench logs with uninterrupted FasterGSUp runs (arm 'up'), for check 1.
 
+Two clocks are reported: training-only time (the T values and the decision) and, descriptively, the elapsed wall time
+from the branch to 30000 including the 26 test evaluations and all callbacks (FGS_WALL), so monitoring cost is visible.
 Time axis: SEGCLOCK cum_s, the CUDA-event training time from step 0 (the prefix's time carries into each arm).
 Evaluation i is the state after exactly i steps, so it pairs with 'SEGCLOCK step=i'. The point at 30000 is the
 end-of-training render (after the opacity cleanup), as in phase 2.
@@ -95,8 +97,10 @@ for (sc, arm, seed), bl in blocks.items():
             errors[sc].append(f'{name}: no metrics at {s}'); break
         curve[s], per[s] = metrics(f)
     else:
+        wall = [re.match(rf'FGS_WALL from={args.branch} to=30000 s=(\S+)', l) for l in L]
+        wall = [float(m.group(1)) for m in wall if m]
         runs[(sc, arm, seed)] = dict(clk=clk, curve=curve, per=per, n_end=int(end[0].group(1)), peak=float(end[0].group(2)),
-                                    resume=res[0].group(0))
+                                    resume=res[0].group(0), wall=wall[0] if len(wall) == 1 else None)
 
 # ---------------------------------------------------------------- checks
 print('## Validation\n')
@@ -183,8 +187,8 @@ print('\n## Time to target (target = ctl PSNR at 30k minus 0.05 dB; training sec
 summary = {}
 for sc in scenes:
     print(f'### {sc}\n')
-    print('| arm | T per seed (s) | ΔT vs ctl per seed | final PSNR | ΔPSNR | ΔLPIPS | final N | train time to 30k (s) | peak GiB |')
-    print('|---|---|---|---|---|---|---|---|---|')
+    print('| arm | T per seed (s) | ΔT vs ctl per seed | final PSNR | ΔPSNR | ΔLPIPS | final N | train time to 30k (s) | elapsed 5k→30k incl. evaluations (s) | peak GiB |')
+    print('|---|---|---|---|---|---|---|---|---|---|')
     for a in ARMS:
         ts, dts, dps, dls, rows = [], [], [], [], []
         for s in args.seeds:
@@ -201,10 +205,12 @@ for sc in scenes:
         if not rows:
             continue
         fmt = lambda v, f: ' / '.join('n/r' if x is None else f % x for x in v)
+        walls = [r['wall'] for r in rows]
+        wall_s = 'n/a' if None in walls else f'{st.mean(walls):.1f}'
         print(f'| {a} | {fmt(ts, "%.1f")} | {"" if a == "ctl" else fmt(dts, "%+.1f%%")} | '
               f'{st.mean(r["curve"][30000]["PSNR"] for r in rows):.3f} | {"" if a == "ctl" else f"{st.mean(dps):+.3f}"} | '
               f'{"" if a == "ctl" else f"{st.mean(dls):+.4f}"} | {st.mean(r["n_end"] for r in rows) / 1e6:.3f} M | '
-              f'{st.mean(r["clk"][30000][0] for r in rows):.1f} | {st.mean(r["peak"] for r in rows):.2f} |')
+              f'{st.mean(r["clk"][30000][0] for r in rows):.1f} | {wall_s} | {st.mean(r["peak"] for r in rows):.2f} |')
         summary[(sc, a)] = dict(dts=dts, dps=dps, dls=dls, n=len(rows))
     print()
     for d in SENS:   # sensitivity: other targets, and "reaches and stays"
