@@ -20,8 +20,11 @@ FGS_RESUME=path     run the normal pre-training callbacks (dataset, sampler, mod
                     current config's (load_state_dict would otherwise keep the saved ones, e.g. the opacity rate of
                     the control config in an MCMC arm). Python and NumPy random states are saved and restored too
                     (training itself only draws from torch). The FGS_RESUME line lists the groups' learning rates.
-FGS_VIEW_TRACE=path append '<iteration> <training view index>' for every step (to check that a resumed run sees the
-                    same view sequence as the uninterrupted one).
+FGS_VIEW_TRACE=path append '<iteration> <camera_index> <frame_idx> <global_frame_idx>' for every step, each field as
+                    the view holds it (None if absent), to check that a resumed run sees the same view sequence.
+                    v3: FGS_SAVE_STATE and FGS_RESUME print SHA-256 digests (first 16 hex digits) of the full bytes of
+                    the parameters, the optimizer state and the densification statistics, so a save/load round trip
+                    can be checked exactly.
 FGS_EVAL_EVERY=k    at every step i with i % k == 0 and i >= FGS_EVAL_FROM (default k), render the test set with
                     metrics into test_<i>/: the state after exactly i steps. It is its own training callback with the
                     highest priority, so it runs before that step's SH-degree, densification, ordering and
@@ -32,7 +35,7 @@ from pathlib import Path
 
 import re
 
-MARK = '# >>> fgs-resume v2'
+MARK = '# >>> fgs-resume v3'
 path = Path(sys.argv[1])
 src = path.read_text()
 if MARK in src:
@@ -46,11 +49,11 @@ assert '# >>> fgs-sparse-from v5' in src and '        # <<< fgs-segclock\n' in s
 
 # 2. save hook: after the clock hook has booked the step
 A_SAVE = '        # <<< fgs-segclock\n'
-SAVE = A_SAVE + '''        # >>> fgs-resume v2 (save)
+SAVE = A_SAVE + '''        # >>> fgs-resume v3 (save)
         if __import__('os').environ.get('FGS_VIEW_TRACE'):
             if not hasattr(self, '_fgs_vt'):
                 self._fgs_vt = open(__import__('os').environ['FGS_VIEW_TRACE'], 'a', buffering=1)
-            print(iteration, int(getattr(view, 'global_frame_idx', None) or getattr(view, 'frame_idx', 0) or 0), file=self._fgs_vt)
+            print(iteration, getattr(view, 'camera_index', None), getattr(view, 'frame_idx', None), getattr(view, 'global_frame_idx', None), file=self._fgs_vt)
         if __import__('os').environ.get('FGS_SAVE_STATE') and iteration + 1 == int(__import__('os').environ['FGS_SAVE_STATE']):
             _g = self.model.gaussians
             torch.cuda.synchronize()
@@ -69,10 +72,9 @@ SAVE = A_SAVE + '''        # >>> fgs-resume v2 (save)
                 'rng_numpy': __import__('numpy').random.get_state(),
                 'fgs_cum': getattr(self, '_fgs_cum', 0.0),
             }, self.checkpoint_directory / f'state_{iteration + 1:07d}.pt')
-            _osum = sum(sorted(float(v.double().sum()) for _s in _g.optimizer.state.values() for v in _s.values() if torch.is_tensor(v)))
-            _psum = sum(float(getattr(_g, k).double().sum()) for k in ('_means', '_sh_coefficients_0', '_sh_coefficients_rest', '_opacities', '_scales', '_rotations'))
+            _hp, _ho, _hd = self._fgs_digest(_g)
             print(f'FGS_SAVE_STATE step={iteration + 1} N={_g._means.shape[0]} cum_s={getattr(self, "_fgs_cum", 0.0):.3f} '
-                  f'param_sum={_psum!r} optim_sum={_osum!r} '
+                  f'param_sha={_hp} optim_sha={_ho} dinfo_sha={_hd} '
                   f'path={self.checkpoint_directory / f"state_{iteration + 1:07d}.pt"}', file=getattr(self, '_fgs_log', None) or __import__('sys').stdout, flush=True)
         # <<< fgs-resume (save)
 '''
@@ -81,7 +83,7 @@ src = src.replace(A_SAVE, SAVE, 1)
 
 # 3. run() override: pre-training callbacks with the current config, then the saved state, then the normal loop
 A_RUN = '    @training_callback(priority=80)\n    def training_iteration('
-RUN = '''    # >>> fgs-resume v2 (run)
+RUN = '''    # >>> fgs-resume v3 (run)
     def run(self, dataset: 'BaseDataset') -> None:
         _os = __import__('os')
         _p = _os.environ.get('FGS_RESUME')
@@ -112,16 +114,38 @@ RUN = '''    # >>> fgs-resume v2 (run)
         self.model.num_iterations_trained = st['iteration']
         self._fgs_log = open(_os.environ['FGS_LOG'], 'a', buffering=1) if _os.environ.get('FGS_LOG') else __import__('sys').stdout
         self._fgs_evs, self._fgs_cum = [], float(st['fgs_cum'])
-        _osum = sum(sorted(float(v.double().sum()) for _s in g.optimizer.state.values() for v in _s.values() if torch.is_tensor(v)))
-        _psum = sum(float(getattr(g, k).double().sum()) for k in ('_means', '_sh_coefficients_0', '_sh_coefficients_rest', '_opacities', '_scales', '_rotations'))
+        _hp, _ho, _hd = self._fgs_digest(g)
         print(f'FGS_RESUME step={st["iteration"]} N={g._means.shape[0]} cum_s={self._fgs_cum:.3f} sh_degree={g.active_sh_degree} '
-              f'param_sum={_psum!r} optim_sum={_osum!r} '
+              f'param_sha={_hp} optim_sha={_ho} dinfo_sha={_hd} '
               f'densification_info={"none" if g._densification_info is None else tuple(g._densification_info.shape)} '
               f'use_mcmc={self.USE_MCMC} max_primitives={self.MAX_PRIMITIVES} densification_end={self.DENSIFICATION_END_ITERATION} '
               f'lr=' + ','.join(f'{pg["name"]}:{pg["lr"]:.6g}' for pg in g.optimizer.param_groups) + f' '
               f'lambda_opacity={self.LOSS.LAMBDA_OPACITY_REGULARIZATION} lambda_scale={self.LOSS.LAMBDA_SCALE_REGULARIZATION} from={_p}',
               file=self._fgs_log, flush=True)
         return super().run(dataset)
+
+    @staticmethod
+    @torch.no_grad()
+    def _fgs_digest(g) -> tuple:
+        """SHA-256 over the full bytes of the parameters, of the optimizer state (group order, then each parameter's
+        state keys in sorted order) and of the densification statistics ('none' if absent)."""
+        _hl = __import__('hashlib')
+        raw = lambda t: t.detach().reshape(-1).contiguous().view(torch.uint8).cpu().numpy().tobytes()
+        hp = _hl.sha256()
+        for k in ('_means', '_sh_coefficients_0', '_sh_coefficients_rest', '_opacities', '_scales', '_rotations'):
+            t = getattr(g, k)
+            hp.update(f'{k}{tuple(t.shape)}{t.dtype}'.encode())
+            hp.update(raw(t))
+        ho = _hl.sha256()
+        for grp in g.optimizer.param_groups:
+            for prm in grp['params']:
+                s = g.optimizer.state.get(prm, {})
+                for key in sorted(s):
+                    v = s[key]
+                    ho.update(f'{grp["name"]}.{key}'.encode())
+                    ho.update(raw(v) if torch.is_tensor(v) else repr(v).encode())
+        d = g._densification_info
+        return hp.hexdigest()[:16], ho.hexdigest()[:16], 'none' if d is None else _hl.sha256(raw(d)).hexdigest()[:16]
 
     @training_callback(priority=10_000)
     @torch.no_grad()

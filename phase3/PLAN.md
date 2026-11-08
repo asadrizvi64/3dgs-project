@@ -164,6 +164,12 @@ These came from an outside review on 2026-11-08, also before any Experiment 1 ru
     - This replaces the earlier fixed 0.3 dB / 1%.
   - Python and NumPy random states are now saved too. Training only draws from torch: Python's `random` is used
     only for W&B sweeps, NumPy's only to pick a seed when none is given.
+- **Exact state check and real view identities (second review, resume patch v3):**
+  - Save and load now print SHA-256 digests of the full bytes of the parameters, the optimizer state and the
+    densification statistics, in place of sums. Two different tensors can have equal sums.
+  - The view trace logs `camera_index`, `frame_idx` and `global_frame_idx` as the view holds them, with no fallback
+    that could turn a real 0 or a missing field into 0.
+  - The smoke test requires `frame_idx` to be present at every step, with more than 50 distinct values in 3,000 steps.
 - **Reading the MCMC arms:** `mcmc` and `oracle` change several things at once: relocation, noise injection,
   regularisation and the opacity learning rate. A pass would show that this combined MCMC policy reaches quality
   sooner, not that relocation alone does. Experiment 2 would then separate the parts with ablations. The decision rule

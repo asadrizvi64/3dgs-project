@@ -552,12 +552,16 @@ met = lambda n, it: open(f'{out}/runs/{n}/test_{it}/metrics_8bit.txt').read().sp
 psnr = lambda n: float(re.search(r'^PSNR\t(\S+)', open(f'{out}/runs/{n}/test_3000/metrics_8bit.txt').read(), re.M).group(1))
 nat = lambda n: int(re.search(r'SEGCLOCK step=3000 .* N=(\d+)', seg(n)).group(1))
 views = lambda n, lo, hi: [l for l in open(f'{out}/{n}.views').read().split('\n') if l and lo <= int(l.split()[0]) < hi]
+frames = lambda n: [l.split()[2] for l in views(n, 0, 10 ** 6)]
 ok = {}
 p, p2 = seg('xs_garden_pfx_s0'), seg('xs_garden_pfx2_s0')
-sv = re.search(r'^FGS_SAVE_STATE step=2000 N=(\d+) \S+ param_sum=(\S+) optim_sum=(\S+)', p, re.M)
+sv = re.search(r'^FGS_SAVE_STATE step=2000 N=(\d+) \S+ param_sha=(\S+) optim_sha=(\S+) dinfo_sha=(\S+)', p, re.M)
 ok['prefix wrote the state'] = bool(sv)
 n2 = int(sv.group(1))
 ok['the two uninterrupted runs saw the same views 0-2999'] = views('xs_garden_pfx_s0', 0, 3000) == views('xs_garden_pfx2_s0', 0, 3000)
+fr = frames('xs_garden_pfx_s0')
+print(f'view trace: {len(fr)} steps, {len(set(fr))} distinct frame_idx, first lines: {views("xs_garden_pfx_s0", 0, 3)}')
+ok['view trace holds real camera identities (frame_idx never None, > 50 distinct in 3000 steps)'] = 'None' not in fr and len(set(fr)) > 50
 d0, dn0 = abs(psnr('xs_garden_pfx2_s0') - psnr('xs_garden_pfx_s0')), abs(nat('xs_garden_pfx2_s0') - nat('xs_garden_pfx_s0'))
 tol_p, tol_n = max(2 * d0, 0.02), max(2 * dn0, 0.001 * nat('xs_garden_pfx_s0'))
 print(f'noise floor (uninterrupted vs uninterrupted, same seed): PSNR at 3000 differs {d0:.4f} dB, N differs {dn0}; '
@@ -565,13 +569,14 @@ print(f'noise floor (uninterrupted vs uninterrupted, same seed): PSNR at 3000 di
 lr = {}
 for a in ('ctl', 'stop', 'mcmc'):
     t = seg(f'xs_garden_{a}_s0')
-    r = re.search(r'^FGS_RESUME step=2000 N=(\d+) \S+ \S+ param_sum=(\S+) optim_sum=(\S+) .* lr=(\S+) lambda_opacity=(\S+) lambda_scale=(\S+)', t, re.M)
+    r = re.search(r'^FGS_RESUME step=2000 N=(\d+) \S+ \S+ param_sha=(\S+) optim_sha=(\S+) dinfo_sha=(\S+) .* lr=(\S+) lambda_opacity=(\S+) lambda_scale=(\S+)', t, re.M)
     ok[f'{a}: resumed at 2000'] = bool(r)
     if not r:
         continue
-    ok[f'{a}: parameters and optimizer state after loading equal the saved ones (checksums)'] = (r.group(1), r.group(2), r.group(3)) == (sv.group(1), sv.group(2), sv.group(3))
-    lr[a] = dict(x.split(':') for x in r.group(4).split(','))
-    lr[a]['lambda'] = (float(r.group(5)), float(r.group(6)))
+    ok[f'{a}: parameters and optimizer state after loading equal the saved ones (SHA-256 of the full bytes)'] = (r.group(1), r.group(2), r.group(3)) == (sv.group(1), sv.group(2), sv.group(3))
+    ok[f'{a}: densification statistics restored (SHA-256), or dropped for MCMC'] = r.group(4) == ('none' if a == 'mcmc' else sv.group(4))
+    lr[a] = dict(x.split(':') for x in r.group(5).split(','))
+    lr[a]['lambda'] = (float(r.group(6)), float(r.group(7)))
     ok[f'{a}: same views 2000-2999 as the uninterrupted run'] = views(f'xs_garden_{a}_s0', 2000, 3000) == views('xs_garden_pfx_s0', 2000, 3000)
     ok[f'{a}: clock continues (cum_s at 3000 > prefix cum_s at 2000)'] = (
         float(re.search(r'SEGCLOCK step=3000 \S+ cum_s=(\S+)', t).group(1)) > float(re.search(r'SEGCLOCK step=2000 \S+ cum_s=(\S+)', p).group(1)))
