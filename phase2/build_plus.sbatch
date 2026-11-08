@@ -68,6 +68,9 @@
 #   STAGES="build unit" BUILD_VARIANT=FasterGSPlusDS BUILD_SRC_PATCHES=phase2/sh_coalesce.patch sbatch --job-name=gs-ds-build phase2/build_plus.sbatch
 #   STAGES=ncupre sbatch --job-name=gs-ds-ncu ...   (step 5h ran this before adoption, with BASE=FasterGSPlusDS set explicitly)
 #   STAGES=rbbench SCENE=garden CMP_VARIANT=FasterGSPlusDS CMP_ARM=abcds sbatch --job-name=gs-ds-garden --time=00:50:00 phase2/build_plus.sbatch
+#   STAGES="upbuild upequiv" sbatch --job-name=gs-up-build --time=01:00:00 phase2/build_plus.sbatch   (upstream/README.md)
+#   STAGES=upbench SCENE=garden sbatch --job-name=gs-up-garden --time=01:30:00 phase2/build_plus.sbatch
+#   STAGES=upncu sbatch --job-name=gs-up-ncu --time=00:40:00 phase2/build_plus.sbatch
 #   STAGES="build unit blendstats" BUILD_VARIANT=FasterGSPlusStats BUILD_SRC_PATCHES=phase2/blend_stats.patch sbatch --job-name=gs-blendstats phase2/build_plus.sbatch
 #SBATCH --job-name=gs-phase2-build
 #SBATCH --nodes=1
@@ -426,6 +429,81 @@ if has profile; then
     tr '\r' '\n' < "$OUT/p_${BSCENE}_${arm}_s0.log" | grep -E '^(STAGE|CURVE) ' > "$OUT/p_${BSCENE}_${arm}_s0.prof" || true
     echo "PROF p_${BSCENE}_${arm}_s0 $(grep -c '^STAGE' "$OUT/p_${BSCENE}_${arm}_s0.prof") STAGE lines, $(grep -c '^CURVE' "$OUT/p_${BSCENE}_${arm}_s0.prof") CURVE lines"
     for w in 5000 20000; do nsys_window "n_${BSCENE}_${arm}_${w}" $m "$fl" $bl $w; done
+  done
+fi
+
+# Upstream comparison (upstream/README.md): Faster-GS main (090e8ad) kernels with and without the coalesced SH-rest loads
+# (upstream/sh_coalesced_loads.patch, the proposed upstream PR). No macro patch, dense Adam, fp32 moments in all arms.
+#   FasterGSUp / FasterGSUpS: 1144604 + upstream c60ea26..090e8ad kernel diff (+ S loads), with the clock hook; timed
+#   FasterGSUpPure / FasterGSUpPureS: c60ea26 + the same diff = upstream main's backend exactly (+ S loads); equivalence only
+UP_PATCH=upstream/upstream_main_kernels.patch; S_PATCH=upstream/sh_coalesced_loads.patch
+if has upbuild; then
+  echo "########## upbuild"
+  MACRO=0 VARIANT=FasterGSUp SRC_PATCHES="$UP_PATCH" TRAINER_PATCHES=cluster/patches/fastergs_sparse_from.py bash "$REPO/phase1/make_variant.sh" || FAILED+=(build_FasterGSUp)
+  MACRO=0 VARIANT=FasterGSUpS SRC_PATCHES="$UP_PATCH $S_PATCH" TRAINER_PATCHES=cluster/patches/fastergs_sparse_from.py bash "$REPO/phase1/make_variant.sh" || FAILED+=(build_FasterGSUpS)
+  MACRO=0 PROFILING=0 BASE=c60ea26 VARIANT=FasterGSUpPure SRC_PATCHES="$UP_PATCH" TRAINER_PATCHES= bash "$REPO/phase1/make_variant.sh" || FAILED+=(build_FasterGSUpPure)
+  MACRO=0 PROFILING=0 BASE=c60ea26 VARIANT=FasterGSUpPureS SRC_PATCHES="$UP_PATCH $S_PATCH" TRAINER_PATCHES= bash "$REPO/phase1/make_variant.sh" || FAILED+=(build_FasterGSUpPureS)
+  for v in FasterGSUp FasterGSUpS FasterGSUpPure FasterGSUpPureS; do
+    so=$(ls "$DATA"/fastergs-venv/lib/python3.12/site-packages/${v}CudaBackend/_C*.so 2>/dev/null | head -1) || true
+    [ -n "$so" ] && cuobjdump --dump-resource-usage "$so" 2>/dev/null | grep -A1 "preprocess_backward" | grep -v "^--" | paste - - \
+      | sed -E "s/ +/ /g" | head -2 | cut -c1-220 | sed "s/^/RESOURCES $v /" || true
+  done
+fi
+
+if has upequiv; then
+  echo "########## upequiv"
+  for pair in FasterGSUpPure:FasterGSUpPureS FasterGSUp:FasterGSUpS; do
+    R=${pair%%:*}; N=${pair##*:}
+    echo "equivalence: $N vs $R"
+    ( cd /tmp && FGS_REF=${R}CudaBackend FGS_NEW=${N}CudaBackend python -m pytest -q -s -p no:cacheprovider "$REPO/upstream/tests/test_sh_load_equiv.py" ) \
+      > "$OUT/upequiv_$N.log" 2>&1 && { grep "^EQUIV" "$OUT/upequiv_$N.log" | sort -u; tail -1 "$OUT/upequiv_$N.log"; } \
+      || { echo "FAILED equivalence $N"; grep -E "^EQUIV|FAILED|Error" "$OUT/upequiv_$N.log" | head -40; FAILED+=("upequiv_$N"); }
+  done
+fi
+
+if has upbench; then   # stock (c60ea26 kernels) / up (upstream main kernels) / ups (main + S loads), interleaved, rotated by seed
+  BSCENE=${SCENE:?set SCENE for the upbench stage}
+  case $BSCENE in room|counter|kitchen|bonsai) BSCALE=0.5 ;; *) BSCALE=0.25 ;; esac
+  echo "########## upbench (scene $BSCENE scale $BSCALE, seeds ${SEEDS:-0 1 2}, 30k; train time = SEGCLOCK cum_s)"
+  UARMS=(${UP_ARMS:-stock up ups}); NA=${#UARMS[@]}
+  echo "arms: ${UARMS[*]}"
+  for seed in ${SEEDS:-0 1 2}; do
+    for (( k = 0; k < NA; k++ )); do
+      arm=${UARMS[$(( (k + seed) % NA ))]}
+      case $arm in
+        stock) m=FasterGS ;;
+        up)    m=FasterGSUp ;;
+        ups)   m=FasterGSUpS ;;
+        *) echo "FAILED upbench: unknown arm $arm"; FAILED+=("upbench_$arm"); continue ;;
+      esac
+      TRAIN_ENV="FGS_WALL=0,15000,30000" train "b_${BSCENE}_${arm}_s$seed" $m "$seed" 30000 "" taming
+    done
+  done
+fi
+
+if has upncu; then   # Nsight Compute on preprocess_backward_cu at step NCU_STEP, upstream main vs main + S loads
+  NCU=$(command -v ncu || true)
+  [ -n "$NCU" ] || { echo "FAILED upncu: ncu not found"; FAILED+=(upncu); }
+  NS=${NCU_STEP:-20000}; REP=$DATA/ncu/${SLURM_JOB_ID:-local}; mkdir -p "$REP"
+  for BSCENE in ${SCENES:-garden room}; do
+    [ -n "$NCU" ] || break
+    case $BSCENE in room|counter|kitchen|bonsai) BSCALE=0.5 ;; *) BSCALE=0.25 ;; esac
+    for arm in up ups; do
+      m=FasterGSUp; [ $arm = ups ] && m=FasterGSUpS
+      name=q_${BSCENE}_${arm}_$NS
+      echo "##### $name: method=$m seed=0 window=$NS-$(( NS + 2 )) $(date +%T)"
+      env FGS_BLEND_BWD=taming FGS_PROF_RANGE=$NS,$(( NS + 2 )) FGS_PROF_EXIT=$(( NS + 2 )) SCENE=$BSCENE SCALE=$BSCALE SEED=0 METHOD=$m TAG=p2$name \
+        OPT_FLAGS="" \
+        LAUNCHER="$NCU --profile-from-start off --kernel-name regex:preprocess --launch-count 4 --set full --import-source no -f -o $REP/$name" \
+        bash "$REPO/cluster/train_fastergs.sbatch" > "$OUT/$name.log" 2>&1 || true
+      if [ -f "$REP/$name.ncu-rep" ]; then
+        "$NCU" --import "$REP/$name.ncu-rep" --page details --csv > "$OUT/$name.details.csv" 2>/dev/null || true
+        "$NCU" --import "$REP/$name.ncu-rep" --page raw --csv > "$OUT/$name.raw.csv" 2>/dev/null || true
+        echo "NCU $name kernels=$(python3 -c "import csv,sys; print(len({r['ID'] for r in csv.DictReader(open(sys.argv[1]))}))" "$OUT/$name.details.csv" 2>/dev/null || echo 0) rep $REP/$name.ncu-rep"
+      else
+        echo "FAILED $name: no report"; tr '\r' '\n' < "$OUT/$name.log" | grep -E "==ERROR==|==WARNING==|Traceback|Error" | head; FAILED+=("$name")
+      fi
+    done
   done
 fi
 

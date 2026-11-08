@@ -34,13 +34,16 @@ ap = argparse.ArgumentParser()
 ap.add_argument('logs', nargs='+')
 ap.add_argument('--seeds', type=int, nargs='+', default=[0, 1, 2])
 ap.add_argument('--arms', nargs='+', default=['stock', 'ab', 'abc'])
+ap.add_argument('--dense-arms', nargs='+', default=['stock'],
+                help='arms trained with dense Adam throughout: no switch line, sparse=0 (upstream comparison: stock up ups)')
 args = ap.parse_args()
 sys.stdout.reconfigure(encoding="utf-8")
 
 ARMS = tuple(args.arms)
 assert ARMS[0] == 'stock', 'the first arm must be stock (the reference)'
 TREAT = ARMS[1:]
-LABEL = {'stock': 'stock Faster-GS', 'ab': 'A+B', 'abc': 'A+B+C', 'abcd': 'A+B+C+D', 'abcds': 'A+B+C+D+S'}
+LABEL = {'stock': 'stock Faster-GS', 'ab': 'A+B', 'abc': 'A+B+C', 'abcd': 'A+B+C+D', 'abcds': 'A+B+C+D+S',
+         'up': 'upstream main', 'ups': 'upstream main + S loads'}
 ORDER = ['bicycle', 'flowers', 'garden', 'stump', 'treehill', 'room', 'counter', 'kitchen', 'bonsai']
 IMG_DROP = 1.0   # flag a test image this many dB below the median of the same image in the scene's other runs
 fin = lambda x: x is not None and math.isfinite(x)
@@ -101,11 +104,11 @@ for sc in scenes:
             for k in ('t', 'psnr', 'ssim', 'lpips', 'msit', 'peak', 'min_psnr'):
                 if not fin(rec[k]):
                     err.append(f'{name}: non-finite {k}')
-            sel = arm != 'stock'
+            sel = arm not in args.dense_arms
             if sel and (len(sw) != 1 or not sw[0].rstrip().endswith('iteration 15000')):
                 err.append(f'{name}: expected one switch at 15000, got {sw}')
             if not sel and sw:
-                err.append(f'{name}: stock run has switch lines {sw}')
+                err.append(f'{name}: dense run has switch lines {sw}')
             if rec['sparse'] != int(sel):
                 err.append(f'{name}: final sparse={rec["sparse"]}, expected {int(sel)}')
             runs[key] = rec

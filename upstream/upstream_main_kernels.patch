@@ -1,0 +1,253 @@
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernel_utils.cuh b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernel_utils.cuh
+index e106a4d..02b202a 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernel_utils.cuh
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernel_utils.cuh
+@@ -12,6 +12,12 @@ namespace faster_gs::rasterization::kernels {
+         return 1.0f / (1.0f + expf(-x));
+     }
+ 
++    // folds -0.5 and log2(e) into the conic so that blending evaluates the Gaussian with a single exp2
++    __device__ inline float4 scale_conic_for_exp2(const float4& conic_opacity) {
++        constexpr float log2e = 1.44269504089f;
++        return make_float4(-0.5f * log2e * conic_opacity.x, -log2e * conic_opacity.y, -0.5f * log2e * conic_opacity.z, conic_opacity.w);
++    }
++
+     __device__ inline mat3x3 convert_quaternion_to_rotation_matrix(
+         const float4& quaternion,
+         float& norm_sq)
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh
+index fb3984a..0b26af6 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_backward.cuh
+@@ -42,18 +42,50 @@ namespace faster_gs::rasterization::kernels::backward {
+         const float center_y,
+         const bool proper_antialiasing)
+     {
+-        const uint primitive_idx = blockIdx.x * blockDim.x + threadIdx.x;
+-        if (primitive_idx >= n_primitives || primitive_n_touched_tiles[primitive_idx] == 0) return;
++        constexpr uint warp_size = 32;
++        auto block = cg::this_thread_block();
++        auto warp = cg::tiled_partition<warp_size>(block);
++        const uint thread_idx = cg::this_grid().thread_rank();
++        const uint lane_idx = warp.thread_rank();
++
++        // threads stay alive until the warp-wide sh gradient write below
++        if (thread_idx - lane_idx >= n_primitives) return;
++        const bool valid = thread_idx < n_primitives;
++        const uint primitive_idx = valid ? thread_idx : n_primitives - 1;
++        const bool active = valid && primitive_n_touched_tiles[primitive_idx] > 0;
++
++        // gradients are not zero-initialized
++        if (valid && !active) {
++            grad_means[primitive_idx] = make_float3(0.0f);
++            grad_scales[primitive_idx] = make_float3(0.0f);
++            grad_rotations[primitive_idx] = make_float4(0.0f);
++        }
+ 
+         // load 3d mean
+-        const float3 mean3d = means[primitive_idx];
++        const float3 mean3d = active ? means[primitive_idx] : make_float3(0.0f);
+ 
+-        // sh evaluation backward
+-        const float3 dL_dmean3d_from_color = convert_sh_to_color_backward(
+-            sh_coefficients_rest, grad_sh_coefficients_0, grad_sh_coefficients_rest,
++        // sh evaluation backward, rest coefficient gradients are collected in shared memory for a coalesced write
++        extern __shared__ float3 collected_grad_sh_coefficients_rest[];
++        float3* grad_sh_coefficients_rest_primitive = collected_grad_sh_coefficients_rest + block.thread_rank() * total_sh_bases;
++        const float3 dL_dmean3d_from_color = active ? convert_sh_to_color_backward(
++            sh_coefficients_rest, grad_sh_coefficients_0, grad_sh_coefficients_rest_primitive,
+             mean3d, cam_position[0], primitive_idx,
+             active_sh_bases, total_sh_bases
+-        );
++        ) : make_float3(0.0f);
++        // zero the gradients of inactive bases and invisible primitives
++        for (uint i = active ? active_sh_bases - 1 : 0; i < total_sh_bases; i++) grad_sh_coefficients_rest_primitive[i] = make_float3(0.0f);
++        warp.sync();
++
++        // warp-wide write using 16 byte stores where possible (the warp's first primitive is a multiple of 32)
++        const uint warp_primitive_offset = thread_idx - lane_idx;
++        const uint n_floats_warp = min(warp_size, n_primitives - warp_primitive_offset) * 3 * total_sh_bases;
++        const float* collected_grad_sh_coefficients_rest_warp = reinterpret_cast<const float*>(collected_grad_sh_coefficients_rest + warp.meta_group_rank() * warp_size * total_sh_bases);
++        float* grad_sh_coefficients_rest_warp = reinterpret_cast<float*>(grad_sh_coefficients_rest + warp_primitive_offset * total_sh_bases);
++        const uint n_float4_warp = n_floats_warp / 4;
++        for (uint i = lane_idx; i < n_float4_warp; i += warp_size) reinterpret_cast<float4*>(grad_sh_coefficients_rest_warp)[i] = reinterpret_cast<const float4*>(collected_grad_sh_coefficients_rest_warp)[i];
++        for (uint i = 4 * n_float4_warp + lane_idx; i < n_floats_warp; i += warp_size) grad_sh_coefficients_rest_warp[i] = collected_grad_sh_coefficients_rest_warp[i];
++
++        if (!active) return;
+ 
+         const float4 w2c_r3 = w2c[2];
+         const float depth = w2c_r3.x * mean3d.x + w2c_r3.y * mean3d.y + w2c_r3.z * mean3d.z + w2c_r3.w;
+@@ -313,6 +345,7 @@ namespace faster_gs::rasterization::kernels::backward {
+         uint primitive_idx = 0;
+         float2 mean2d = {0.0f, 0.0f};
+         float3 conic = {0.0f, 0.0f, 0.0f};
++        float3 conic_exp2 = {0.0f, 0.0f, 0.0f};
+         float opacity = 0.0f;
+         float3 color = {0.0f, 0.0f, 0.0f};
+         float3 color_grad_factor = {0.0f, 0.0f, 0.0f};
+@@ -321,6 +354,7 @@ namespace faster_gs::rasterization::kernels::backward {
+             mean2d = primitive_mean2d[primitive_idx];
+             const float4 conic_opacity = primitive_conic_opacity[primitive_idx];
+             conic = make_float3(conic_opacity);
++            conic_exp2 = make_float3(scale_conic_for_exp2(conic_opacity));
+             opacity = conic_opacity.w;
+             const float3 color_unclamped = primitive_color[primitive_idx];
+             color = fmaxf(color_unclamped, 0.0f);
+@@ -426,8 +460,8 @@ namespace faster_gs::rasterization::kernels::backward {
+ 
+             const float2 pixel = make_float2(__uint2float_rn(pixel_coords.x), __uint2float_rn(pixel_coords.y)) + 0.5f;
+             const float2 delta = mean2d - pixel;
+-            const float exponent = -0.5f * (conic.x * delta.x * delta.x + conic.z * delta.y * delta.y) - conic.y * delta.x * delta.y;
+-            const float gaussian = expf(fminf(exponent, 0.0f));
++            const float exponent = delta.x * (conic_exp2.x * delta.x + conic_exp2.y * delta.y) + conic_exp2.z * delta.y * delta.y;
++            const float gaussian = exp2f(fminf(exponent, 0.0f));
+             if (!config::original_opacity_interpretation && gaussian < config::min_alpha_threshold) continue;
+             const float alpha = opacity * gaussian;
+             if (config::original_opacity_interpretation && alpha < config::min_alpha_threshold) continue;
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_forward.cuh b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_forward.cuh
+index 29a723b..199075c 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_forward.cuh
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_forward.cuh
+@@ -427,7 +427,7 @@ namespace faster_gs::rasterization::kernels::forward {
+                 const uint primitive_idx = instance_primitive_indices[current_fetch_idx];
+                 collected_screen_bounds[thread_rank] = primitive_screen_bounds[primitive_idx];
+                 collected_mean2d[thread_rank] = primitive_mean2d[primitive_idx];
+-                collected_conic_opacity[thread_rank] = primitive_conic_opacity[primitive_idx];
++                collected_conic_opacity[thread_rank] = scale_conic_for_exp2(primitive_conic_opacity[primitive_idx]);
+                 const float3 color = fmaxf(primitive_color[primitive_idx], 0.0f);
+                 collected_color[thread_rank] = color;
+             }
+@@ -459,8 +459,8 @@ namespace faster_gs::rasterization::kernels::forward {
+                     const float3 conic = make_float3(conic_opacity);
+                     const float opacity = conic_opacity.w;
+                     const float2 delta = collected_mean2d[j] - pixel;
+-                    const float exponent = -0.5f * (conic.x * delta.x * delta.x + conic.z * delta.y * delta.y) - conic.y * delta.x * delta.y;
+-                    const float gaussian = expf(fminf(exponent, 0.0f));
++                    const float exponent = delta.x * (conic.x * delta.x + conic.y * delta.y) + conic.z * delta.y * delta.y;
++                    const float gaussian = exp2f(fminf(exponent, 0.0f));
+                     if (!config::original_opacity_interpretation && gaussian < config::min_alpha_threshold) continue;
+                     const float alpha = opacity * gaussian;
+                     if (config::original_opacity_interpretation && alpha < config::min_alpha_threshold) continue;
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_inference.cuh b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_inference.cuh
+index 605bd1c..bd7b2e5 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_inference.cuh
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_inference.cuh
+@@ -397,7 +397,7 @@ namespace faster_gs::rasterization::kernels::inference {
+                 const uint primitive_idx = instance_primitive_indices[current_fetch_idx];
+                 collected_screen_bounds[thread_rank] = primitive_screen_bounds[primitive_idx];
+                 collected_mean2d[thread_rank] = primitive_mean2d[primitive_idx];
+-                collected_conic_opacity[thread_rank] = primitive_conic_opacity[primitive_idx];
++                collected_conic_opacity[thread_rank] = scale_conic_for_exp2(primitive_conic_opacity[primitive_idx]);
+                 collected_color[thread_rank] = primitive_color[primitive_idx];
+             }
+             block.sync();
+@@ -420,8 +420,8 @@ namespace faster_gs::rasterization::kernels::inference {
+                     const float3 conic = make_float3(conic_opacity);
+                     const float opacity = conic_opacity.w;
+                     const float2 delta = collected_mean2d[j] - pixel;
+-                    const float exponent = -0.5f * (conic.x * delta.x * delta.x + conic.z * delta.y * delta.y) - conic.y * delta.x * delta.y;
+-                    const float gaussian = expf(fminf(exponent, 0.0f));
++                    const float exponent = delta.x * (conic.x * delta.x + conic.y * delta.y) + conic.z * delta.y * delta.y;
++                    const float gaussian = exp2f(fminf(exponent, 0.0f));
+                     if (!config::original_opacity_interpretation && gaussian < config::min_alpha_threshold) continue;
+                     const float alpha = opacity * gaussian;
+                     if (config::original_opacity_interpretation && alpha < config::min_alpha_threshold) continue;
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_pruning_scores.cuh b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_pruning_scores.cuh
+index 25f1871..f956459 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_pruning_scores.cuh
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/kernels_pruning_scores.cuh
+@@ -396,7 +396,7 @@ namespace faster_gs::rasterization::kernels::pruning_scores {
+                 const uint primitive_idx = instance_primitive_indices[current_fetch_idx];
+                 collected_screen_bounds[thread_rank] = primitive_screen_bounds[primitive_idx];
+                 collected_mean2d[thread_rank] = primitive_mean2d[primitive_idx];
+-                collected_conic_opacity[thread_rank] = primitive_conic_opacity[primitive_idx];
++                collected_conic_opacity[thread_rank] = scale_conic_for_exp2(primitive_conic_opacity[primitive_idx]);
+                 collected_color[thread_rank] = primitive_color[primitive_idx];
+             }
+             block.sync();
+@@ -419,8 +419,8 @@ namespace faster_gs::rasterization::kernels::pruning_scores {
+                     const float3 conic = make_float3(conic_opacity);
+                     const float opacity = conic_opacity.w;
+                     const float2 delta = collected_mean2d[j] - pixel;
+-                    const float exponent = -0.5f * (conic.x * delta.x * delta.x + conic.z * delta.y * delta.y) - conic.y * delta.x * delta.y;
+-                    const float gaussian = expf(fminf(exponent, 0.0f));
++                    const float exponent = delta.x * (conic.x * delta.x + conic.y * delta.y) + conic.z * delta.y * delta.y;
++                    const float gaussian = exp2f(fminf(exponent, 0.0f));
+                     if (!config::original_opacity_interpretation && gaussian < config::min_alpha_threshold) continue;
+                     const float alpha = opacity * gaussian;
+                     if (config::original_opacity_interpretation && alpha < config::min_alpha_threshold) continue;
+@@ -451,7 +451,7 @@ namespace faster_gs::rasterization::kernels::pruning_scores {
+                 collected_primitive_idx[thread_rank] = primitive_idx;
+                 collected_screen_bounds[thread_rank] = primitive_screen_bounds[primitive_idx];
+                 collected_mean2d[thread_rank] = primitive_mean2d[primitive_idx];
+-                collected_conic_opacity[thread_rank] = primitive_conic_opacity[primitive_idx];
++                collected_conic_opacity[thread_rank] = scale_conic_for_exp2(primitive_conic_opacity[primitive_idx]);
+                 collected_color[thread_rank] = primitive_color[primitive_idx];
+             }
+             block.sync();
+@@ -474,8 +474,8 @@ namespace faster_gs::rasterization::kernels::pruning_scores {
+                     const float3 conic = make_float3(conic_opacity);
+                     const float opacity = conic_opacity.w;
+                     const float2 delta = collected_mean2d[j] - pixel;
+-                    const float exponent = -0.5f * (conic.x * delta.x * delta.x + conic.z * delta.y * delta.y) - conic.y * delta.x * delta.y;
+-                    const float gaussian = expf(fminf(exponent, 0.0f));
++                    const float exponent = delta.x * (conic.x * delta.x + conic.y * delta.y) + conic.z * delta.y * delta.y;
++                    const float gaussian = exp2f(fminf(exponent, 0.0f));
+                     if (!config::original_opacity_interpretation && gaussian < config::min_alpha_threshold) continue;
+                     const float alpha = opacity * gaussian;
+                     if (config::original_opacity_interpretation && alpha < config::min_alpha_threshold) continue;
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/sh_utils.cuh b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/sh_utils.cuh
+index f28e1f7..487797d 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/sh_utils.cuh
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/include/sh_utils.cuh
+@@ -71,7 +71,7 @@ namespace faster_gs::rasterization::kernels {
+     __device__ inline float3 convert_sh_to_color_backward(
+         const float3* __restrict__ sh_coefficients_rest,
+         float3* __restrict__ grad_sh_coefficients_0,
+-        float3* __restrict__ grad_sh_coefficients_rest,
++        float3* __restrict__ grad_coefficients_ptr,
+         const float3& position,
+         const float3& cam_position,
+         const uint primitive_idx,
+@@ -81,7 +81,6 @@ namespace faster_gs::rasterization::kernels {
+         // computation adapted from https://github.com/NVlabs/tiny-cuda-nn/blob/212104156403bd87616c1a4f73a1c5f2c2e172a9/include/tiny-cuda-nn/common_device.h#L421
+         const uint coefficients_base_idx = primitive_idx * total_sh_bases_rest;
+         const float3* coefficients_ptr = sh_coefficients_rest + coefficients_base_idx;
+-        float3* grad_coefficients_ptr = grad_sh_coefficients_rest + coefficients_base_idx;
+         const float3 grad_color = grad_sh_coefficients_0[primitive_idx];
+         grad_sh_coefficients_0[primitive_idx] = C0 * grad_color;
+         float3 dcolor_dposition = make_float3(0.0f);
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/backward.cu b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/backward.cu
+index 07b4553..8f704f8 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/backward.cu
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/backward.cu
+@@ -94,7 +94,7 @@ void faster_gs::rasterization::backward(
+         dispatch_rasterize_backward(instance_buffers.primitive_indices.Current());
+     }
+ 
+-    kernels::backward::preprocess_backward_cu<<<div_round_up(n_primitives, config::block_size_preprocess_backward), config::block_size_preprocess_backward>>>(
++    kernels::backward::preprocess_backward_cu<<<div_round_up(n_primitives, config::block_size_preprocess_backward), config::block_size_preprocess_backward, config::block_size_preprocess_backward * total_sh_bases * sizeof(float3)>>>(
+         means,
+         scales,
+         rotations,
+diff --git a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/rasterization_api.cu b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/rasterization_api.cu
+index b3c8e0c..65b1d0c 100644
+--- a/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/rasterization_api.cu
++++ b/FasterGSCudaBackend/FasterGSCudaBackend/rasterization/src/rasterization_api.cu
+@@ -124,12 +124,12 @@ faster_gs::rasterization::backward_wrapper(
+     const int n_primitives = means.size(0);
+     const int total_sh_bases = sh_coefficients_rest.size(1);
+     const torch::TensorOptions float_options = torch::TensorOptions().dtype(torch::kFloat).device(torch::kCUDA);
+-    torch::Tensor grad_means = torch::zeros({n_primitives, 3}, float_options);
+-    torch::Tensor grad_scales = torch::zeros({n_primitives, 3}, float_options);
+-    torch::Tensor grad_rotations = torch::zeros({n_primitives, 4}, float_options);
++    torch::Tensor grad_means = torch::empty({n_primitives, 3}, float_options);
++    torch::Tensor grad_scales = torch::empty({n_primitives, 3}, float_options);
++    torch::Tensor grad_rotations = torch::empty({n_primitives, 4}, float_options);
+     torch::Tensor grad_opacities = torch::zeros({n_primitives, 1}, float_options);
+     torch::Tensor grad_sh_coefficients_0 = torch::zeros({n_primitives, 1, 3}, float_options);
+-    torch::Tensor grad_sh_coefficients_rest = torch::zeros({n_primitives, total_sh_bases, 3}, float_options);
++    torch::Tensor grad_sh_coefficients_rest = torch::empty({n_primitives, total_sh_bases, 3}, float_options);
+     torch::Tensor grad_mean2d_helper = torch::zeros({n_primitives, 2}, float_options);
+     torch::Tensor grad_conic_helper = torch::zeros({3, n_primitives}, float_options);
+ 
