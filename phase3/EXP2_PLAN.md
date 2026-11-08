@@ -77,10 +77,20 @@ resolution schedule changes the early trajectory and the population that grows f
     pixels [k·i', k·i' + k), so its centre k·(i' + 0.5) is exactly where the scaled camera puts it. Cropping at the right
     and bottom does not move the origin, so no half-pixel shift is needed.
   - Both happen inside the training clock.
-- **Smoke test for the mapping:** render a trained garden model through the k = 2 and k = 4 cameras and compare each
-  result with the full-resolution render, cropped and average-pooled the same way. The two must agree to within
-  anti-aliasing differences, with no shift: the best match over ±1 pixel offsets must be at offset 0. The test also checks
-  that camera and photo sizes are equal at every switch.
+- **Smoke test for the mapping, in three parts.** Rendering at low resolution is not the same operation as rendering at
+  full resolution and averaging. Alpha compositing is nonlinear, and the screen-space dilation and the Gaussians' cut-off
+  are fixed in pixels. A correct camera can therefore still give a different image, so image equality is not required.
+  1. **Geometry (pass/fail):** project a set of 3D points, including the scene's Gaussian means, through the full and the
+     k = 2 and k = 4 cameras. Every projected coordinate must satisfy u' = u / k and v' = v / k to within float precision.
+  2. **Alignment (pass/fail):** a small synthetic scene of a few sharp, distinctive Gaussians, rendered at full
+     resolution and through the k = 2 and k = 4 cameras. The centroid of each blob must sit where check 1 predicts, with no
+     systematic offset: mean offset below 0.05 low-resolution pixels in x and y.
+  3. **Training (pass/fail):** a short run through both switches (2,000 and 6,000 steps). Camera and photo sizes are equal
+     at every step, forward and backward run at each resolution, gradients are finite, and the loss shows no jump larger
+     than its normal step-to-step spread at a switch.
+  - **Diagnostic only:** a trained garden model rendered through the k = 2 and k = 4 cameras, compared with the
+    full-resolution render cropped and average-pooled the same way. The PSNR between them and the best-matching offset
+    within ±1 pixel are reported. Neither is a requirement.
 - **Test evaluation is always at full resolution.**
 - **Densification coupling (decided here, not tuned on results):**
   - Faster-GS accumulates the screen-space mean gradient after converting it from pixels to normalised screen units
