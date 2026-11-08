@@ -35,7 +35,7 @@ from pathlib import Path
 
 import re
 
-MARK = '# >>> fgs-resume v4'
+MARK = '# >>> fgs-resume v5'
 path = Path(sys.argv[1])
 src = path.read_text()
 if MARK in src:
@@ -49,7 +49,7 @@ assert '# >>> fgs-sparse-from v5' in src and '        # <<< fgs-segclock\n' in s
 
 # 2. save hook: after the clock hook has booked the step
 A_SAVE = '        # <<< fgs-segclock\n'
-SAVE = A_SAVE + '''        # >>> fgs-resume v4 (save)
+SAVE = A_SAVE + '''        # >>> fgs-resume v5 (save)
         if __import__('os').environ.get('FGS_VIEW_TRACE'):
             if not hasattr(self, '_fgs_vt'):
                 self._fgs_vt = open(__import__('os').environ['FGS_VIEW_TRACE'], 'a', buffering=1)
@@ -83,7 +83,7 @@ src = src.replace(A_SAVE, SAVE, 1)
 
 # 3. run() override: pre-training callbacks with the current config, then the saved state, then the normal loop
 A_RUN = '    @training_callback(priority=80)\n    def training_iteration('
-RUN = '''    # >>> fgs-resume v4 (run)
+RUN = '''    # >>> fgs-resume v5 (run)
     def run(self, dataset: 'BaseDataset') -> None:
         _os = __import__('os')
         _p = _os.environ.get('FGS_RESUME')
@@ -105,7 +105,12 @@ RUN = '''    # >>> fgs-resume v4 (run)
         g.active_sh_degree = st['active_sh_degree']
         g.active_sh_bases = (g.active_sh_degree + 1) ** 2
         g._densification_info = None if (self.USE_MCMC or st['densification_info'] is None) else st['densification_info'].cuda().contiguous()
-        self.train_sampler.id_sampler = st['id_sampler']
+        _fresh, _ids = self.train_sampler.id_sampler, st['id_sampler']
+        for _k, _v in vars(_ids).items():   # tensors back to the device the freshly built sampler uses (cuda by default)
+            if torch.is_tensor(_v):
+                _ref = getattr(_fresh, _k, None)
+                setattr(_ids, _k, _v.to(_ref.device if torch.is_tensor(_ref) else torch.empty(0).device))
+        self.train_sampler.id_sampler = _ids
         torch.set_rng_state(st['rng_cpu'])
         torch.cuda.set_rng_state(st['rng_cuda'])
         if 'rng_python' in st:
