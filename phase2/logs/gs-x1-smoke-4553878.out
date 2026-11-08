@@ -1,0 +1,138 @@
+node=c104 job=4553878 gpu=NVIDIA H100 stages=exp1smoke repo=be935a0
+base=FasterGSPlusDS (abcds, patches: phase2/deferred_reduce_v2.patch phase2/sh_coalesce.patch)
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSUp/Trainer.py
+########## exp1smoke (garden seed 0; 4 uninterrupted runs to 3000, state saved at 2000; ctl x3 / stop / mcmc resumed 2000 -> 3000)
+##### xs_garden_pfx_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 15:03:23
+SEGCLOCK step=1000 seg_s=2.148 cum_s=2.148 sparse=0 N=268558 peak_alloc_gib=2.38
+SEGCLOCK step=2000 seg_s=3.046 cum_s=5.194 sparse=0 N=1047404 peak_alloc_gib=3.21
+FGS_SAVE_STATE step=2000 N=1047404 cum_s=5.194 param_sha=5f031f596a8a9fdc optim_sha=98ea8fded904338c dinfo_sha=2fe9bb6cd811c61a path=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_pfx_s0_2026-11-08-15-03-33/checkpoints/state_0002000.pt
+SEGCLOCK step=3000 seg_s=4.662 cum_s=9.856 sparse=0 N=1947574 peak_alloc_gib=67.98
+FGS_TRAIN_END N=1947574 peak_alloc_gib=67.98 peak_reserved_gib=68.11
+RUNDIR xs_garden_pfx_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_pfx_s0_2026-11-08-15-03-33
+PERIMG xs_garden_pfx_s0 n_images=24 min_image=4 min_psnr=20.58
+RESULT xs_garden_pfx_s0 PSNR:25.045028368632 SSIM:0.7575728992621104 LPIPS:0.28909990812341374 N_Gaussians:1947573 ms_it=3.74  allocated: 67.98 GiB
+##### xs_garden_pfx2_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 15:05:00
+SEGCLOCK step=1000 seg_s=2.168 cum_s=2.168 sparse=0 N=268951 peak_alloc_gib=2.38
+SEGCLOCK step=2000 seg_s=3.015 cum_s=5.183 sparse=0 N=1044915 peak_alloc_gib=3.20
+FGS_SAVE_STATE step=2000 N=1044915 cum_s=5.183 param_sha=0d7bc3ff3fe9c465 optim_sha=66725e33b0012eb7 dinfo_sha=1ce52eadf9c4658c path=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_pfx2_s0_2026-11-08-15-05-07/checkpoints/state_0002000.pt
+SEGCLOCK step=3000 seg_s=4.583 cum_s=9.765 sparse=0 N=1951737 peak_alloc_gib=67.97
+FGS_TRAIN_END N=1951737 peak_alloc_gib=67.97 peak_reserved_gib=68.11
+RUNDIR xs_garden_pfx2_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_pfx2_s0_2026-11-08-15-05-07
+PERIMG xs_garden_pfx2_s0 n_images=24 min_image=4 min_psnr=20.55
+RESULT xs_garden_pfx2_s0 PSNR:25.038949489593506 SSIM:0.75761662175258 LPIPS:0.2882426070670287 N_Gaussians:1951737 ms_it=3.72  allocated: 67.97 GiB
+##### xs_garden_pfx3_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 15:06:37
+SEGCLOCK step=1000 seg_s=2.118 cum_s=2.118 sparse=0 N=268909 peak_alloc_gib=2.38
+SEGCLOCK step=2000 seg_s=3.038 cum_s=5.156 sparse=0 N=1042908 peak_alloc_gib=3.20
+FGS_SAVE_STATE step=2000 N=1042908 cum_s=5.156 param_sha=ce2817a107ce3e15 optim_sha=f532822d49a8b84b dinfo_sha=08918e2e1cd75665 path=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_pfx3_s0_2026-11-08-15-06-44/checkpoints/state_0002000.pt
+SEGCLOCK step=3000 seg_s=4.553 cum_s=9.709 sparse=0 N=1940032 peak_alloc_gib=67.97
+FGS_TRAIN_END N=1940032 peak_alloc_gib=67.97 peak_reserved_gib=68.11
+RUNDIR xs_garden_pfx3_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_pfx3_s0_2026-11-08-15-06-44
+PERIMG xs_garden_pfx3_s0 n_images=24 min_image=4 min_psnr=20.98
+RESULT xs_garden_pfx3_s0 PSNR:25.05746563275655 SSIM:0.7574494555592537 LPIPS:0.28896600753068924 N_Gaussians:1940029 ms_it=3.66  allocated: 67.97 GiB
+##### xs_garden_pfx4_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 15:08:11
+SEGCLOCK step=1000 seg_s=2.090 cum_s=2.090 sparse=0 N=268582 peak_alloc_gib=2.38
+SEGCLOCK step=2000 seg_s=3.063 cum_s=5.153 sparse=0 N=1046627 peak_alloc_gib=3.20
+FGS_SAVE_STATE step=2000 N=1046627 cum_s=5.153 param_sha=05618f64f1a48a51 optim_sha=076a782e5eecb705 dinfo_sha=3a6c4097cac7f2b6 path=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_pfx4_s0_2026-11-08-15-08-19/checkpoints/state_0002000.pt
+SEGCLOCK step=3000 seg_s=4.457 cum_s=9.610 sparse=0 N=1949076 peak_alloc_gib=67.98
+FGS_TRAIN_END N=1949076 peak_alloc_gib=67.98 peak_reserved_gib=68.28
+RUNDIR xs_garden_pfx4_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_pfx4_s0_2026-11-08-15-08-19
+PERIMG xs_garden_pfx4_s0 n_images=24 min_image=4 min_psnr=20.61
+RESULT xs_garden_pfx4_s0 PSNR:25.069498697916668 SSIM:0.7574743206302325 LPIPS:0.2897305178145568 N_Gaussians:1949076 ms_it=3.86  allocated: 67.98 GiB
+##### xs_garden_ctl_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 15:09:48
+FGS_RESUME step=2000 N=1047404 cum_s=5.194 sh_degree=1 param_sha=5f031f596a8a9fdc optim_sha=98ea8fded904338c dinfo_sha=2fe9bb6cd811c61a densification_info=(2, 1047404) use_mcmc=False max_primitives=1000000 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_pfx_s0_2026-11-08-15-03-33/checkpoints/state_0002000.pt
+SEGCLOCK step=3000 seg_s=4.586 cum_s=9.779 sparse=0 N=1949429 peak_alloc_gib=67.98
+FGS_TRAIN_END N=1949429 peak_alloc_gib=67.98 peak_reserved_gib=68.07
+RUNDIR xs_garden_ctl_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_ctl_s0_2026-11-08-15-09-56
+PERIMG xs_garden_ctl_s0 n_images=24 min_image=4 min_psnr=20.45
+RESULT xs_garden_ctl_s0 PSNR:25.06361222267151 SSIM:0.7577617888649305 LPIPS:0.28924324611822766 N_Gaussians:1949428 ms_it=4.63  allocated: 67.98 GiB
+##### xs_garden_ctl2_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 15:11:18
+FGS_RESUME step=2000 N=1047404 cum_s=5.194 sh_degree=1 param_sha=5f031f596a8a9fdc optim_sha=98ea8fded904338c dinfo_sha=2fe9bb6cd811c61a densification_info=(2, 1047404) use_mcmc=False max_primitives=1000000 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_pfx_s0_2026-11-08-15-03-33/checkpoints/state_0002000.pt
+SEGCLOCK step=3000 seg_s=4.556 cum_s=9.750 sparse=0 N=1948426 peak_alloc_gib=67.98
+FGS_TRAIN_END N=1948426 peak_alloc_gib=67.98 peak_reserved_gib=68.07
+RUNDIR xs_garden_ctl2_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_ctl2_s0_2026-11-08-15-11-26
+PERIMG xs_garden_ctl2_s0 n_images=24 min_image=4 min_psnr=20.52
+RESULT xs_garden_ctl2_s0 PSNR:25.06332532564799 SSIM:0.7576612581809362 LPIPS:0.2889921007057031 N_Gaussians:1948425 ms_it=4.60  allocated: 67.98 GiB
+##### xs_garden_ctl3_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 15:12:47
+FGS_RESUME step=2000 N=1047404 cum_s=5.194 sh_degree=1 param_sha=5f031f596a8a9fdc optim_sha=98ea8fded904338c dinfo_sha=2fe9bb6cd811c61a densification_info=(2, 1047404) use_mcmc=False max_primitives=1000000 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_pfx_s0_2026-11-08-15-03-33/checkpoints/state_0002000.pt
+SEGCLOCK step=3000 seg_s=4.543 cum_s=9.737 sparse=0 N=1950201 peak_alloc_gib=67.98
+FGS_TRAIN_END N=1950201 peak_alloc_gib=67.98 peak_reserved_gib=68.07
+RUNDIR xs_garden_ctl3_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_ctl3_s0_2026-11-08-15-12-55
+PERIMG xs_garden_ctl3_s0 n_images=24 min_image=4 min_psnr=20.52
+RESULT xs_garden_ctl3_s0 PSNR:25.049840211868286 SSIM:0.7576962783932686 LPIPS:0.2891892045736313 N_Gaussians:1950201 ms_it=4.59  allocated: 67.98 GiB
+##### xs_garden_stop_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 15:14:16
+FGS_RESUME step=2000 N=1047404 cum_s=5.194 sh_degree=1 param_sha=5f031f596a8a9fdc optim_sha=98ea8fded904338c dinfo_sha=2fe9bb6cd811c61a densification_info=(2, 1047404) use_mcmc=False max_primitives=1000000 densification_end=2000 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_pfx_s0_2026-11-08-15-03-33/checkpoints/state_0002000.pt
+SEGCLOCK step=2100 seg_s=0.391 cum_s=5.585 sparse=0 N=1140939 peak_alloc_gib=67.98
+SEGCLOCK step=2200 seg_s=0.380 cum_s=5.965 sparse=0 N=1140939 peak_alloc_gib=67.98
+SEGCLOCK step=2300 seg_s=0.380 cum_s=6.345 sparse=0 N=1140939 peak_alloc_gib=67.98
+SEGCLOCK step=2400 seg_s=0.383 cum_s=6.728 sparse=0 N=1140939 peak_alloc_gib=67.98
+SEGCLOCK step=2500 seg_s=0.377 cum_s=7.104 sparse=0 N=1140939 peak_alloc_gib=67.98
+SEGCLOCK step=2600 seg_s=0.382 cum_s=7.486 sparse=0 N=1140939 peak_alloc_gib=67.98
+SEGCLOCK step=2700 seg_s=0.377 cum_s=7.863 sparse=0 N=1140939 peak_alloc_gib=67.98
+SEGCLOCK step=2800 seg_s=0.375 cum_s=8.238 sparse=0 N=1140939 peak_alloc_gib=67.98
+SEGCLOCK step=2900 seg_s=0.374 cum_s=8.612 sparse=0 N=1140939 peak_alloc_gib=67.98
+SEGCLOCK step=3000 seg_s=0.377 cum_s=8.989 sparse=0 N=1140939 peak_alloc_gib=67.98
+FGS_TRAIN_END N=1140939 peak_alloc_gib=67.98 peak_reserved_gib=68.07
+RUNDIR xs_garden_stop_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_stop_s0_2026-11-08-15-14-23
+PERIMG xs_garden_stop_s0 n_images=24 min_image=4 min_psnr=20.42
+RESULT xs_garden_stop_s0 PSNR:25.017101049423218 SSIM:0.7505927061041197 LPIPS:0.29997749129931134 N_Gaussians:1140919 ms_it=3.84  allocated: 67.98 GiB
+##### xs_garden_mcmc_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 15:15:44
+FGS_RESUME step=2000 N=1047404 cum_s=5.194 sh_degree=1 param_sha=5f031f596a8a9fdc optim_sha=98ea8fded904338c dinfo_sha=none densification_info=none use_mcmc=True max_primitives=1047404 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.05,scales:0.005,rotations:0.001 lambda_opacity=0.01 lambda_scale=0.01 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_pfx_s0_2026-11-08-15-03-33/checkpoints/state_0002000.pt
+SEGCLOCK step=2100 seg_s=0.388 cum_s=5.581 sparse=0 N=1047404 peak_alloc_gib=67.97
+SEGCLOCK step=2200 seg_s=0.388 cum_s=5.969 sparse=0 N=1047404 peak_alloc_gib=67.97
+SEGCLOCK step=2300 seg_s=0.387 cum_s=6.356 sparse=0 N=1047404 peak_alloc_gib=67.97
+SEGCLOCK step=2400 seg_s=0.390 cum_s=6.746 sparse=0 N=1047404 peak_alloc_gib=67.97
+SEGCLOCK step=2500 seg_s=0.386 cum_s=7.133 sparse=0 N=1047404 peak_alloc_gib=67.97
+SEGCLOCK step=2600 seg_s=0.380 cum_s=7.513 sparse=0 N=1047404 peak_alloc_gib=67.97
+SEGCLOCK step=2700 seg_s=0.379 cum_s=7.891 sparse=0 N=1047404 peak_alloc_gib=67.97
+SEGCLOCK step=2800 seg_s=0.376 cum_s=8.268 sparse=0 N=1047404 peak_alloc_gib=67.97
+SEGCLOCK step=2900 seg_s=0.377 cum_s=8.645 sparse=0 N=1047404 peak_alloc_gib=67.97
+SEGCLOCK step=3000 seg_s=0.378 cum_s=9.024 sparse=0 N=1047404 peak_alloc_gib=67.97
+FGS_TRAIN_END N=1047404 peak_alloc_gib=67.97 peak_reserved_gib=68.05
+RUNDIR xs_garden_mcmc_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_mcmc_s0_2026-11-08-15-15-52
+PERIMG xs_garden_mcmc_s0 n_images=24 min_image=4 min_psnr=20.60
+RESULT xs_garden_mcmc_s0 PSNR:24.703566630681355 SSIM:0.7385860656698545 LPIPS:0.3115348853170872 N_Gaussians:1042165 ms_it=3.87  allocated: 67.97 GiB
+view trace: 3000 steps, 161 distinct frame_idx, first lines: ['0 0 140 140', '1 0 68 68', '2 0 125 125']
+learning rates / regularisation after resume: {'ctl': ('0.025', (0.0, 0.0)), 'ctl2': ('0.025', (0.0, 0.0)), 'ctl3': ('0.025', (0.0, 0.0)), 'stop': ('0.025', (0.0, 0.0)), 'mcmc': ('0.05', (0.01, 0.01))}
+PSNR at 3000, uninterrupted: 25.0450 25.0389 25.0575 25.0695 | resumed ctl: 25.0636 25.0633 25.0498
+N at 3000, uninterrupted: [1947574, 1951737, 1940032, 1949076] | resumed ctl: [1949429, 1948426, 1950201]
+stop N: {2100: 1140939, 2200: 1140939, 2300: 1140939, 2400: 1140939, 2500: 1140939, 2600: 1140939, 2700: 1140939, 2800: 1140939, 2900: 1140939, 3000: 1140939} 
+mcmc N: {2100: 1047404, 2200: 1047404, 2300: 1047404, 2400: 1047404, 2500: 1047404, 2600: 1047404, 2700: 1047404, 2800: 1047404, 2900: 1047404, 3000: 1047404}
+PASS prefix wrote the state
+PASS view trace holds real camera identities (frame_idx never None, > 50 distinct in 3000 steps)
+PASS the 4 uninterrupted runs saw the same views 0-2999
+PASS ctl: resumed at 2000
+PASS ctl: parameters and optimizer state after loading equal the saved ones (SHA-256 of the full bytes)
+PASS ctl: densification statistics restored (SHA-256), or dropped for MCMC
+PASS ctl: test_2000 per-image metrics identical to the uninterrupted run (same state)
+PASS ctl: clock continues (cum_s at 3000 > prefix cum_s at 2000)
+PASS ctl2: resumed at 2000
+PASS ctl2: parameters and optimizer state after loading equal the saved ones (SHA-256 of the full bytes)
+PASS ctl2: densification statistics restored (SHA-256), or dropped for MCMC
+PASS ctl2: test_2000 per-image metrics identical to the uninterrupted run (same state)
+PASS ctl2: clock continues (cum_s at 3000 > prefix cum_s at 2000)
+PASS ctl3: resumed at 2000
+PASS ctl3: parameters and optimizer state after loading equal the saved ones (SHA-256 of the full bytes)
+PASS ctl3: densification statistics restored (SHA-256), or dropped for MCMC
+PASS ctl3: test_2000 per-image metrics identical to the uninterrupted run (same state)
+PASS ctl3: clock continues (cum_s at 3000 > prefix cum_s at 2000)
+PASS stop: resumed at 2000
+PASS stop: parameters and optimizer state after loading equal the saved ones (SHA-256 of the full bytes)
+PASS stop: densification statistics restored (SHA-256), or dropped for MCMC
+PASS stop: test_2000 per-image metrics identical to the uninterrupted run (same state)
+PASS stop: clock continues (cum_s at 3000 > prefix cum_s at 2000)
+PASS mcmc: resumed at 2000
+PASS mcmc: parameters and optimizer state after loading equal the saved ones (SHA-256 of the full bytes)
+PASS mcmc: densification statistics restored (SHA-256), or dropped for MCMC
+PASS mcmc: test_2000 per-image metrics identical to the uninterrupted run (same state)
+PASS mcmc: clock continues (cum_s at 3000 > prefix cum_s at 2000)
+PASS ctl: same views 2000-2999 as the uninterrupted run
+PASS ctl2: same views 2000-2999 as the uninterrupted run
+PASS ctl3: same views 2000-2999 as the uninterrupted run
+PASS ctl: opacity lr 0.025, regularisation 0
+PASS mcmc: opacity lr 0.05, regularisation 0.01 / 0.01
+PASS ctl: mean PSNR at 3000 within the uninterrupted runs' range of their mean
+PASS ctl: mean N at 3000 within the uninterrupted runs' range of their mean
+PASS stop: N constant from 2100 to 3000 (only the branch step densifies)
+PASS mcmc: N == N at 2000 at every 100-step point 2100-3000 (population held)
+JOB OK

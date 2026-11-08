@@ -1,0 +1,5 @@
+SEGCLOCK step=1000 seg_s=2.148 cum_s=2.148 sparse=0 N=268558 peak_alloc_gib=2.38
+SEGCLOCK step=2000 seg_s=3.046 cum_s=5.194 sparse=0 N=1047404 peak_alloc_gib=3.21
+FGS_SAVE_STATE step=2000 N=1047404 cum_s=5.194 param_sha=5f031f596a8a9fdc optim_sha=98ea8fded904338c dinfo_sha=2fe9bb6cd811c61a path=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_pfx_s0_2026-11-08-15-03-33/checkpoints/state_0002000.pt
+SEGCLOCK step=3000 seg_s=4.662 cum_s=9.856 sparse=0 N=1947574 peak_alloc_gib=67.98
+FGS_TRAIN_END N=1947574 peak_alloc_gib=67.98 peak_reserved_gib=68.11

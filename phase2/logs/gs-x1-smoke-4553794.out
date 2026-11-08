@@ -1,0 +1,47 @@
+node=c101 job=4553794 gpu=NVIDIA H100 stages=exp1smoke repo=76166ca
+base=FasterGSPlusDS (abcds, patches: phase2/deferred_reduce_v2.patch phase2/sh_coalesce.patch)
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSUp/Trainer.py
+########## exp1smoke (garden seed 0; two uninterrupted runs to 3000 (noise floor), state saved at 2000; ctl / stop / mcmc resumed 2000 -> 3000)
+##### xs_garden_pfx_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 14:44:19
+SEGCLOCK step=1000 seg_s=2.154 cum_s=2.154 sparse=0 N=268764 peak_alloc_gib=2.38
+SEGCLOCK step=2000 seg_s=3.130 cum_s=5.284 sparse=0 N=1042188 peak_alloc_gib=3.20
+FGS_SAVE_STATE step=2000 N=1042188 cum_s=5.284 param_sha=b7b922cfc7ffeaab optim_sha=310b7670c984965b dinfo_sha=666086bc5aa0740d path=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_pfx_s0_2026-11-08-14-44-32/checkpoints/state_0002000.pt
+SEGCLOCK step=3000 seg_s=4.599 cum_s=9.883 sparse=0 N=1938367 peak_alloc_gib=67.97
+FGS_TRAIN_END N=1938367 peak_alloc_gib=67.97 peak_reserved_gib=68.11
+RUNDIR xs_garden_pfx_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_pfx_s0_2026-11-08-14-44-32
+PERIMG xs_garden_pfx_s0 n_images=24 min_image=4 min_psnr=20.80
+RESULT xs_garden_pfx_s0 PSNR:25.07801612218221 SSIM:0.7576123053828875 LPIPS:0.2896219876905282 N_Gaussians:1938367 ms_it=3.72  allocated: 67.97 GiB
+##### xs_garden_pfx2_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 14:45:59
+SEGCLOCK step=1000 seg_s=2.131 cum_s=2.131 sparse=0 N=269300 peak_alloc_gib=2.38
+SEGCLOCK step=2000 seg_s=3.007 cum_s=5.139 sparse=0 N=1047943 peak_alloc_gib=3.21
+FGS_SAVE_STATE step=2000 N=1047943 cum_s=5.139 param_sha=7ffc13da13dffea3 optim_sha=d4944e7e90b44b51 dinfo_sha=151bd1c3c33f293f path=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_pfx2_s0_2026-11-08-14-46-07/checkpoints/state_0002000.pt
+SEGCLOCK step=3000 seg_s=4.602 cum_s=9.741 sparse=0 N=1956680 peak_alloc_gib=67.98
+FGS_TRAIN_END N=1956680 peak_alloc_gib=67.98 peak_reserved_gib=68.13
+RUNDIR xs_garden_pfx2_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_pfx2_s0_2026-11-08-14-46-07
+PERIMG xs_garden_pfx2_s0 n_images=24 min_image=4 min_psnr=20.37
+RESULT xs_garden_pfx2_s0 PSNR:25.058799584706623 SSIM:0.7583154688278834 LPIPS:0.2878517396748066 N_Gaussians:1956679 ms_it=3.67  allocated: 67.98 GiB
+##### xs_garden_ctl_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 14:47:34
+FGS_RESUME step=2000 N=1042188 cum_s=5.284 sh_degree=1 param_sha=b7b922cfc7ffeaab optim_sha=dcfdd7bb6e5a686d dinfo_sha=666086bc5aa0740d densification_info=(2, 1042188) use_mcmc=False max_primitives=1000000 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_pfx_s0_2026-11-08-14-44-32/checkpoints/state_0002000.pt
+RUNDIR xs_garden_ctl_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_ctl_s0_2026-11-08-14-47-42
+FAILED xs_garden_ctl_s0
+Traceback (most recent call last):
+RuntimeError: indices should be either on cpu or on the same device as the indexed tensor (cpu)
+##### xs_garden_stop_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 14:48:32
+FGS_RESUME step=2000 N=1042188 cum_s=5.284 sh_degree=1 param_sha=b7b922cfc7ffeaab optim_sha=dcfdd7bb6e5a686d dinfo_sha=666086bc5aa0740d densification_info=(2, 1042188) use_mcmc=False max_primitives=1000000 densification_end=2000 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_pfx_s0_2026-11-08-14-44-32/checkpoints/state_0002000.pt
+RUNDIR xs_garden_stop_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_stop_s0_2026-11-08-14-48-39
+FAILED xs_garden_stop_s0
+Traceback (most recent call last):
+RuntimeError: indices should be either on cpu or on the same device as the indexed tensor (cpu)
+##### xs_garden_mcmc_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 14:49:30
+FGS_RESUME step=2000 N=1042188 cum_s=5.284 sh_degree=1 param_sha=b7b922cfc7ffeaab optim_sha=dcfdd7bb6e5a686d dinfo_sha=none densification_info=none use_mcmc=True max_primitives=1042188 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.05,scales:0.005,rotations:0.001 lambda_opacity=0.01 lambda_scale=0.01 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_pfx_s0_2026-11-08-14-44-32/checkpoints/state_0002000.pt
+RUNDIR xs_garden_mcmc_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_mcmc_s0_2026-11-08-14-49-38
+FAILED xs_garden_mcmc_s0
+Traceback (most recent call last):
+RuntimeError: indices should be either on cpu or on the same device as the indexed tensor (cpu)
+view trace: 3000 steps, 161 distinct frame_idx, first lines: ['0 0 140 140', '1 0 68 68', '2 0 125 125']
+noise floor (uninterrupted vs uninterrupted, same seed): PSNR at 3000 differs 0.0200 dB, N differs 18313; tolerances for ctl: 0.0400 dB, 36626 Gaussians
+Traceback (most recent call last):
+  File "<stdin>", line 35, in <module>
+AttributeError: 'NoneType' object has no attribute 'group'
+JOB FAILED: xs_garden_ctl_s0 xs_garden_stop_s0 xs_garden_mcmc_s0 exp1smoke_check

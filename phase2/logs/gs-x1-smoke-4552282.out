@@ -1,0 +1,34 @@
+node=c56 job=4552282 gpu=NVIDIA H100 stages=exp1smoke repo=9329155
+base=FasterGSPlusDS (abcds, patches: phase2/deferred_reduce_v2.patch phase2/sh_coalesce.patch)
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSUp/Trainer.py
+########## exp1smoke (garden seed 0; prefix to 3000 with state at 2000, arms resumed 2000 -> 3000)
+##### xs_garden_pfx_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 14:39:46
+SEGCLOCK step=1000 seg_s=2.124 cum_s=2.124 sparse=0 N=268979 peak_alloc_gib=2.38
+SEGCLOCK step=2000 seg_s=3.081 cum_s=5.205 sparse=0 N=1048953 peak_alloc_gib=3.21
+FGS_SAVE_STATE step=2000 N=1048953 cum_s=5.205 param_sha=e248662dd588358a optim_sha=4525d757b51fa221 dinfo_sha=ecc106a7e7b066b5 path=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_pfx_s0_2026-11-08-14-39-58/checkpoints/state_0002000.pt
+SEGCLOCK step=3000 seg_s=4.613 cum_s=9.818 sparse=0 N=1958014 peak_alloc_gib=67.98
+FGS_TRAIN_END N=1958014 peak_alloc_gib=67.98 peak_reserved_gib=68.09
+RUNDIR xs_garden_pfx_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_pfx_s0_2026-11-08-14-39-58
+PERIMG xs_garden_pfx_s0 n_images=24 min_image=4 min_psnr=20.80
+RESULT xs_garden_pfx_s0 PSNR:25.070396661758423 SSIM:0.7577739506959915 LPIPS:0.2886914387345314 N_Gaussians:1958011 ms_it=3.78  allocated: 67.98 GiB
+##### xs_garden_ctl_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 14:41:24
+RUNDIR xs_garden_ctl_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_ctl_s0_2026-11-08-14-41-31
+FAILED xs_garden_ctl_s0
+Traceback (most recent call last):
+TypeError: RNG state must be a torch.ByteTensor
+##### xs_garden_stop_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 14:41:45
+RUNDIR xs_garden_stop_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_stop_s0_2026-11-08-14-41-52
+FAILED xs_garden_stop_s0
+Traceback (most recent call last):
+TypeError: RNG state must be a torch.ByteTensor
+##### xs_garden_mcmc_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 14:42:08
+RUNDIR xs_garden_mcmc_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_mcmc_s0_2026-11-08-14-42-15
+FAILED xs_garden_mcmc_s0
+Traceback (most recent call last):
+TypeError: RNG state must be a torch.ByteTensor
+Traceback (most recent call last):
+  File "<stdin>", line 9, in <module>
+  File "<stdin>", line 3, in <lambda>
+FileNotFoundError: [Errno 2] No such file or directory: '/home/h4/syas272h/3dgs-project/phase2/logs/run_4552282/xs_garden_ctl_s0.seg'
+JOB FAILED: xs_garden_ctl_s0 xs_garden_stop_s0 xs_garden_mcmc_s0 exp1smoke_check
