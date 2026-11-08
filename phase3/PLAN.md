@@ -128,4 +128,21 @@ What happens next:
 
 ## Changes after start
 
-(none yet)
+These are clarifications made on 2026-11-08 while building the code, before any Experiment 1 run (smoke tests excluded):
+
+- **`stop`:** the row above says hard pruning runs after densification ends. In upstream that pruning exists only with
+  Speedy-Splat, which is off by default. So `stop` is only `DENSIFICATION_END_ITERATION=5000`: no new Gaussians, no
+  opacity resets, then the normal end-of-training cleanup. No pruning is added.
+- **`mcmc` / `oracle` settings:** "upstream's yaml comments" also say to use `LEARNING_RATE_OPACITIES` 0.05 with MCMC.
+  It is applied, so the full override is `USE_MCMC=true`, `MAX_PRIMITIVES`, both regularisation weights 0.01, and
+  opacity learning rate 0.05. Densification end (14,900) and Morton-ordering end (15,000) stay as in `ctl`.
+- **Oracle cap:** the `ctl` count at the last training step before the end-of-training cleanup (`FGS_TRAIN_END N`).
+- **Evaluation point i:** the state after exactly i training steps, taken before that step's SH-degree, densification,
+  ordering and opacity-reset callbacks. Evaluations at multiples of 3,000 therefore show the state before the reset.
+- **Branch state:** NeRFICG's `.train` checkpoint pickles the trainer and cannot be used. The branch file (`state_0005000.pt`) holds:
+  - the parameters and optimizer state;
+  - densification statistics and SH degree;
+  - the training-view sampler and the CPU and CUDA random states;
+  - the clock's cumulative time.
+
+  Implementation: [cluster/patches/fastergs_resume.py](../cluster/patches/fastergs_resume.py).

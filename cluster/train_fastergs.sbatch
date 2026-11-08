@@ -23,6 +23,7 @@ TAG=${TAG:-}          # appended to the run name, e.g. TAG=prof for profiling ru
 LAUNCHER=${LAUNCHER:-}  # optional prefix, e.g. "nsys profile ..." or "ncu ..."
 BACKUP_INTERVAL=${BACKUP_INTERVAL:--1}  # >0: also save checkpoints/<iter>.pt every this many steps
 OPT_FLAGS=${OPT_FLAGS:-}  # extra TRAINING.OPTIMIZER keys, e.g. "SPARSE_ADAM=true,SH_REST_BF16_MOMENTS=true"
+CFG_SET=${CFG_SET:-}      # existing config keys to change, e.g. "DENSIFICATION_END_ITERATION=5000,USE_MCMC=true" (each must occur once)
 ITERS=${ITERS:-30000}  # NUM_ITERATIONS
 SCALE=${SCALE:-0.25}   # 0.25 for outdoor scenes, 0.5 for indoor, as in 3DGS
 TIMING_OFF=${TIMING_OFF:-0}  # 1: TIMING.ACTIVATE false (NeRFICG's per-callback timer, which syncs the device after every step, is off; no timings.txt)
@@ -79,7 +80,13 @@ sed -e "s|PATH: dataset/mipnerf360/garden|PATH: $DATA/data/360_v2/$SCENE|" \
 for kv in ${OPT_FLAGS//,/ }; do   # insert extra optimizer options right below "    OPTIMIZER:"
   sed -i "/^    OPTIMIZER:/a\        ${kv%%=*}: ${kv#*=}" "$CFG"
 done
-grep -nE "SPARSE_ADAM|BF16_MOMENTS|RANDOM_SEED|METHOD_TYPE|PATH:|MODEL_NAME|IMAGE_SCALE|GUI:|ACTIVATE" "$CFG"
+for kv in ${CFG_SET//,/ }; do   # CFG_SET="KEY=value,...": replace the value of a config key that occurs exactly once
+  k=${kv%%=*}; v=${kv#*=}
+  n=$(grep -cE "^ +$k:" "$CFG" || true)
+  [ "$n" = 1 ] || { echo "== CFG_SET: key $k found $n times in $CFG"; exit 1; }
+  sed -i -E "s|^( +)$k:.*|\1$k: $v  # CFG_SET|" "$CFG"
+done
+grep -nE "SPARSE_ADAM|BF16_MOMENTS|RANDOM_SEED|METHOD_TYPE|PATH:|MODEL_NAME|IMAGE_SCALE|GUI:|ACTIVATE|CFG_SET" "$CFG"
 
 cd "$NERFICG"
 # GPU clock / power / temperature log, 1 sample per second, for the whole training run

@@ -68,6 +68,8 @@
 #   STAGES="build unit" BUILD_VARIANT=FasterGSPlusDS BUILD_SRC_PATCHES=phase2/sh_coalesce.patch sbatch --job-name=gs-ds-build phase2/build_plus.sbatch
 #   STAGES=ncupre sbatch --job-name=gs-ds-ncu ...   (step 5h ran this before adoption, with BASE=FasterGSPlusDS set explicitly)
 #   STAGES=rbbench SCENE=garden CMP_VARIANT=FasterGSPlusDS CMP_ARM=abcds sbatch --job-name=gs-ds-garden --time=00:50:00 phase2/build_plus.sbatch
+#   STAGES=exp1smoke sbatch --job-name=gs-x1-smoke --time=00:30:00 phase2/build_plus.sbatch   (phase3/PLAN.md engineering checks)
+#   STAGES=exp1 SCENE=garden sbatch --job-name=gs-x1-garden --time=03:00:00 phase2/build_plus.sbatch   (phase 3 Experiment 1)
 #   STAGES="upbuild upequiv" sbatch --job-name=gs-up-build --time=01:00:00 phase2/build_plus.sbatch   (upstream/README.md)
 #   STAGES=upbench SCENE=garden sbatch --job-name=gs-up-garden --time=01:30:00 phase2/build_plus.sbatch
 #   STAGES=upncu sbatch --job-name=gs-up-ncu --time=00:40:00 phase2/build_plus.sbatch
@@ -504,6 +506,100 @@ if has upncu; then   # Nsight Compute on preprocess_backward_cu at step NCU_STEP
         echo "FAILED $name: no report"; tr '\r' '\n' < "$OUT/$name.log" | grep -E "==ERROR==|==WARNING==|Traceback|Error" | head; FAILED+=("$name")
       fi
     done
+  done
+fi
+
+# Phase 3 Experiment 1 (phase3/PLAN.md): branch upstream-main training (FasterGSUp, dense Adam) at step EXP1_AT (5000)
+# into arms ctl / stop / mcmc / oracle; test metrics every 1000 steps (cluster/patches/fastergs_resume.py).
+#   exp1smoke  garden seed 0, short: prefix to 3000 saving the state at 2000, then ctl / stop / mcmc resumed 2000 -> 3000.
+#              ctl's test_2000 must equal the prefix's test_2000 (same state, deterministic render).
+#   exp1       SCENE, SEEDS: prefix 0 -> 5000 per seed, then the arms (rotated per seed), oracle after ctl.
+x_clean() {  # drop the per-step test renders of a phase 3 run (metrics are archived by train()), keep checkpoints only for prefixes
+  local RUN; RUN=$(cat "$OUT/runs/$1/rundir.txt" 2>/dev/null) || return 0
+  find "$DATA/nerficg/$RUN" -path '*test_*' -name '*.png' -delete 2>/dev/null || true
+  [ "${2:-}" = keepstate ] || rm -rf "$DATA/nerficg/$RUN/checkpoints" 2>/dev/null || true
+}
+x_arm_cfg() {  # arm N_at_branch N_oracle -> CFG_SET value
+  case $1 in
+    ctl)    echo "" ;;
+    stop)   echo "DENSIFICATION_END_ITERATION=$EXP1_AT" ;;
+    mcmc)   echo "USE_MCMC=true,MAX_PRIMITIVES=$2,LAMBDA_OPACITY_REGULARIZATION=0.01,LAMBDA_SCALE_REGULARIZATION=0.01,LEARNING_RATE_OPACITIES=0.05" ;;
+    oracle) echo "USE_MCMC=true,MAX_PRIMITIVES=$3,LAMBDA_OPACITY_REGULARIZATION=0.01,LAMBDA_SCALE_REGULARIZATION=0.01,LEARNING_RATE_OPACITIES=0.05" ;;
+  esac
+}
+if has exp1smoke || has exp1; then
+  M=${EXP1_METHOD:-FasterGSUp}
+  python "$REPO/cluster/patches/fastergs_resume.py" "$DATA/nerficg/src/Methods/$M/Trainer.py"
+fi
+if has exp1smoke; then
+  BSCENE=garden; BSCALE=0.25; EXP1_AT=2000
+  echo "########## exp1smoke (garden seed 0; prefix to 3000 with state at 2000, arms resumed 2000 -> 3000)"
+  TRAIN_ENV="FGS_SAVE_STATE=2000 FGS_EVAL_EVERY=1000 FGS_EVAL_FROM=2000" train xs_garden_pfx_s0 $M 0 3000 "" taming 1000
+  ST=$DATA/nerficg/$(cat "$OUT/runs/xs_garden_pfx_s0/rundir.txt" 2>/dev/null)/checkpoints/state_0002000.pt
+  N2=$(sed -n 's/^FGS_SAVE_STATE step=2000 N=\([0-9]*\).*/\1/p' "$OUT/xs_garden_pfx_s0.seg")
+  if [ ! -f "$ST" ] || [ -z "$N2" ]; then echo "FAILED exp1smoke: no state file / N"; FAILED+=(exp1smoke_state); else
+    for arm in ctl stop mcmc; do
+      TRAIN_ENV="FGS_RESUME=$ST FGS_EVAL_EVERY=1000 FGS_EVAL_FROM=2000 CFG_SET=$(x_arm_cfg $arm $N2 $N2)" train xs_garden_${arm}_s0 $M 0 3000 "" taming 1000
+      x_clean xs_garden_${arm}_s0
+    done
+    python3 - "$OUT" <<'PY' || FAILED+=(exp1smoke_check)
+import re, sys, os
+out = sys.argv[1]
+seg = lambda n: open(f'{out}/{n}.seg').read()
+met = lambda n, it: open(f'{out}/runs/{n}/test_{it}/metrics_8bit.txt').read().split('Image', 1)[-1].strip()
+ok = {}
+p = seg('xs_garden_pfx_s0')
+ok['prefix wrote the state'] = 'FGS_SAVE_STATE step=2000' in p
+for a in ('ctl', 'stop', 'mcmc'):
+    t = seg(f'xs_garden_{a}_s0')
+    ok[f'{a}: resumed at 2000'] = bool(re.search(r'^FGS_RESUME step=2000 ', t, re.M))
+    ok[f'{a}: clock continues (SEGCLOCK step=3000 cum_s > prefix cum at 2000)'] = (
+        float(re.search(r'SEGCLOCK step=3000 \S+ cum_s=(\S+)', t).group(1)) > float(re.search(r'SEGCLOCK step=2000 \S+ cum_s=(\S+)', p).group(1)))
+    ok[f'{a}: test_2000 identical to the prefix (same state)'] = met(f'xs_garden_{a}_s0', 2000) == met('xs_garden_pfx_s0', 2000)
+    print(f'{a}: ' + ' '.join(l for l in t.splitlines() if l.startswith(('FGS_RESUME', 'SEGCLOCK step=3000', 'FGS_TRAIN_END'))))
+n = lambda name: int(re.search(r'SEGCLOCK step=3000 .* N=(\d+)', seg(name)).group(1))
+n2 = int(re.search(r'FGS_SAVE_STATE step=2000 N=(\d+)', p).group(1))
+ok['ctl: N at 3000 within 1% of the uninterrupted prefix'] = abs(n('xs_garden_ctl_s0') / n('xs_garden_pfx_s0') - 1) < 0.01
+ok['stop: N at 3000 <= N at 2000 (no densification after 2000)'] = n('xs_garden_stop_s0') <= n2
+ok['mcmc: N at 3000 == N at 2000 (population held)'] = n('xs_garden_mcmc_s0') == n2
+psnr = lambda name: float(open(f'{out}/runs/{name}/test_3000/metrics_8bit.txt').read().split('PSNR')[1].split()[0])
+print('N at 2000', n2, ' N at 3000: ' + ' '.join(f'{a}={n(f"xs_garden_{a}_s0")}' for a in ('pfx', 'ctl', 'stop', 'mcmc')))
+print('PSNR at 3000: ' + ' '.join(f'{a}={psnr(f"xs_garden_{a}_s0"):.2f}' for a in ('pfx', 'ctl', 'stop', 'mcmc')))
+ok['ctl: PSNR at 3000 within 0.3 dB of the uninterrupted prefix'] = abs(psnr('xs_garden_ctl_s0') - psnr('xs_garden_pfx_s0')) < 0.3
+for k, v in ok.items():
+    print(('PASS ' if v else 'FAIL ') + k)
+sys.exit(0 if all(ok.values()) else 1)
+PY
+  fi
+  x_clean xs_garden_pfx_s0
+fi
+if has exp1; then
+  BSCENE=${SCENE:?set SCENE for the exp1 stage}
+  case $BSCENE in room|counter|kitchen|bonsai) BSCALE=0.5 ;; *) BSCALE=0.25 ;; esac
+  EXP1_AT=${EXP1_AT:-5000}
+  XARMS=(${EXP1_ARMS:-ctl stop mcmc}); NA=${#XARMS[@]}
+  echo "########## exp1 (scene $BSCENE scale $BSCALE, seeds ${SEEDS:-0 1 2}, branch at $EXP1_AT, arms ${XARMS[*]} + oracle after ctl)"
+  for seed in ${SEEDS:-0 1 2}; do
+    pfx=x_${BSCENE}_pfx_s$seed
+    TRAIN_ENV="FGS_SAVE_STATE=$EXP1_AT" train $pfx $M "$seed" $EXP1_AT "" taming 1000
+    ST=$DATA/nerficg/$(cat "$OUT/runs/$pfx/rundir.txt" 2>/dev/null)/checkpoints/state_$(printf %07d $EXP1_AT).pt
+    NB=$(sed -n "s/^FGS_SAVE_STATE step=$EXP1_AT N=\([0-9]*\).*/\1/p" "$OUT/$pfx.seg")
+    if [ ! -f "$ST" ] || [ -z "$NB" ]; then echo "FAILED exp1 $pfx: no state file / N"; FAILED+=("$pfx"); continue; fi
+    echo "EXP1_BRANCH $BSCENE s$seed step=$EXP1_AT N=$NB state=$ST"
+    for (( k = 0; k < NA; k++ )); do
+      arm=${XARMS[$(( (k + seed) % NA ))]}
+      TRAIN_ENV="FGS_RESUME=$ST FGS_EVAL_EVERY=1000 FGS_EVAL_FROM=$EXP1_AT CFG_SET=$(x_arm_cfg $arm $NB 0)" train x_${BSCENE}_${arm}_s$seed $M "$seed" 30000 "" taming 1000
+      x_clean x_${BSCENE}_${arm}_s$seed
+    done
+    if [ "${EXP1_ORACLE:-1}" = 1 ]; then   # cap = ctl's count at the last step before the end-of-training cleanup
+      NC=$(sed -n 's/^FGS_TRAIN_END N=\([0-9]*\).*/\1/p' "$OUT/x_${BSCENE}_ctl_s$seed.seg" 2>/dev/null)
+      if [ -z "$NC" ]; then echo "FAILED exp1 oracle s$seed: no ctl count"; FAILED+=("x_${BSCENE}_oracle_s$seed"); else
+        echo "EXP1_ORACLE_CAP $BSCENE s$seed N=$NC"
+        TRAIN_ENV="FGS_RESUME=$ST FGS_EVAL_EVERY=1000 FGS_EVAL_FROM=$EXP1_AT CFG_SET=$(x_arm_cfg oracle $NB $NC)" train x_${BSCENE}_oracle_s$seed $M "$seed" 30000 "" taming 1000
+        x_clean x_${BSCENE}_oracle_s$seed
+      fi
+    fi
+    x_clean $pfx keepstate
   done
 fi
 
