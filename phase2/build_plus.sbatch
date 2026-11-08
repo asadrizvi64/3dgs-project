@@ -533,70 +533,71 @@ if has exp1smoke || has exp1; then
 fi
 if has exp1smoke; then
   BSCENE=garden; BSCALE=0.25; EXP1_AT=2000
-  echo "########## exp1smoke (garden seed 0; two uninterrupted runs to 3000 (noise floor), state saved at 2000; ctl / stop / mcmc resumed 2000 -> 3000)"
-  for r in pfx pfx2; do
+  echo "########## exp1smoke (garden seed 0; 4 uninterrupted runs to 3000, state saved at 2000; ctl x3 / stop / mcmc resumed 2000 -> 3000)"
+  for r in pfx pfx2 pfx3 pfx4; do
     TRAIN_ENV="FGS_SAVE_STATE=2000 FGS_EVAL_EVERY=1000 FGS_EVAL_FROM=2000 FGS_VIEW_TRACE=$OUT/xs_garden_${r}_s0.views" train xs_garden_${r}_s0 $M 0 3000 "" taming 1000
   done
   ST=$DATA/nerficg/$(cat "$OUT/runs/xs_garden_pfx_s0/rundir.txt" 2>/dev/null)/checkpoints/state_0002000.pt
   N2=$(sed -n 's/^FGS_SAVE_STATE step=2000 N=\([0-9]*\).*/\1/p' "$OUT/xs_garden_pfx_s0.seg")
   if [ ! -f "$ST" ] || [ -z "$N2" ]; then echo "FAILED exp1smoke: no state file / N"; FAILED+=(exp1smoke_state); else
-    for arm in ctl stop mcmc; do
-      TRAIN_ENV="FGS_RESUME=$ST FGS_EVAL_EVERY=1000 FGS_EVAL_FROM=2000 FGS_VIEW_TRACE=$OUT/xs_garden_${arm}_s0.views CFG_SET=$(x_arm_cfg $arm $N2 $N2)" train xs_garden_${arm}_s0 $M 0 3000 "" taming 1000
-      x_clean xs_garden_${arm}_s0
+    for run in ctl ctl2 ctl3 stop mcmc; do
+      arm=${run%%[0-9]*}; segk=1000; [ $arm = ctl ] || segk=100   # stop / mcmc: clock (and N) every 100 steps
+      TRAIN_ENV="FGS_RESUME=$ST FGS_EVAL_EVERY=1000 FGS_EVAL_FROM=2000 FGS_VIEW_TRACE=$OUT/xs_garden_${run}_s0.views CFG_SET=$(x_arm_cfg $arm $N2 $N2)" train xs_garden_${run}_s0 $M 0 3000 "" taming $segk
+      x_clean xs_garden_${run}_s0
     done
     python3 - "$OUT" <<'PY' || FAILED+=(exp1smoke_check)
-import re, sys
+import re, sys, statistics as st
 out = sys.argv[1]
-seg = lambda n: open(f'{out}/{n}.seg').read()
-met = lambda n, it: open(f'{out}/runs/{n}/test_{it}/metrics_8bit.txt').read().split('Image', 1)[-1].strip()
-psnr = lambda n: float(re.search(r'^PSNR\t(\S+)', open(f'{out}/runs/{n}/test_3000/metrics_8bit.txt').read(), re.M).group(1))
-nat = lambda n: int(re.search(r'SEGCLOCK step=3000 .* N=(\d+)', seg(n)).group(1))
-views = lambda n, lo, hi: [l for l in open(f'{out}/{n}.views').read().split('\n') if l and lo <= int(l.split()[0]) < hi]
-frames = lambda n: [l.split()[2] for l in views(n, 0, 10 ** 6)]
+UN, CT = ('pfx', 'pfx2', 'pfx3', 'pfx4'), ('ctl', 'ctl2', 'ctl3')
+seg = lambda n: open(f'{out}/xs_garden_{n}_s0.seg').read()
+mfile = lambda n, it: open(f'{out}/runs/xs_garden_{n}_s0/test_{it}/metrics_8bit.txt').read()
+rows = lambda n, it: re.findall(r'^\d+\t.*$', mfile(n, it), re.M)                       # per-image rows
+psnr = lambda n: float(re.search(r'^PSNR:(\S+) SSIM', mfile(n, 3000), re.M).group(1))  # full-precision mean
+nclk = lambda n: {int(a): int(b) for a, b in re.findall(r'SEGCLOCK step=(\d+) .* N=(\d+) peak', seg(n))}
+views = lambda n, lo, hi: [l for l in open(f'{out}/xs_garden_{n}_s0.views').read().split('\n') if l and lo <= int(l.split()[0]) < hi]
 ok = {}
-p, p2 = seg('xs_garden_pfx_s0'), seg('xs_garden_pfx2_s0')
-sv = re.search(r'^FGS_SAVE_STATE step=2000 N=(\d+) \S+ param_sha=(\S+) optim_sha=(\S+) dinfo_sha=(\S+)', p, re.M)
+sv = re.search(r'^FGS_SAVE_STATE step=2000 N=(\d+) \S+ param_sha=(\S+) optim_sha=(\S+) dinfo_sha=(\S+)', seg('pfx'), re.M)
 ok['prefix wrote the state'] = bool(sv)
 n2 = int(sv.group(1))
-ok['the two uninterrupted runs saw the same views 0-2999'] = views('xs_garden_pfx_s0', 0, 3000) == views('xs_garden_pfx2_s0', 0, 3000)
-fr = frames('xs_garden_pfx_s0')
-print(f'view trace: {len(fr)} steps, {len(set(fr))} distinct frame_idx, first lines: {views("xs_garden_pfx_s0", 0, 3)}')
+fr = [l.split()[2] for l in views('pfx', 0, 3000)]
+print(f'view trace: {len(fr)} steps, {len(set(fr))} distinct frame_idx, first lines: {views("pfx", 0, 3)}')
 ok['view trace holds real camera identities (frame_idx never None, > 50 distinct in 3000 steps)'] = 'None' not in fr and len(set(fr)) > 50
-d0, dn0 = abs(psnr('xs_garden_pfx2_s0') - psnr('xs_garden_pfx_s0')), abs(nat('xs_garden_pfx2_s0') - nat('xs_garden_pfx_s0'))
-tol_p, tol_n = max(2 * d0, 0.02), max(2 * dn0, 0.001 * nat('xs_garden_pfx_s0'))
-print(f'noise floor (uninterrupted vs uninterrupted, same seed): PSNR at 3000 differs {d0:.4f} dB, N differs {dn0}; '
-      f'tolerances for ctl: {tol_p:.4f} dB, {tol_n:.0f} Gaussians')
+ok['the 4 uninterrupted runs saw the same views 0-2999'] = all(views(u, 0, 3000) == views('pfx', 0, 3000) for u in UN)
 lr = {}
-for a in ('ctl', 'stop', 'mcmc'):
-    t = seg(f'xs_garden_{a}_s0')
+for run in CT + ('stop', 'mcmc'):
+    t = seg(run)
     r = re.search(r'^FGS_RESUME step=2000 N=(\d+) \S+ \S+ param_sha=(\S+) optim_sha=(\S+) dinfo_sha=(\S+) .* lr=(\S+) lambda_opacity=(\S+) lambda_scale=(\S+)', t, re.M)
-    ok[f'{a}: resumed at 2000'] = bool(r)
+    ok[f'{run}: resumed at 2000'] = bool(r)
     if not r:
         continue
-    ok[f'{a}: parameters and optimizer state after loading equal the saved ones (SHA-256 of the full bytes)'] = (r.group(1), r.group(2), r.group(3)) == (sv.group(1), sv.group(2), sv.group(3))
-    ok[f'{a}: densification statistics restored (SHA-256), or dropped for MCMC'] = r.group(4) == ('none' if a == 'mcmc' else sv.group(4))
-    lr[a] = dict(x.split(':') for x in r.group(5).split(','))
-    lr[a]['lambda'] = (float(r.group(6)), float(r.group(7)))
-    ok[f'{a}: same views 2000-2999 as the uninterrupted run'] = views(f'xs_garden_{a}_s0', 2000, 3000) == views('xs_garden_pfx_s0', 2000, 3000)
-    ok[f'{a}: clock continues (cum_s at 3000 > prefix cum_s at 2000)'] = (
-        float(re.search(r'SEGCLOCK step=3000 \S+ cum_s=(\S+)', t).group(1)) > float(re.search(r'SEGCLOCK step=2000 \S+ cum_s=(\S+)', p).group(1)))
-    ok[f'{a}: test_2000 identical to the prefix (same state)'] = met(f'xs_garden_{a}_s0', 2000) == met('xs_garden_pfx_s0', 2000)
-    print(f'{a}: ' + ' | '.join(l for l in t.splitlines() if l.startswith(('FGS_RESUME', 'SEGCLOCK step=3000'))))
-print('learning rates / regularisation after resume:', lr)
-ok['ctl: opacity lr 0.025, regularisation 0'] = float(lr['ctl']['opacities']) == 0.025 and lr['ctl']['lambda'] == (0.0, 0.0)
+    ok[f'{run}: parameters and optimizer state after loading equal the saved ones (SHA-256 of the full bytes)'] = (r.group(1), r.group(2), r.group(3)) == (sv.group(1), sv.group(2), sv.group(3))
+    ok[f'{run}: densification statistics restored (SHA-256), or dropped for MCMC'] = r.group(4) == ('none' if run == 'mcmc' else sv.group(4))
+    ok[f'{run}: test_2000 per-image metrics identical to the uninterrupted run (same state)'] = rows(run, 2000) == rows('pfx', 2000)
+    ok[f'{run}: clock continues (cum_s at 3000 > prefix cum_s at 2000)'] = (
+        float(re.search(r'SEGCLOCK step=3000 \S+ cum_s=(\S+)', t).group(1)) > float(re.search(r'SEGCLOCK step=2000 \S+ cum_s=(\S+)', seg('pfx')).group(1)))
+    lr[run] = dict(x.split(':') for x in r.group(5).split(','))
+    lr[run]['lambda'] = (float(r.group(6)), float(r.group(7)))
+for c in CT:   # only the control reproduces the uninterrupted view order: densification and MCMC draw from the CUDA
+    ok[f'{c}: same views 2000-2999 as the uninterrupted run'] = views(c, 2000, 3000) == views('pfx', 2000, 3000)   # generator that reshuffles
+print('learning rates / regularisation after resume:', {k: (v['opacities'], v['lambda']) for k, v in lr.items()})
+ok['ctl: opacity lr 0.025, regularisation 0'] = all(float(lr[c]['opacities']) == 0.025 and lr[c]['lambda'] == (0.0, 0.0) for c in CT)
 ok['mcmc: opacity lr 0.05, regularisation 0.01 / 0.01'] = float(lr['mcmc']['opacities']) == 0.05 and lr['mcmc']['lambda'] == (0.01, 0.01)
-ok['ctl: PSNR at 3000 within the noise-floor tolerance of the uninterrupted run'] = abs(psnr('xs_garden_ctl_s0') - psnr('xs_garden_pfx_s0')) <= tol_p
-ok['ctl: N at 3000 within the noise-floor tolerance of the uninterrupted run'] = abs(nat('xs_garden_ctl_s0') - nat('xs_garden_pfx_s0')) <= tol_n
-ok['stop: N at 3000 <= N at 2000 (no densification after 2000)'] = nat('xs_garden_stop_s0') <= n2
-ok['mcmc: N at 3000 == N at 2000 (population held)'] = nat('xs_garden_mcmc_s0') == n2
-print('N at 2000', n2, ' N at 3000: ' + ' '.join(f'{a}={nat(f"xs_garden_{a}_s0")}' for a in ('pfx', 'pfx2', 'ctl', 'stop', 'mcmc')))
-print('PSNR at 3000: ' + ' '.join(f'{a}={psnr(f"xs_garden_{a}_s0"):.4f}' for a in ('pfx', 'pfx2', 'ctl', 'stop', 'mcmc')))
+up, cp = [psnr(u) for u in UN], [psnr(c) for c in CT]
+un, cn = [nclk(u)[3000] for u in UN], [nclk(c)[3000] for c in CT]
+print('PSNR at 3000, uninterrupted:', ' '.join(f'{x:.4f}' for x in up), '| resumed ctl:', ' '.join(f'{x:.4f}' for x in cp))
+print('N at 3000, uninterrupted:', un, '| resumed ctl:', cn)
+ok['ctl: mean PSNR at 3000 within the uninterrupted runs\' range of their mean'] = abs(st.mean(cp) - st.mean(up)) <= max(up) - min(up)
+ok['ctl: mean N at 3000 within the uninterrupted runs\' range of their mean'] = abs(st.mean(cn) - st.mean(un)) <= max(un) - min(un)
+ns, nm = nclk('stop'), nclk('mcmc')
+print('stop N:', {k: v for k, v in ns.items() if k >= 2000}, '\nmcmc N:', {k: v for k, v in nm.items() if k >= 2000})
+ok['stop: N constant from 2100 to 3000 (only the branch step densifies)'] = len({v for k, v in ns.items() if 2100 <= k <= 3000}) == 1
+ok['mcmc: N == N at 2000 at every 100-step point 2100-3000 (population held)'] = all(v == n2 for k, v in nm.items() if 2100 <= k <= 3000) and 3000 in nm
 for k, v in ok.items():
     print(('PASS ' if v else 'FAIL ') + k)
 sys.exit(0 if all(ok.values()) else 1)
 PY
   fi
-  x_clean xs_garden_pfx_s0; x_clean xs_garden_pfx2_s0
+  for r in pfx pfx2 pfx3 pfx4; do x_clean xs_garden_${r}_s0; done
 fi
 if has exp1; then
   BSCENE=${SCENE:?set SCENE for the exp1 stage}

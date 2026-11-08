@@ -35,7 +35,7 @@ from pathlib import Path
 
 import re
 
-MARK = '# >>> fgs-resume v5'
+MARK = '# >>> fgs-resume v6'
 path = Path(sys.argv[1])
 src = path.read_text()
 if MARK in src:
@@ -49,7 +49,7 @@ assert '# >>> fgs-sparse-from v5' in src and '        # <<< fgs-segclock\n' in s
 
 # 2. save hook: after the clock hook has booked the step
 A_SAVE = '        # <<< fgs-segclock\n'
-SAVE = A_SAVE + '''        # >>> fgs-resume v5 (save)
+SAVE = A_SAVE + '''        # >>> fgs-resume v6 (save)
         if __import__('os').environ.get('FGS_VIEW_TRACE'):
             if not hasattr(self, '_fgs_vt'):
                 self._fgs_vt = open(__import__('os').environ['FGS_VIEW_TRACE'], 'a', buffering=1)
@@ -83,7 +83,7 @@ src = src.replace(A_SAVE, SAVE, 1)
 
 # 3. run() override: pre-training callbacks with the current config, then the saved state, then the normal loop
 A_RUN = '    @training_callback(priority=80)\n    def training_iteration('
-RUN = '''    # >>> fgs-resume v5 (run)
+RUN = '''    # >>> fgs-resume v6 (run)
     def run(self, dataset: 'BaseDataset') -> None:
         _os = __import__('os')
         _p = _os.environ.get('FGS_RESUME')
@@ -102,6 +102,10 @@ RUN = '''    # >>> fgs-resume v5 (run)
         g.optimizer.load_state_dict(st['optimizer'])   # moves moments to the parameters' device; also restores the saved groups' learning rates ...
         for pg in g.optimizer.param_groups:              # ... so put the current config's back (means: set every step anyway)
             pg['lr'] = _lr[pg['name']]
+        _saved_steps = [s.get('step') for s in st['optimizer']['state'].values()]
+        for _s in g.optimizer.state.values():            # torch.optim.Adam's loader turns an int 'step' into a float tensor;
+            if torch.is_tensor(_s.get('step')) and all(isinstance(x, int) for x in _saved_steps):   # FusedAdam keeps an int
+                _s['step'] = int(_s['step'].item())
         g.active_sh_degree = st['active_sh_degree']
         g.active_sh_bases = (g.active_sh_degree + 1) ** 2
         g._densification_info = None if (self.USE_MCMC or st['densification_info'] is None) else st['densification_info'].cuda().contiguous()

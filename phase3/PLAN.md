@@ -170,6 +170,26 @@ These came from an outside review on 2026-11-08, also before any Experiment 1 ru
   - The view trace logs `camera_index`, `frame_idx` and `global_frame_idx` as the view holds them, with no fallback
     that could turn a real 0 or a missing field into 0.
   - The smoke test requires `frame_idx` to be present at every step, with more than 50 distinct values in 3,000 steps.
+- **Smoke-test runs and what they changed (2026-11-08; engineering checks, not Experiment 1):**
+  - Jobs 4552282 and 4553794 crashed on loading. The random states were moved to the GPU, then the view sampler's
+    order was left on the CPU. Fixed in resume patch v4 and v5.
+  - Job 4553832 loaded and ran every arm. The parameter and densification-statistics hashes matched. The learning
+    rates were right (control 0.025; MCMC 0.05 with 0.01 / 0.01). `mcmc` held its count. The control saw the
+    uninterrupted run's exact view order.
+  - It also failed four checks, and each was examined:
+    - **Optimizer hash differed:** a real difference. `torch.optim.Adam`'s loader turns the integer `step` into a
+      float tensor. The kernel takes an int, so training numbers were unaffected. Resume patch v6 converts it back.
+    - **`test_2000` "not identical":** the per-image values were identical. Only the summary's 9th digit differed,
+      from floating-point accumulation in the metric code. The check now compares per-image values.
+    - **`stop` grew after the branch:** densification at the branch step itself still runs, in `stop` as in `ctl`.
+      The check now requires N constant from step 2,100, with a 100-step clock in that run.
+    - **`stop` / `mcmc` view order differed from the uninterrupted run:** expected. Reshuffling draws from the CUDA
+      random generator, which densification and MCMC use differently in each arm. Only `ctl` must match it.
+  - **The control check failed:** PSNR at 3,000 was 0.03 dB below the uninterrupted run, against a 0.02 dB tolerance.
+    That tolerance came from a single same-seed pair (0.01 dB apart). Rather than widen it, the test now uses more
+    runs: 4 uninterrupted and 3 resumed controls, compared on the full-precision PSNR and the Gaussian count. It
+    passes if the resumed mean lies within the uninterrupted runs' range of their mean, the same criterion as check 1.
+    This change was made after seeing the failure, and is reported as such.
 - **Reading the MCMC arms:** `mcmc` and `oracle` change several things at once: relocation, noise injection,
   regularisation and the opacity learning rate. A pass would show that this combined MCMC policy reaches quality
   sooner, not that relocation alone does. Experiment 2 would then separate the parts with ablations. The decision rule
