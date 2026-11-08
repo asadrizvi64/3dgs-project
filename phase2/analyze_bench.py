@@ -234,7 +234,7 @@ for arm in ARMS:
 print()
 print('These happen without the changes (stock has them), but these counts cannot show whether the changes alter how often '
       'they happen. The exclusion below is a secondary analysis; the verdict uses all images.')
-print('\nDeltas with those images removed from every run of the scene (paired per seed, mean of 3 seeds):\n')
+print(f'\nDeltas with those images removed from every run of the scene (paired per seed, mean of {len(S)} seeds):\n')
 CTOP = 'ab' in ARMS and 'abc' in ARMS
 print('| scene | images removed | ' + ' | '.join(f'{LABEL[a]} ΔPSNR | {LABEL[a]} ΔLPIPS' for a in TREAT)
       + (' | C on top of A+B ΔPSNR' if CTOP else '') + ' |')

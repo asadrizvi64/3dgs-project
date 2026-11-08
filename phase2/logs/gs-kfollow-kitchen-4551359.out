@@ -1,0 +1,196 @@
+node=c34 job=4551359 gpu=NVIDIA H100 stages=bench repo=2d6681a
+base=FasterGSPlusDS (abcds, patches: phase2/deferred_reduce_v2.patch phase2/sh_coalesce.patch)
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## bench (scene kitchen scale 0.5, seeds 3 4 5 6 7 8 9 10 11 12, 30k; train time = SEGCLOCK cum_s)
+arms: stock abcds
+##### b_kitchen_abcds_s3: method=FasterGSPlusDS seed=3 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 23:54:04
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1614303
+FGS_WALL from=0 to=15000 s=71.346 views=1a06a470bb04bbee
+FGS_WALL from=15000 to=30000 s=73.196 views=11d27f78ef4d3701
+SEGCLOCK step=30000 seg_s=141.755 cum_s=141.755 sparse=1 visfrac=0.628 N=1614303 peak_alloc_gib=6.49
+FGS_TRAIN_END N=1614303 peak_alloc_gib=6.49 peak_reserved_gib=7.10
+RUNDIR b_kitchen_abcds_s3 output/FasterGSPlusDS/fastergsplusds_kitchen_7d2ec29_s3p2b_kitchen_abcds_s3_2026-11-07-23-54-15
+PERIMG b_kitchen_abcds_s3 n_images=35 min_image=27 min_psnr=26.99
+RESULT b_kitchen_abcds_s3 PSNR:31.56650232587542 SSIM:0.9284606729234968 LPIPS:0.15240999630519322 N_Gaussians:1608680 ms_it=4.77  allocated: 6.49 GiB
+##### b_kitchen_stock_s3: method=FasterGS seed=3 iters=30000 flags= blend=taming 23:57:55
+FGS_N iteration=15000 N=1643346
+FGS_WALL from=0 to=15000 s=97.428 views=1a06a470bb04bbee
+FGS_WALL from=15000 to=30000 s=107.336 views=11d27f78ef4d3701
+SEGCLOCK step=30000 seg_s=201.628 cum_s=201.628 sparse=0 N=1643346 peak_alloc_gib=6.56
+FGS_TRAIN_END N=1643346 peak_alloc_gib=6.56 peak_reserved_gib=7.10
+RUNDIR b_kitchen_stock_s3 output/FasterGS/fastergs_kitchen_1144604_s3p2b_kitchen_stock_s3_2026-11-07-23-58-02
+PERIMG b_kitchen_stock_s3 n_images=35 min_image=6 min_psnr=26.52
+RESULT b_kitchen_stock_s3 PSNR:31.29856758117676 SSIM:0.9281384774616787 LPIPS:0.15293950310775212 N_Gaussians:1616392 ms_it=6.77  allocated: 6.56 GiB
+##### b_kitchen_stock_s4: method=FasterGS seed=4 iters=30000 flags= blend=taming 00:02:43
+FGS_N iteration=15000 N=1615781
+FGS_WALL from=0 to=15000 s=96.266 views=13e64eb289c11414
+FGS_WALL from=15000 to=30000 s=105.424 views=19da9ff053de6adf
+SEGCLOCK step=30000 seg_s=198.555 cum_s=198.555 sparse=0 N=1615781 peak_alloc_gib=6.53
+FGS_TRAIN_END N=1615781 peak_alloc_gib=6.53 peak_reserved_gib=7.20
+RUNDIR b_kitchen_stock_s4 output/FasterGS/fastergs_kitchen_1144604_s4p2b_kitchen_stock_s4_2026-11-08-00-02-50
+PERIMG b_kitchen_stock_s4 n_images=35 min_image=0 min_psnr=26.90
+RESULT b_kitchen_stock_s4 PSNR:31.31518135070801 SSIM:0.9272109695843288 LPIPS:0.15307433711630958 N_Gaussians:1591031 ms_it=6.67  allocated: 6.53 GiB
+##### b_kitchen_abcds_s4: method=FasterGSPlusDS seed=4 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 00:07:27
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1602252
+FGS_WALL from=0 to=15000 s=72.427 views=13e64eb289c11414
+FGS_WALL from=15000 to=30000 s=74.744 views=19da9ff053de6adf
+SEGCLOCK step=30000 seg_s=144.419 cum_s=144.419 sparse=1 visfrac=0.682 N=1602252 peak_alloc_gib=6.47
+FGS_TRAIN_END N=1602252 peak_alloc_gib=6.47 peak_reserved_gib=7.12
+RUNDIR b_kitchen_abcds_s4 output/FasterGSPlusDS/fastergsplusds_kitchen_7d2ec29_s4p2b_kitchen_abcds_s4_2026-11-08-00-07-34
+PERIMG b_kitchen_abcds_s4 n_images=35 min_image=0 min_psnr=27.18
+RESULT b_kitchen_abcds_s4 PSNR:31.345640345982144 SSIM:0.9272127049309867 LPIPS:0.15255760358912604 N_Gaussians:1597192 ms_it=4.86  allocated: 6.47 GiB
+##### b_kitchen_abcds_s5: method=FasterGSPlusDS seed=5 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 00:11:17
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1628547
+FGS_WALL from=0 to=15000 s=71.668 views=5e9d73c6d7a50e0
+FGS_WALL from=15000 to=30000 s=73.717 views=1b4c79120c71e97c
+SEGCLOCK step=30000 seg_s=142.681 cum_s=142.681 sparse=1 visfrac=0.652 N=1628547 peak_alloc_gib=6.54
+FGS_TRAIN_END N=1628547 peak_alloc_gib=6.54 peak_reserved_gib=7.16
+RUNDIR b_kitchen_abcds_s5 output/FasterGSPlusDS/fastergsplusds_kitchen_7d2ec29_s5p2b_kitchen_abcds_s5_2026-11-08-00-11-25
+PERIMG b_kitchen_abcds_s5 n_images=35 min_image=0 min_psnr=26.40
+RESULT b_kitchen_abcds_s5 PSNR:31.277825437273297 SSIM:0.9276621920721871 LPIPS:0.15222508183547429 N_Gaussians:1622841 ms_it=4.80  allocated: 6.54 GiB
+##### b_kitchen_stock_s5: method=FasterGS seed=5 iters=30000 flags= blend=taming 00:15:08
+FGS_N iteration=15000 N=1618368
+FGS_WALL from=0 to=15000 s=98.658 views=5e9d73c6d7a50e0
+FGS_WALL from=15000 to=30000 s=108.953 views=1b4c79120c71e97c
+SEGCLOCK step=30000 seg_s=204.231 cum_s=204.231 sparse=0 N=1618368 peak_alloc_gib=6.54
+FGS_TRAIN_END N=1618368 peak_alloc_gib=6.54 peak_reserved_gib=7.06
+RUNDIR b_kitchen_stock_s5 output/FasterGS/fastergs_kitchen_1144604_s5p2b_kitchen_stock_s5_2026-11-08-00-15-16
+PERIMG b_kitchen_stock_s5 n_images=35 min_image=0 min_psnr=27.09
+RESULT b_kitchen_stock_s5 PSNR:31.394535609654017 SSIM:0.9281343119485038 LPIPS:0.15159891758646285 N_Gaussians:1593784 ms_it=6.86  allocated: 6.54 GiB
+##### b_kitchen_stock_s6: method=FasterGS seed=6 iters=30000 flags= blend=taming 00:20:03
+FGS_N iteration=15000 N=1628833
+FGS_WALL from=0 to=15000 s=97.658 views=5a1bfbe77203d52
+FGS_WALL from=15000 to=30000 s=109.220 views=5272651c6a627b4
+SEGCLOCK step=30000 seg_s=203.627 cum_s=203.627 sparse=0 N=1628833 peak_alloc_gib=6.54
+FGS_TRAIN_END N=1628833 peak_alloc_gib=6.54 peak_reserved_gib=6.95
+RUNDIR b_kitchen_stock_s6 output/FasterGS/fastergs_kitchen_1144604_s6p2b_kitchen_stock_s6_2026-11-08-00-20-11
+PERIMG b_kitchen_stock_s6 n_images=35 min_image=0 min_psnr=27.13
+RESULT b_kitchen_stock_s6 PSNR:31.442704827444896 SSIM:0.9278972932270595 LPIPS:0.15221131997449058 N_Gaussians:1603637 ms_it=6.84  allocated: 6.54 GiB
+##### b_kitchen_abcds_s6: method=FasterGSPlusDS seed=6 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 00:25:01
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1615834
+FGS_WALL from=0 to=15000 s=71.714 views=5a1bfbe77203d52
+FGS_WALL from=15000 to=30000 s=74.126 views=5272651c6a627b4
+SEGCLOCK step=30000 seg_s=142.890 cum_s=142.890 sparse=1 visfrac=0.453 N=1615834 peak_alloc_gib=6.53
+FGS_TRAIN_END N=1615834 peak_alloc_gib=6.53 peak_reserved_gib=7.00
+RUNDIR b_kitchen_abcds_s6 output/FasterGSPlusDS/fastergsplusds_kitchen_7d2ec29_s6p2b_kitchen_abcds_s6_2026-11-08-00-25-09
+PERIMG b_kitchen_abcds_s6 n_images=35 min_image=0 min_psnr=26.85
+RESULT b_kitchen_abcds_s6 PSNR:31.511620112827845 SSIM:0.9279963799885341 LPIPS:0.15211826030697143 N_Gaussians:1610263 ms_it=4.81  allocated: 6.53 GiB
+##### b_kitchen_abcds_s7: method=FasterGSPlusDS seed=7 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 00:28:53
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1597900
+FGS_WALL from=0 to=15000 s=72.939 views=48c09ea47bc955a
+FGS_WALL from=15000 to=30000 s=73.958 views=1e9849ab8b9928fb
+SEGCLOCK step=30000 seg_s=144.019 cum_s=144.019 sparse=1 visfrac=0.624 N=1597900 peak_alloc_gib=6.46
+FGS_TRAIN_END N=1597900 peak_alloc_gib=6.46 peak_reserved_gib=6.98
+RUNDIR b_kitchen_abcds_s7 output/FasterGSPlusDS/fastergsplusds_kitchen_7d2ec29_s7p2b_kitchen_abcds_s7_2026-11-08-00-29-01
+PERIMG b_kitchen_abcds_s7 n_images=35 min_image=0 min_psnr=26.82
+RESULT b_kitchen_abcds_s7 PSNR:31.59681134905134 SSIM:0.9285092149462019 LPIPS:0.15222478423799787 N_Gaussians:1591996 ms_it=4.84  allocated: 6.46 GiB
+##### b_kitchen_stock_s7: method=FasterGS seed=7 iters=30000 flags= blend=taming 00:32:46
+FGS_N iteration=15000 N=1610418
+FGS_WALL from=0 to=15000 s=97.619 views=48c09ea47bc955a
+FGS_WALL from=15000 to=30000 s=107.209 views=1e9849ab8b9928fb
+SEGCLOCK step=30000 seg_s=201.678 cum_s=201.678 sparse=0 N=1610418 peak_alloc_gib=6.54
+FGS_TRAIN_END N=1610418 peak_alloc_gib=6.54 peak_reserved_gib=7.16
+RUNDIR b_kitchen_stock_s7 output/FasterGS/fastergs_kitchen_1144604_s7p2b_kitchen_stock_s7_2026-11-08-00-32-53
+PERIMG b_kitchen_stock_s7 n_images=35 min_image=0 min_psnr=26.79
+RESULT b_kitchen_stock_s7 PSNR:31.557867758614677 SSIM:0.9283967001097543 LPIPS:0.1524232293878283 N_Gaussians:1584748 ms_it=6.77  allocated: 6.54 GiB
+##### b_kitchen_stock_s8: method=FasterGS seed=8 iters=30000 flags= blend=taming 00:37:33
+FGS_N iteration=15000 N=1629305
+FGS_WALL from=0 to=15000 s=96.471 views=14c8236a74aa7267
+FGS_WALL from=15000 to=30000 s=105.982 views=59c5dc5eb3a7807
+SEGCLOCK step=30000 seg_s=199.475 cum_s=199.475 sparse=0 N=1629305 peak_alloc_gib=6.54
+FGS_TRAIN_END N=1629305 peak_alloc_gib=6.54 peak_reserved_gib=7.04
+RUNDIR b_kitchen_stock_s8 output/FasterGS/fastergs_kitchen_1144604_s8p2b_kitchen_stock_s8_2026-11-08-00-37-41
+PERIMG b_kitchen_stock_s8 n_images=35 min_image=0 min_psnr=25.89
+RESULT b_kitchen_stock_s8 PSNR:31.302596500941686 SSIM:0.9276806627001081 LPIPS:0.15274181514978408 N_Gaussians:1604244 ms_it=6.69  allocated: 6.54 GiB
+##### b_kitchen_abcds_s8: method=FasterGSPlusDS seed=8 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 00:42:19
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1611038
+FGS_WALL from=0 to=15000 s=72.624 views=14c8236a74aa7267
+FGS_WALL from=15000 to=30000 s=74.256 views=59c5dc5eb3a7807
+SEGCLOCK step=30000 seg_s=144.179 cum_s=144.179 sparse=1 visfrac=0.661 N=1611038 peak_alloc_gib=6.46
+FGS_TRAIN_END N=1611038 peak_alloc_gib=6.46 peak_reserved_gib=7.12
+RUNDIR b_kitchen_abcds_s8 output/FasterGSPlusDS/fastergsplusds_kitchen_7d2ec29_s8p2b_kitchen_abcds_s8_2026-11-08-00-42-27
+PERIMG b_kitchen_abcds_s8 n_images=35 min_image=0 min_psnr=26.87
+RESULT b_kitchen_abcds_s8 PSNR:31.51827485220773 SSIM:0.9283263717378889 LPIPS:0.15267109083277838 N_Gaussians:1605855 ms_it=4.85  allocated: 6.46 GiB
+##### b_kitchen_abcds_s9: method=FasterGSPlusDS seed=9 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 00:46:09
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1622172
+FGS_WALL from=0 to=15000 s=71.609 views=435dd348824c568
+FGS_WALL from=15000 to=30000 s=73.173 views=197f8d6fb4d1b67d
+SEGCLOCK step=30000 seg_s=142.062 cum_s=142.062 sparse=1 visfrac=0.656 N=1622172 peak_alloc_gib=6.54
+FGS_TRAIN_END N=1622172 peak_alloc_gib=6.54 peak_reserved_gib=7.10
+RUNDIR b_kitchen_abcds_s9 output/FasterGSPlusDS/fastergsplusds_kitchen_7d2ec29_s9p2b_kitchen_abcds_s9_2026-11-08-00-46-17
+PERIMG b_kitchen_abcds_s9 n_images=35 min_image=0 min_psnr=26.77
+RESULT b_kitchen_abcds_s9 PSNR:31.486579023088726 SSIM:0.9285055824688503 LPIPS:0.15279962037290845 N_Gaussians:1616502 ms_it=4.78  allocated: 6.54 GiB
+##### b_kitchen_stock_s9: method=FasterGS seed=9 iters=30000 flags= blend=taming 00:49:57
+FGS_N iteration=15000 N=1621123
+FGS_WALL from=0 to=15000 s=97.386 views=435dd348824c568
+FGS_WALL from=15000 to=30000 s=107.262 views=197f8d6fb4d1b67d
+SEGCLOCK step=30000 seg_s=201.701 cum_s=201.701 sparse=0 N=1621123 peak_alloc_gib=6.56
+FGS_TRAIN_END N=1621123 peak_alloc_gib=6.56 peak_reserved_gib=7.22
+RUNDIR b_kitchen_stock_s9 output/FasterGS/fastergs_kitchen_1144604_s9p2b_kitchen_stock_s9_2026-11-08-00-50-04
+PERIMG b_kitchen_stock_s9 n_images=35 min_image=0 min_psnr=26.85
+RESULT b_kitchen_stock_s9 PSNR:31.54478225708008 SSIM:0.9287657652582441 LPIPS:0.1522814840078354 N_Gaussians:1596864 ms_it=6.77  allocated: 6.56 GiB
+##### b_kitchen_stock_s10: method=FasterGS seed=10 iters=30000 flags= blend=taming 00:54:44
+FGS_N iteration=15000 N=1605896
+FGS_WALL from=0 to=15000 s=96.811 views=138ad3b0adb4ffbd
+FGS_WALL from=15000 to=30000 s=105.964 views=1702b4659d957a12
+SEGCLOCK step=30000 seg_s=199.787 cum_s=199.787 sparse=0 N=1605896 peak_alloc_gib=6.52
+FGS_TRAIN_END N=1605896 peak_alloc_gib=6.52 peak_reserved_gib=7.22
+RUNDIR b_kitchen_stock_s10 output/FasterGS/fastergs_kitchen_1144604_s10p2b_kitchen_stock_s10_2026-11-08-00-54-52
+PERIMG b_kitchen_stock_s10 n_images=35 min_image=0 min_psnr=26.89
+RESULT b_kitchen_stock_s10 PSNR:31.356800406319753 SSIM:0.926397979259491 LPIPS:0.15338279349463327 N_Gaussians:1579523 ms_it=6.70  allocated: 6.52 GiB
+##### b_kitchen_abcds_s10: method=FasterGSPlusDS seed=10 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 00:59:30
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1615868
+FGS_WALL from=0 to=15000 s=71.537 views=138ad3b0adb4ffbd
+FGS_WALL from=15000 to=30000 s=72.642 views=1702b4659d957a12
+SEGCLOCK step=30000 seg_s=141.446 cum_s=141.446 sparse=1 visfrac=0.591 N=1615868 peak_alloc_gib=6.49
+FGS_TRAIN_END N=1615868 peak_alloc_gib=6.49 peak_reserved_gib=7.12
+RUNDIR b_kitchen_abcds_s10 output/FasterGSPlusDS/fastergsplusds_kitchen_7d2ec29_s10p2b_kitchen_abcds_s10_2026-11-08-00-59-37
+PERIMG b_kitchen_abcds_s10 n_images=35 min_image=34 min_psnr=25.65
+RESULT b_kitchen_abcds_s10 PSNR:31.41199106488909 SSIM:0.9265689373016357 LPIPS:0.15363283434084485 N_Gaussians:1610899 ms_it=4.76  allocated: 6.49 GiB
+##### b_kitchen_abcds_s11: method=FasterGSPlusDS seed=11 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 01:03:18
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1624119
+FGS_WALL from=0 to=15000 s=71.519 views=134d714eeded37e9
+FGS_WALL from=15000 to=30000 s=72.923 views=e5433e4076e9c19
+SEGCLOCK step=30000 seg_s=141.528 cum_s=141.528 sparse=1 visfrac=0.579 N=1624119 peak_alloc_gib=6.50
+FGS_TRAIN_END N=1624119 peak_alloc_gib=6.50 peak_reserved_gib=7.10
+RUNDIR b_kitchen_abcds_s11 output/FasterGSPlusDS/fastergsplusds_kitchen_7d2ec29_s11p2b_kitchen_abcds_s11_2026-11-08-01-03-25
+PERIMG b_kitchen_abcds_s11 n_images=35 min_image=27 min_psnr=27.20
+RESULT b_kitchen_abcds_s11 PSNR:31.488232966831752 SSIM:0.9277675373213632 LPIPS:0.15242695638111659 N_Gaussians:1618782 ms_it=4.76  allocated: 6.50 GiB
+##### b_kitchen_stock_s11: method=FasterGS seed=11 iters=30000 flags= blend=taming 01:07:06
+FGS_N iteration=15000 N=1601299
+FGS_WALL from=0 to=15000 s=97.205 views=134d714eeded37e9
+FGS_WALL from=15000 to=30000 s=106.449 views=e5433e4076e9c19
+SEGCLOCK step=30000 seg_s=200.704 cum_s=200.704 sparse=0 N=1601299 peak_alloc_gib=6.51
+FGS_TRAIN_END N=1601299 peak_alloc_gib=6.51 peak_reserved_gib=6.91
+RUNDIR b_kitchen_stock_s11 output/FasterGS/fastergs_kitchen_1144604_s11p2b_kitchen_stock_s11_2026-11-08-01-07-13
+PERIMG b_kitchen_stock_s11 n_images=35 min_image=9 min_psnr=19.22
+RESULT b_kitchen_stock_s11 PSNR:31.013169642857143 SSIM:0.9246378609112331 LPIPS:0.15502786061593465 N_Gaussians:1576551 ms_it=6.74  allocated: 6.51 GiB
+##### b_kitchen_stock_s12: method=FasterGS seed=12 iters=30000 flags= blend=taming 01:11:53
+FGS_N iteration=15000 N=1602983
+FGS_WALL from=0 to=15000 s=97.322 views=1241cd156a30df4d
+FGS_WALL from=15000 to=30000 s=106.277 views=adddda6119b69ab
+SEGCLOCK step=30000 seg_s=200.650 cum_s=200.650 sparse=0 N=1602983 peak_alloc_gib=6.52
+FGS_TRAIN_END N=1602983 peak_alloc_gib=6.52 peak_reserved_gib=6.95
+RUNDIR b_kitchen_stock_s12 output/FasterGS/fastergs_kitchen_1144604_s12p2b_kitchen_stock_s12_2026-11-08-01-12-00
+PERIMG b_kitchen_stock_s12 n_images=35 min_image=27 min_psnr=26.85
+RESULT b_kitchen_stock_s12 PSNR:31.490740040370397 SSIM:0.9274725249835423 LPIPS:0.15289384722709656 N_Gaussians:1577577 ms_it=6.73  allocated: 6.52 GiB
+##### b_kitchen_abcds_s12: method=FasterGSPlusDS seed=12 iters=30000 flags=SELECTIVE_FROM=15000,SH_REST_BF16_MOMENTS=true blend=macro 01:16:40
+FGS_SPARSE_FROM: selective Adam from iteration 15000
+FGS_N iteration=15000 N=1601157
+FGS_WALL from=0 to=15000 s=70.567 views=1241cd156a30df4d
+FGS_WALL from=15000 to=30000 s=72.279 views=adddda6119b69ab
+SEGCLOCK step=30000 seg_s=140.045 cum_s=140.045 sparse=1 visfrac=0.617 N=1601157 peak_alloc_gib=6.46
+FGS_TRAIN_END N=1601157 peak_alloc_gib=6.46 peak_reserved_gib=7.14
+RUNDIR b_kitchen_abcds_s12 output/FasterGSPlusDS/fastergsplusds_kitchen_7d2ec29_s12p2b_kitchen_abcds_s12_2026-11-08-01-16-47
+PERIMG b_kitchen_abcds_s12 n_images=35 min_image=27 min_psnr=26.87
+RESULT b_kitchen_abcds_s12 PSNR:31.49152902875628 SSIM:0.9277762940951756 LPIPS:0.1525946855545044 N_Gaussians:1596003 ms_it=4.71  allocated: 6.46 GiB
+JOB OK

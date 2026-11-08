@@ -345,3 +345,22 @@ Jobs 4549174–82. The protocol is step 3's: one job per scene, arms interleaved
 
   These counts are too small to say whether any arm changes how often they happen.
 - The verdict stands as registered. Whether kitchen's miss is a systematic effect needs a separately registered follow-up, for example more kitchen seeds. Excluding images after seeing the results does not settle it.
+
+## Step 7: kitchen follow-up, A+B+C+D+S vs stock (kitchen × 10 new seeds, 20 runs)
+
+Pre-registered in phase2/PLAN.md step 7 (commit 2d6681a) before the job was submitted. Job 4551359 (node c34): seeds 3–12, the step 6b protocol, all 20 runs in one job. Full output: [`logs/kfollow-analysis.md`](logs/kfollow-analysis.md) (seeds 3–12) and [`logs/kfollow-pooled13-analysis.md`](logs/kfollow-pooled13-analysis.md) (pooled with step 6b's seeds 0–2, descriptive). All 20 runs passed validation, and none was rerun.
+
+**Pre-registered result: the step 6b kitchen deficit is not reproduced.** The mean paired ΔPSNR on seeds 3–12 is **+0.098 dB**, against the −0.10 dB limit. **The step 6b verdict stays FAIL as registered**; this follow-up says the kitchen miss there is most likely noise from rare one-view failures, not a systematic loss.
+
+| kitchen | seeds 3–12 (primary) | pooled seeds 0–12 (descriptive) |
+|---|---|---|
+| ΔPSNR, all images | **+0.098 dB** (−0.117 to +0.475 per seed; 7 of 10 seeds ≥ 0) | +0.036 dB |
+| ΔPSNR, failing images removed from every run | +0.030 dB | +0.015 dB |
+| ΔSSIM / ΔLPIPS | +0.0004 / −0.0003 | +0.0002 / −0.0002 |
+| runs with a one-view failure, stock vs stack | 3 vs 0 of 10 | 3 vs 2 of 13 |
+| train time, stock → stack | 201.2 → 142.5 s (1.41×), 10/10 faster | 201.0 → 142.8 s |
+
+- **One-view failures** (a test image > 3 dB below the same image in the scene's other runs): on seeds 3–12 all three were in stock runs (s3 image 23, −6.5 dB; s5 image 2, −4.6 dB; s11 image 9, −12.3 dB), none in the stack's. Exact McNemar on the 3 discordant seeds: p = 0.25 (two-sided). That is not significant, and with this many seeds it cannot show that the failure rates are equal, only that there is no sign the stack raises them.
+- Over 13 seeds the failures are 3 stock runs and 2 stack runs (the latter are step 6b's s0 and s1), so the step 6b deficit came from the stack drawing two of them in three seeds.
+- Gaussian counts and peak VRAM match stock (1.61 M at 15k in both; 6.49 vs 6.54 GiB).
+- How to report: "A+B+C+D+S missed the pre-registered per-scene limit on kitchen (−0.171 dB, 3 seeds); a pre-registered 10-seed follow-up gave +0.098 dB, so the miss did not reproduce." Both numbers are reported; neither replaces the other.
