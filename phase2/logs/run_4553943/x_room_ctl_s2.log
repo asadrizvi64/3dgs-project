@@ -1,0 +1,12 @@
+NVIDIA H100, 580.159.04
+torch 2.11.0+cu128
+method=FasterGSUp seed=2 tag=p2x_room_ctl_s2 opt_flags= scene=room scale=0.5 nerficg=623ad16 method_commit=de6da4d job=4553943
+5:    RANDOM_SEED: 2
+8:    METHOD_TYPE: FasterGSUp
+24:    MODEL_NAME: fastergsup_room_de6da4d_s2p2x_room_ctl_s2
+42:        ACTIVATE: true
+47:        ACTIVATE: false
+60:    GUI:
+61:        ACTIVATE: false
+113:    PATH: /data/cat/ws/syas272h-3dgs-data/data/360_v2/room
+114:    IMAGE_SCALE_FACTOR: 0.5

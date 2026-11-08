@@ -133,7 +133,11 @@ for path in args.logs:
         if n15:
             notes.append(f'N at 15k {n15.group(1)}')
         if end:
-            notes.append(f'N at last step before cleanup {end.group(1)}; training-only peak {end.group(2)} GiB allocated / {end.group(3)} GiB reserved')
+            # runs that render the test set during training (phase 3 FGS_RESUME continuations) never reset the peak, so it
+            # includes those evaluations
+            kind = ('peak including in-training test evaluations (not training-only)' if any(l.startswith('FGS_RESUME') for l in L)
+                    else 'training-only peak')
+            notes.append(f'N at last step before cleanup {end.group(1)}; {kind} {end.group(2)} GiB allocated / {end.group(3)} GiB reserved')
         elif res:
             if res.group(6):
                 notes.append(f'VRAM {res.group(6)} GiB allocated, read after the final evaluation (not training-only)')

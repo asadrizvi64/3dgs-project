@@ -1,0 +1,7 @@
+SEGCLOCK step=1000 seg_s=3.225 cum_s=3.225 sparse=0 N=175252 peak_alloc_gib=5.37
+SEGCLOCK step=2000 seg_s=3.318 cum_s=6.542 sparse=0 N=426204 peak_alloc_gib=5.61
+SEGCLOCK step=3000 seg_s=3.857 cum_s=10.400 sparse=0 N=664687 peak_alloc_gib=5.88
+SEGCLOCK step=4000 seg_s=3.712 cum_s=14.112 sparse=0 N=757925 peak_alloc_gib=5.96
+SEGCLOCK step=5000 seg_s=4.084 cum_s=18.195 sparse=0 N=948077 peak_alloc_gib=6.17
+FGS_TRAIN_END N=948077 peak_alloc_gib=6.17 peak_reserved_gib=6.40
+FGS_SAVE_STATE step=5000 N=948077 cum_s=18.195 param_sha=fa8f014bd37c175b optim_sha=07569b4730c33e7e dinfo_sha=4b23748bd9653227 path=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_room_de6da4d_s1p2x_room_pfx_s1_2026-11-08-17-02-24/checkpoints/state_0005000.pt

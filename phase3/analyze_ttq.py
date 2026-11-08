@@ -1,7 +1,7 @@
 """Phase 3 Experiment 1 analysis: time to quality per arm, with the pre-registered decision rule (phase3/PLAN.md).
 
     python phase3/analyze_ttq.py phase2/logs/gs-x1-garden-<job>.out phase2/logs/gs-x1-room-<job>.out \
-        [--ref phase2/logs/gs-up-garden-<job>.out phase2/logs/gs-up-room-<job>.out] [--seeds 0 1 2]
+        [--ref phase2/logs/gs-up-garden-<job>.out phase2/logs/gs-up-room-<job>.out] [--seeds 0 1 2] \n        [--rerun phase2/logs/gs-x1-room-s1-<job>.out ...]
 
 Inputs: the exp1 job logs (build_plus.sbatch stage exp1: run blocks '##### x_<scene>_<arm>_s<seed>:', each with the
 clock hook's lines) and the archived per-step test metrics phase2/logs/run_<job>/runs/<run>/test_<i>/metrics_8bit.txt.
@@ -25,8 +25,10 @@ from collections import defaultdict
 ap = argparse.ArgumentParser()
 ap.add_argument('logs', nargs='+')
 ap.add_argument('--ref', nargs='*', default=[])
+ap.add_argument('--rerun', nargs='*', default=[], help='rerun logs: every (scene, seed) they contain replaces that whole block (prefix and all arms) of the main logs')
 ap.add_argument('--seeds', type=int, nargs='+', default=[0, 1, 2])
 ap.add_argument('--branch', type=int, default=5000)
+ap.add_argument('--descriptive', action='store_true', help='if validation or check 1 failed, still print what the rule would give, labelled as not the decision')
 args = ap.parse_args()
 ARMS = ('ctl', 'stop', 'mcmc', 'oracle')
 CAND = ('stop', 'mcmc')
@@ -64,6 +66,15 @@ def metrics(path):
 
 
 blocks, arch = blocks_of(args.logs, r'##### x_([a-z]+)_([a-z]+)_s(\d+):')
+if args.rerun:
+    rb, ra = blocks_of(args.rerun, r'##### x_([a-z]+)_([a-z]+)_s(\d+):')
+    rep = sorted({(k[0], k[2]) for k in rb})
+    for k in [k for k in blocks if (k[0], k[2]) in rep]:
+        del blocks[k]
+        arch.pop(k, None)
+    blocks.update(rb)
+    arch.update(ra)
+    print('REPLACED from rerun logs (whole scene-seed blocks): ' + ', '.join(f'{sc} s{sd}' for sc, sd in rep) + '\n')
 scenes = sorted({k[0] for k in blocks})
 errors = defaultdict(list)
 runs = {}
@@ -119,9 +130,11 @@ for sc in scenes:
             if not g('ctl')['clk'][15000][1] > g('ctl')['clk'][args.branch][1]:
                 errors[sc].append(f's{s} ctl: no growth after the branch')
         if g('stop'):
-            ns = [g('stop')['clk'][k][1] for k in sorted(g('stop')['clk']) if k >= args.branch]
-            if any(b > a for a, b in zip(ns, ns[1:])):
-                errors[sc].append(f's{s} stop: N grew after the branch')
+            # densification at the branch step itself still runs (found in the smoke test, phase3/PLAN.md), so N must be
+            # constant from the first evaluation point after the branch on
+            ns = [g('stop')['clk'][k][1] for k in sorted(g('stop')['clk']) if k >= args.branch + 1000]
+            if len(set(ns)) != 1:
+                errors[sc].append(f's{s} stop: N changed after step {args.branch + 1000}: {sorted(set(ns))[:4]}')
         if g('mcmc'):
             n0 = g('mcmc')['clk'][args.branch][1]
             if any(v[1] != n0 for k, v in g('mcmc')['clk'].items() if k >= args.branch):
@@ -254,7 +267,9 @@ print('## Decision (phase3/PLAN.md)\n')
 valid = all(not errors[sc] for sc in scenes) and all(check1.get(sc) for sc in scenes) and len(scenes) == 2
 if not valid:
     print('NOT EVALUATED: validation or check 1 failed (see above). Fix the cause before reading the arms.')
-    sys.exit(2)
+    if not args.descriptive:
+        sys.exit(2)
+    print('\n**Descriptive only (--descriptive): the rule applied anyway. This is NOT the pre-registered decision.**\n')
 passed = {}
 for a in CAND + ('oracle',):
     crit = {}
