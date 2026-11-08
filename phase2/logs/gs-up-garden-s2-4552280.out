@@ -1,0 +1,33 @@
+node=c34 job=4552280 gpu=NVIDIA H100 stages=upbench repo=63379fe
+base=FasterGSPlusDS (abcds, patches: phase2/deferred_reduce_v2.patch phase2/sh_coalesce.patch)
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## upbench (scene garden scale 0.25, seeds 2, 30k; train time = SEGCLOCK cum_s)
+arms: stock up ups
+##### b_garden_ups_s2: method=FasterGSUpS seed=2 iters=30000 flags= blend=taming 05:34:09
+FGS_N iteration=15000 N=4161026
+FGS_WALL from=0 to=15000 s=107.622 views=16b79b2f76d3ef42
+FGS_WALL from=15000 to=30000 s=127.558 views=94fd49726d76fa2
+SEGCLOCK step=30000 seg_s=230.867 cum_s=230.867 sparse=0 N=4161026 peak_alloc_gib=6.45
+FGS_TRAIN_END N=4161026 peak_alloc_gib=6.45 peak_reserved_gib=8.37
+RUNDIR b_garden_ups_s2 output/FasterGSUpS/fastergsups_garden_00f5bf3_s2p2b_garden_ups_s2_2026-11-08-05-34-19
+PERIMG b_garden_ups_s2 n_images=24 min_image=4 min_psnr=20.62
+RESULT b_garden_ups_s2 PSNR:27.524004459381104 SSIM:0.8670960838596026 LPIPS:0.12070049128184716 N_Gaussians:4145321 ms_it=7.75  allocated: 6.45 GiB
+##### b_garden_stock_s2: method=FasterGS seed=2 iters=30000 flags= blend=taming 05:39:00
+FGS_N iteration=15000 N=4167274
+FGS_WALL from=0 to=15000 s=116.640 views=16b79b2f76d3ef42
+FGS_WALL from=15000 to=30000 s=141.044 views=94fd49726d76fa2
+SEGCLOCK step=30000 seg_s=253.280 cum_s=253.280 sparse=0 N=4167274 peak_alloc_gib=6.46
+FGS_TRAIN_END N=4167274 peak_alloc_gib=6.46 peak_reserved_gib=8.49
+RUNDIR b_garden_stock_s2 output/FasterGS/fastergs_garden_1144604_s2p2b_garden_stock_s2_2026-11-08-05-39-08
+PERIMG b_garden_stock_s2 n_images=24 min_image=4 min_psnr=20.41
+RESULT b_garden_stock_s2 PSNR:27.541597843170166 SSIM:0.867508607606093 LPIPS:0.12023595875749986 N_Gaussians:4151748 ms_it=8.49  allocated: 6.46 GiB
+##### b_garden_up_s2: method=FasterGSUp seed=2 iters=30000 flags= blend=taming 05:44:13
+FGS_N iteration=15000 N=4160158
+FGS_WALL from=0 to=15000 s=107.646 views=16b79b2f76d3ef42
+FGS_WALL from=15000 to=30000 s=127.874 views=94fd49726d76fa2
+SEGCLOCK step=30000 seg_s=231.065 cum_s=231.065 sparse=0 N=4160158 peak_alloc_gib=6.45
+FGS_TRAIN_END N=4160158 peak_alloc_gib=6.45 peak_reserved_gib=8.06
+RUNDIR b_garden_up_s2 output/FasterGSUp/fastergsup_garden_de6da4d_s2p2b_garden_up_s2_2026-11-08-05-44-20
+PERIMG b_garden_up_s2 n_images=24 min_image=4 min_psnr=20.53
+RESULT b_garden_up_s2 PSNR:27.50205898284912 SSIM:0.8673851986726125 LPIPS:0.12054116961856683 N_Gaussians:4144849 ms_it=7.76  allocated: 6.45 GiB
+JOB OK

@@ -1,0 +1,64 @@
+node=c156 job=4552202 gpu=NVIDIA H100 stages=upbuild upequiv repo=ee51613
+base=FasterGSPlusDS (abcds, patches: phase2/deferred_reduce_v2.patch phase2/sh_coalesce.patch)
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+########## upbuild
+patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSUp/Trainer.py
+patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSUp/Trainer.py
+de6da4d trainer patch cluster/patches/fastergs_sparse_from.py
+277d958 fgs-prof hooks (cluster/patches/fastergs_profiling.py)
+c7335c7 Rename FasterGS -> FasterGSUp
+7637c9f source patch upstream/upstream_main_kernels.patch
+1144604 Lean Adam: visibility-sparse update and bf16 SH-rest moments (stochastic rounding)
+c60ea26 Add absolute gradient densification from AbsGS using the selection strategy of GOF (closes #13)
+
+[notice] A new release of pip is available: 26.2.2 -> 26.3
+[notice] To update, run: pip install --upgrade pip
+FasterGSUpCudaBackend ok, default blend backward mode none (no macro patch)
+patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSUpS/Trainer.py
+patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSUpS/Trainer.py
+00f5bf3 trainer patch cluster/patches/fastergs_sparse_from.py
+859f1b4 fgs-prof hooks (cluster/patches/fastergs_profiling.py)
+868ced6 Rename FasterGS -> FasterGSUpS
+93f6f2c source patch upstream/sh_coalesced_loads.patch
+6275595 source patch upstream/upstream_main_kernels.patch
+1144604 Lean Adam: visibility-sparse update and bf16 SH-rest moments (stochastic rounding)
+
+[notice] A new release of pip is available: 26.2.2 -> 26.3
+[notice] To update, run: pip install --upgrade pip
+FasterGSUpSCudaBackend ok, default blend backward mode none (no macro patch)
+1c84af0 Rename FasterGS -> FasterGSUpPure
+a0e43c8 source patch upstream/upstream_main_kernels.patch
+c60ea26 Add absolute gradient densification from AbsGS using the selection strategy of GOF (closes #13)
+d7fae87 Fuse noise generation for MCMC densification
+117bdba Make Mip-Splatting 3D filter compatible with MCMC densification
+65124e2 Fix build on CUDA 13 (closes #12)
+
+[notice] A new release of pip is available: 26.2.2 -> 26.3
+[notice] To update, run: pip install --upgrade pip
+FasterGSUpPureCudaBackend ok, default blend backward mode none (no macro patch)
+b2603d4 Rename FasterGS -> FasterGSUpPureS
+df9a7c7 source patch upstream/sh_coalesced_loads.patch
+1e3c7cf source patch upstream/upstream_main_kernels.patch
+c60ea26 Add absolute gradient densification from AbsGS using the selection strategy of GOF (closes #13)
+d7fae87 Fuse noise generation for MCMC densification
+117bdba Make Mip-Splatting 3D filter compatible with MCMC densification
+
+[notice] A new release of pip is available: 26.2.2 -> 26.3
+[notice] To update, run: pip install --upgrade pip
+FasterGSUpPureSCudaBackend ok, default blend backward mode none (no macro patch)
+RESOURCES FasterGSUp  Function _ZN9faster_gs13rasterization7kernels8backward22preprocess_backward_cuEPK6float3S5_PK6float4PKfS5_S8_S5_PKjPK6float2SA_SF_PS3_SG_PS6_PfSG_SG_SI_jjjffffffb:	 REG:94 STACK:0 SHARED:0 LOCAL:0 CONSTANT[0]:533 TEXTUR
+RESOURCES FasterGSUp  Function _ZN9faster_gs13rasterization7kernels8backward22preprocess_backward_cuEPK6float3S5_PK6float4PKfS5_S8_S5_PKjPK6float2SA_SF_PS3_SG_PS6_PfSG_SG_SI_jjjffffffb:	 REG:72 STACK:0 SHARED:1024 LOCAL:0 CONSTANT[0]:709 TEX
+RESOURCES FasterGSUpS  Function _ZN9faster_gs13rasterization7kernels8backward22preprocess_backward_cuEPK6float3S5_PK6float4PKfS5_S8_S5_PKjPK6float2SA_SF_PS3_SG_PS6_PfSG_SG_SI_jjjffffffb:	 REG:96 STACK:0 SHARED:0 LOCAL:0 CONSTANT[0]:533 TEXTUR
+RESOURCES FasterGSUpS  Function _ZN9faster_gs13rasterization7kernels8backward22preprocess_backward_cuEPK6float3S5_PK6float4PKfS5_S8_S5_PKjPK6float2SA_SF_PS3_SG_PS6_PfSG_SG_SI_jjjffffffb:	 REG:72 STACK:0 SHARED:1024 LOCAL:0 CONSTANT[0]:709 TEX
+RESOURCES FasterGSUpPure  Function _ZN9faster_gs13rasterization7kernels8backward22preprocess_backward_cuEPK6float3S5_PK6float4PKfS5_S8_S5_PKjPK6float2SA_SF_PS3_SG_PS6_PfSG_SG_SI_jjjffffffb:	 REG:94 STACK:0 SHARED:0 LOCAL:0 CONSTANT[0]:533 TEXTUR
+RESOURCES FasterGSUpPure  Function _ZN9faster_gs13rasterization7kernels8backward22preprocess_backward_cuEPK6float3S5_PK6float4PKfS5_S8_S5_PKjPK6float2SA_SF_PS3_SG_PS6_PfSG_SG_SI_jjjffffffb:	 REG:72 STACK:0 SHARED:1024 LOCAL:0 CONSTANT[0]:709 TEX
+RESOURCES FasterGSUpPureS  Function _ZN9faster_gs13rasterization7kernels8backward22preprocess_backward_cuEPK6float3S5_PK6float4PKfS5_S8_S5_PKjPK6float2SA_SF_PS3_SG_PS6_PfSG_SG_SI_jjjffffffb:	 REG:96 STACK:0 SHARED:0 LOCAL:0 CONSTANT[0]:533 TEXTUR
+RESOURCES FasterGSUpPureS  Function _ZN9faster_gs13rasterization7kernels8backward22preprocess_backward_cuEPK6float3S5_PK6float4PKfS5_S8_S5_PKjPK6float2SA_SF_PS3_SG_PS6_PfSG_SG_SI_jjjffffffb:	 REG:72 STACK:0 SHARED:1024 LOCAL:0 CONSTANT[0]:709 TEX
+########## upequiv
+equivalence: FasterGSUpPureS vs FasterGSUpPure
+EQUIV scene=tiny sh=1 rows=0 misaligned=False instances=2284 max_rel=7.50e-08 ref_noise=4.53e-08 sh_rest_bitexact=True ref_self_bitexact=True
+96 passed in 2.74s
+equivalence: FasterGSUpS vs FasterGSUp
+EQUIV scene=tiny sh=1 rows=0 misaligned=False instances=2284 max_rel=8.28e-08 ref_noise=4.51e-08 sh_rest_bitexact=True ref_self_bitexact=True
+96 passed in 2.51s
+JOB OK

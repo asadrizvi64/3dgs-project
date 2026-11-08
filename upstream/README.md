@@ -54,3 +54,29 @@ the PR text would say so. If (1) fails, no PR.
 
 Whatever the outcome, the PR text reports only measurements against upstream main, labels the GPU (H100 SXM, CUDA 12.8),
 and does not cite the phase 2 stack figures as gains over upstream.
+
+## Result (2026-11-08)
+
+Jobs: build and equivalence 4552202; Nsight Compute 4552205; timing 4552203 (garden) and 4552204 (room). Seed 2 of both
+scenes was rerun as jobs 4552280 and 4552281, with all three arms of that seed. In the original jobs, two runs
+(garden s2 `ups`, room s2 `up`) finished training but failed to record their results. The cause was a `git merge` of
+the cluster checkout while they were running, which rewrote `cluster/train_fastergs.sbatch` under the running bash
+process. Analysis: [`phase2/logs/upbench-analysis.md`](../phase2/logs/upbench-analysis.md)
+(`analyze_bench.py ... --rerun ...`, which lists the replaced seed-2 blocks). All runs are in `experiment_log.csv`.
+
+**Against the rule above: (1) and (2) hold, (3) does not.**
+
+| step | result | |
+|---|---|---|
+| (1) equivalence | 96/96 tests on both build pairs; largest relative gradient difference 8.3e-8; SH-rest gradients bit-identical | pass |
+| (2) kernel, `preprocess_backward_cu` at step 20k | garden 646.3 → 631.6 µs (−2.3%), room 206.6 → 200.6 µs (−2.9%); DRAM throughput 82 → 84% and 76 → 79% | pass |
+| (3) end to end, main + S loads vs main | garden 230.0 → 229.7 s (per seed +0.49 / −0.18 / +0.09%), room 145.0 → 145.4 s (−0.91 / +0.38 / −0.22%); faster in **3 of 6** pairs (5 needed) | **fails** |
+
+- **Reading:** the change makes one kernel 2–3% faster. That kernel is about 0.3% of a training step, so the
+  end-to-end difference is below run-to-run noise, which is about ±0.5% per pair here.
+- **Quality:** unchanged within noise (ΔPSNR vs main: garden −0.025, room −0.050 dB; gradients are identical up to atomic order).
+- **Decision:** by the rule, whether to propose this is the user's call, and a PR would describe it as a small kernel
+  cleanup with no measurable end-to-end gain. My recommendation is not to open one.
+- **Context, upstream's own gain:** upstream main (090e8ad) is 8.8% faster than c60ea26 on garden and 3.8% on room
+  (6/6 pairs). Part of the phase 2 stack's gain over c60ea26 is now in upstream main. The 1.451× figure stays a
+  comparison against c60ea26 only.

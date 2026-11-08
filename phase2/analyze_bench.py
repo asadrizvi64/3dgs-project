@@ -32,6 +32,10 @@ from collections import defaultdict
 
 ap = argparse.ArgumentParser()
 ap.add_argument('logs', nargs='+')
+ap.add_argument('--rerun', nargs='*', default=[],
+                help='logs of rerun jobs: for every (scene, seed) they contain, ALL arms come from the rerun and the '
+                     'original job\'s blocks of that seed are ignored (listed in the report), so pairs stay in one job')
+REPLACED = []
 ap.add_argument('--seeds', type=int, nargs='+', default=[0, 1, 2])
 ap.add_argument('--arms', nargs='+', default=['stock', 'ab', 'abc'])
 ap.add_argument('--dense-arms', nargs='+', default=['stock'],
@@ -50,14 +54,23 @@ fin = lambda x: x is not None and math.isfinite(x)
 
 blocks = defaultdict(list)          # (scene, arm, seed) -> [lines] per header occurrence
 jobs, archives = {}, {}   # archives: per run (scene, arm, seed), so several jobs of one scene can be pooled
-for path in args.logs:
+rerun_seeds = defaultdict(set)      # --rerun: (scene, seed) -> rerun job replaces every arm of that seed
+for path in args.rerun:
+    for m in re.finditer(r'^##### b_([a-z]+)_\w+?_s(\d+):', open(path, encoding='utf-8', errors='replace').read(), re.M):
+        rerun_seeds[m.group(1)].add(int(m.group(2)))
+for path in args.logs + args.rerun:
     cur = None
+    is_rerun = path in args.rerun
     head = open(path, encoding='utf-8', errors='replace').read()
     mjob = re.search(r'^node=(\S+) job=(\S+)', head, re.M)
     for line in head.splitlines():
         m = re.match(r'##### b_([a-z]+)_(' + '|'.join(sorted(ARMS, key=len, reverse=True)) + r')_s(\d+):', line)
         if m:
             cur = (m.group(1), m.group(2), int(m.group(3)))
+            if not is_rerun and cur[2] in rerun_seeds[cur[0]]:
+                REPLACED.append(f'{cur[0]} s{cur[2]} {cur[1]} (job {mjob.group(2) if mjob else "?"})')
+                cur = None
+                continue
             blocks[cur].append([])
             if mjob:
                 jobs[cur[0]] = f'{mjob.group(2)} ({mjob.group(1)})'
@@ -137,6 +150,8 @@ for sc in scenes:
 
 ok = [sc for sc in scenes if not errors[sc]]
 print(f'## Validation: {len(ok)}/{len(ORDER)} expected scenes pass ({", ".join(scenes)})')
+if REPLACED:
+    print(f'  - replaced by --rerun jobs (all arms of those seeds come from the rerun): {"; ".join(REPLACED)}')
 for sc in scenes:
     for e in errors[sc]:
         print(f'  - {sc}: {e}')

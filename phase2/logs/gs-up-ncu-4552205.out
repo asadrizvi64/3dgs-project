@@ -1,0 +1,12 @@
+node=c67 job=4552205 gpu=NVIDIA H100 stages=upncu repo=ee51613
+base=FasterGSPlusDS (abcds, patches: phase2/deferred_reduce_v2.patch phase2/sh_coalesce.patch)
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+##### q_garden_up_20000: method=FasterGSUp seed=0 window=20000-20002 04:56:05
+NCU q_garden_up_20000 kernels=4 rep /data/cat/ws/syas272h-3dgs-data/ncu/4552205/q_garden_up_20000.ncu-rep
+##### q_garden_ups_20000: method=FasterGSUpS seed=0 window=20000-20002 05:00:14
+NCU q_garden_ups_20000 kernels=4 rep /data/cat/ws/syas272h-3dgs-data/ncu/4552205/q_garden_ups_20000.ncu-rep
+##### q_room_up_20000: method=FasterGSUp seed=0 window=20000-20002 05:04:22
+NCU q_room_up_20000 kernels=4 rep /data/cat/ws/syas272h-3dgs-data/ncu/4552205/q_room_up_20000.ncu-rep
+##### q_room_ups_20000: method=FasterGSUpS seed=0 window=20000-20002 05:07:37
+NCU q_room_ups_20000 kernels=4 rep /data/cat/ws/syas272h-3dgs-data/ncu/4552205/q_room_ups_20000.ncu-rep
+JOB OK

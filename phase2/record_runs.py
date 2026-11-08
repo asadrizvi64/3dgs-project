@@ -55,6 +55,10 @@ def describe(method, flags, blend):
         parts.append('deferred warp reduction v2, padded rows, 3 steps per flush (phase2/deferred_reduce_v2.patch)')
     if method == 'FasterGSPlusDS':
         parts.append('D deferred reduction v2 + coalesced SH-rest access in preprocess backward (phase2/deferred_reduce_v2.patch, phase2/sh_coalesce.patch)')
+    if method == 'FasterGSUp':
+        parts.insert(0, 'upstream Faster-GS main 090e8ad kernels, no phase 1/2 changes')
+    if method == 'FasterGSUpS':
+        parts.insert(0, 'upstream Faster-GS main 090e8ad kernels + coalesced SH-rest loads (upstream/sh_coalesced_loads.patch)')
     if method == 'FasterGSPlusStats':
         parts.append('blend work counters (phase2/blend_stats.patch)')
     return f'{method} ({", ".join(parts)})'
@@ -148,6 +152,9 @@ for path in args.logs:
         notes.append('LPIPS is VGG')
         hook = 'v5' if walls else ('v4 or later' if (clk and clk.group(5)) else 'v3')
         commit = (f'FasterGS@1144604 + sparse_from {hook} hooks' if b['method'] == 'FasterGS'
+                  else f'{b["method"]} (1144604 + upstream c60ea26..090e8ad kernels (upstream/upstream_main_kernels.patch), no macro patch'
+                  + (' + coalesced SH-rest loads (upstream/sh_coalesced_loads.patch)' if b['method'] == 'FasterGSUpS' else '')
+                  + f' + sparse_from {hook})' if b['method'] in ('FasterGSUp', 'FasterGSUpS')
                   else f'{b["method"]} (1144604 + phase1 macro' + (' + phase2 readback patch' if b['method'] == 'FasterGSPlusRB' else ' + phase2 blend counters' if b['method'] == 'FasterGSPlusStats' else ' + phase2 ellipse culling' if b['method'] == 'FasterGSPlusCull' else ' + phase2 deferred reduction' if b['method'] == 'FasterGSPlusDR' else ' + phase2 deferred reduction v2' if b['method'] in ('FasterGSPlusDR2', 'FasterGSPlusD') else ' + phase2 deferred reduction v2 + SH-rest coalescing' if b['method'] == 'FasterGSPlusDS' else '') + f' + sparse_from {hook})') + f'; 3dgs-project {repo}'
         row = dict(date=dm.group(1) if dm else '', commit=commit, instance_type=f'ZIH Capella node {node} (job {job})',
                    scene=scene, method=describe(b['method'], b['flags'], b['blend']), seed=b['seed'],
