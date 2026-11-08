@@ -35,7 +35,7 @@ from pathlib import Path
 
 import re
 
-MARK = '# >>> fgs-resume v3'
+MARK = '# >>> fgs-resume v4'
 path = Path(sys.argv[1])
 src = path.read_text()
 if MARK in src:
@@ -49,7 +49,7 @@ assert '# >>> fgs-sparse-from v5' in src and '        # <<< fgs-segclock\n' in s
 
 # 2. save hook: after the clock hook has booked the step
 A_SAVE = '        # <<< fgs-segclock\n'
-SAVE = A_SAVE + '''        # >>> fgs-resume v3 (save)
+SAVE = A_SAVE + '''        # >>> fgs-resume v4 (save)
         if __import__('os').environ.get('FGS_VIEW_TRACE'):
             if not hasattr(self, '_fgs_vt'):
                 self._fgs_vt = open(__import__('os').environ['FGS_VIEW_TRACE'], 'a', buffering=1)
@@ -83,7 +83,7 @@ src = src.replace(A_SAVE, SAVE, 1)
 
 # 3. run() override: pre-training callbacks with the current config, then the saved state, then the normal loop
 A_RUN = '    @training_callback(priority=80)\n    def training_iteration('
-RUN = '''    # >>> fgs-resume v3 (run)
+RUN = '''    # >>> fgs-resume v4 (run)
     def run(self, dataset: 'BaseDataset') -> None:
         _os = __import__('os')
         _p = _os.environ.get('FGS_RESUME')
@@ -92,19 +92,19 @@ RUN = '''    # >>> fgs-resume v3 (run)
         for callback in self._gather_callbacks(-1):
             with callback.timer:
                 callback(self, 0, dataset)
-        st = torch.load(_p, map_location='cuda', weights_only=False)
+        st = torch.load(_p, map_location='cpu', weights_only=False)   # RNG states must stay CPU ByteTensors
         g = self.model.gaussians
         with torch.no_grad():
             for k, v in st['params'].items():
-                setattr(g, k, torch.nn.Parameter(v.contiguous().requires_grad_(True)))
+                setattr(g, k, torch.nn.Parameter(v.cuda().contiguous().requires_grad_(True)))
         g.training_setup(self, st['extent'])
         _lr = {pg['name']: pg['lr'] for pg in g.optimizer.param_groups}   # from the current config
-        g.optimizer.load_state_dict(st['optimizer'])   # also restores the saved groups' learning rates ...
+        g.optimizer.load_state_dict(st['optimizer'])   # moves moments to the parameters' device; also restores the saved groups' learning rates ...
         for pg in g.optimizer.param_groups:              # ... so put the current config's back (means: set every step anyway)
             pg['lr'] = _lr[pg['name']]
         g.active_sh_degree = st['active_sh_degree']
         g.active_sh_bases = (g.active_sh_degree + 1) ** 2
-        g._densification_info = None if (self.USE_MCMC or st['densification_info'] is None) else st['densification_info'].contiguous()
+        g._densification_info = None if (self.USE_MCMC or st['densification_info'] is None) else st['densification_info'].cuda().contiguous()
         self.train_sampler.id_sampler = st['id_sampler']
         torch.set_rng_state(st['rng_cpu'])
         torch.cuda.set_rng_state(st['rng_cuda'])
