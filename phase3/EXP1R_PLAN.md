@@ -418,3 +418,48 @@ Experiment 1R arm ran. The review approved the revised validation stage, not the
   about three quarters of each evaluation) is a separate engineering task.
 - **Experiment 1R launches only if** test A (repeated), the stage smoke and the analysis tests all pass, and the user
   gives the go-ahead after seeing them.
+
+## Revised validation results (2026-11-09)
+
+Jobs:
+- **4559014**: stage `x1ra`, repo 8db2f2e, 14 min, completed. Log `phase2/logs/gs-x1ra-4559014.out`.
+- **4559015**: stage `exp1r`, a short garden run, 17 min, completed. Log `phase2/logs/gs-x1r-stagesmoke-4559015.out`.
+
+| gate | result |
+|---|---|
+| A, repeated: the 4 guard-on / guard-off pairs, per-image rows identical | PASS (4 of 4) |
+| A, repeated: full-precision means within 1e-5 dB / 1e-6 / 1e-6 | PASS (4 of 4); largest differences PSNR 1.22e-6 dB, SSIM 2.6e-8, LPIPS 1.0e-7 |
+| Stage smoke: validation, and checks 1a–1d on real output (garden, seeds 0 and 1, both run orders) | PASS |
+| Analysis fixture tests | PASS (earlier, same commit) |
+
+**Test A, within-condition differences:**
+- Guard on vs guard on: 6.9e-7 dB PSNR. Guard off vs guard off: 8.3e-7 dB. Benchmark off vs benchmark off: 6.4e-7 dB.
+- These are the same size as the guard-on vs guard-off differences. The differences are run-to-run non-determinism, not
+  an effect of the guard.
+- The largest cross-condition PSNR difference is about 8 times below the tolerance.
+
+**The 64 GiB peak: cause found.**
+- With `cudnn.benchmark` on, the peak allocated memory was 71.15 GiB in all four runs. With it off, it was 9.45 GiB in
+  both runs.
+- Everything else was identical: same state, same single evaluation, no profiler. The extra ~62 GiB is therefore
+  cuDNN's algorithm search under `cudnn.benchmark`, presumably for the LPIPS-VGG convolutions, as Track R's note
+  suggested.
+- Turning the benchmark off changed the metrics by at most about 5e-7 dB, the same size as the run-to-run differences.
+- Why the profiled runs in job 4556213 did not show the peak is not established. The profiler's synchronisations
+  around each stage are one possibility.
+- The evaluation procedure for Experiment 1R is **not** changed: the benchmark stays on, as in every arm and as in
+  Experiment 1. Switching it off during evaluation (`FGS_EVAL_CUDNN_BENCH=0`) is an option for later experiments.
+
+**Stage smoke:**
+
+| item | result |
+|---|---|
+| Run order | Logged as planned: seed 0 reference first, seed 1 reference last |
+| Evaluation checks | 8 `FGS_EVALCHECK` lines, one per branched run, all restored |
+| 1e, `ctl` − reference at 3,000 steps | −0.012 dB (seed 0) and +0.048 dB (seed 1). Reported only; at 3,000 steps this says nothing about 30,000. |
+| Cost of the evaluation check | Garden branched runs took 88–93 s, against 87–90 s without the check in job 4556213. About 1–5 s per evaluation. |
+
+**All gates of the revised validation stage pass.**
+- Experiment 1R is ready to launch: garden in one job, room in one job per seed, seeds 10–12, stage `exp1r`.
+- It launches only on the user's go-ahead.
+- This file becomes the final pre-registration at launch, with the commit it is frozen at.

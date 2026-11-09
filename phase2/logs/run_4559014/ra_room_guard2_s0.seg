@@ -1,0 +1,3 @@
+FGS_RESUME step=5000 N=946113 cum_s=18.364 sh_degree=3 param_sha=7994bcc0301a7e6d optim_sha=b6829ebe63c9cd39 dinfo_sha=70861ea48b49d6bd densification_info=(2, 946113) use_mcmc=False max_primitives=1000000 densification_end=14900 lr=means:0.00102765,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_room_de6da4d_s0p2x_room_pfx_s0_2026-11-08-15-18-29/checkpoints/state_0005000.pt
+SEGCLOCK step=5100 seg_s=0.430 cum_s=18.794 sparse=0 N=962401 peak_alloc_gib=71.15
+FGS_TRAIN_END N=962401 peak_alloc_gib=71.15 peak_reserved_gib=71.27

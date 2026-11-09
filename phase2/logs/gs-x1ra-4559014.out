@@ -1,0 +1,75 @@
+node=c134 job=4559014 gpu=NVIDIA H100 stages=x1ra repo=8db2f2e
+base=FasterGSPlusDS (abcds, patches: phase2/deferred_reduce_v2.patch phase2/sh_coalesce.patch)
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSUp/Trainer.py
+########## x1ra (room seed 0, same saved state at 5000: guard on x2 / off x2 / benchmark off x2, unprofiled)
+##### ra_room_guard_s0: method=FasterGSUp seed=0 iters=5100 flags= blend=taming 16:52:31
+FGS_RESUME step=5000 N=946113 cum_s=18.364 sh_degree=3 param_sha=7994bcc0301a7e6d optim_sha=b6829ebe63c9cd39 dinfo_sha=70861ea48b49d6bd densification_info=(2, 946113) use_mcmc=False max_primitives=1000000 densification_end=14900 lr=means:0.00102765,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_room_de6da4d_s0p2x_room_pfx_s0_2026-11-08-15-18-29/checkpoints/state_0005000.pt
+SEGCLOCK step=5100 seg_s=0.429 cum_s=18.793 sparse=0 N=962401 peak_alloc_gib=71.15
+FGS_TRAIN_END N=962401 peak_alloc_gib=71.15 peak_reserved_gib=71.27
+RUNDIR ra_room_guard_s0 output/FasterGSUp/fastergsup_room_de6da4d_s0p2ra_room_guard_s0_2026-11-09-16-52-45
+PERIMG ra_room_guard_s0 n_images=39 min_image=34 min_psnr=20.55
+RESULT ra_room_guard_s0 PSNR:29.2970885741405 SSIM:0.8916831795985882 LPIPS:0.33574090324915373 N_Gaussians:962395 ms_it=4.34  allocated: 71.15 GiB
+##### ra_room_noguard_s0: method=FasterGSUp seed=0 iters=5100 flags= blend=taming 16:54:54
+FGS_RESUME step=5000 N=946113 cum_s=18.364 sh_degree=3 param_sha=7994bcc0301a7e6d optim_sha=b6829ebe63c9cd39 dinfo_sha=70861ea48b49d6bd densification_info=(2, 946113) use_mcmc=False max_primitives=1000000 densification_end=14900 lr=means:0.00102765,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_room_de6da4d_s0p2x_room_pfx_s0_2026-11-08-15-18-29/checkpoints/state_0005000.pt
+SEGCLOCK step=5100 seg_s=0.426 cum_s=18.790 sparse=0 N=962401 peak_alloc_gib=71.15
+FGS_TRAIN_END N=962401 peak_alloc_gib=71.15 peak_reserved_gib=71.27
+RUNDIR ra_room_noguard_s0 output/FasterGSUp/fastergsup_room_de6da4d_s0p2ra_room_noguard_s0_2026-11-09-16-55-01
+PERIMG ra_room_noguard_s0 n_images=39 min_image=34 min_psnr=20.55
+RESULT ra_room_noguard_s0 PSNR:29.29701663286258 SSIM:0.8916687797277402 LPIPS:0.3358099613434229 N_Gaussians:962395 ms_it=4.30  allocated: 71.15 GiB
+##### ra_room_nobench_s0: method=FasterGSUp seed=0 iters=5100 flags= blend=taming 16:57:12
+FGS_RESUME step=5000 N=946113 cum_s=18.364 sh_degree=3 param_sha=7994bcc0301a7e6d optim_sha=b6829ebe63c9cd39 dinfo_sha=70861ea48b49d6bd densification_info=(2, 946113) use_mcmc=False max_primitives=1000000 densification_end=14900 lr=means:0.00102765,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_room_de6da4d_s0p2x_room_pfx_s0_2026-11-08-15-18-29/checkpoints/state_0005000.pt
+SEGCLOCK step=5100 seg_s=0.427 cum_s=18.790 sparse=0 N=962401 peak_alloc_gib=9.45
+FGS_TRAIN_END N=962401 peak_alloc_gib=9.45 peak_reserved_gib=9.52
+RUNDIR ra_room_nobench_s0 output/FasterGSUp/fastergsup_room_de6da4d_s0p2ra_room_nobench_s0_2026-11-09-16-57-19
+PERIMG ra_room_nobench_s0 n_images=39 min_image=34 min_psnr=20.55
+RESULT ra_room_nobench_s0 PSNR:29.29659784757174 SSIM:0.8916812982314672 LPIPS:0.33573750807688785 N_Gaussians:962395 ms_it=4.31  allocated: 9.45 GiB
+##### ra_room_guard2_s0: method=FasterGSUp seed=0 iters=5100 flags= blend=taming 16:59:21
+FGS_RESUME step=5000 N=946113 cum_s=18.364 sh_degree=3 param_sha=7994bcc0301a7e6d optim_sha=b6829ebe63c9cd39 dinfo_sha=70861ea48b49d6bd densification_info=(2, 946113) use_mcmc=False max_primitives=1000000 densification_end=14900 lr=means:0.00102765,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_room_de6da4d_s0p2x_room_pfx_s0_2026-11-08-15-18-29/checkpoints/state_0005000.pt
+SEGCLOCK step=5100 seg_s=0.430 cum_s=18.794 sparse=0 N=962401 peak_alloc_gib=71.15
+FGS_TRAIN_END N=962401 peak_alloc_gib=71.15 peak_reserved_gib=71.27
+RUNDIR ra_room_guard2_s0 output/FasterGSUp/fastergsup_room_de6da4d_s0p2ra_room_guard2_s0_2026-11-09-16-59-27
+PERIMG ra_room_guard2_s0 n_images=39 min_image=34 min_psnr=20.55
+RESULT ra_room_guard2_s0 PSNR:29.29633751893655 SSIM:0.8916797057176248 LPIPS:0.335740558612041 N_Gaussians:962395 ms_it=4.35  allocated: 71.15 GiB
+##### ra_room_noguard2_s0: method=FasterGSUp seed=0 iters=5100 flags= blend=taming 17:01:37
+FGS_RESUME step=5000 N=946113 cum_s=18.364 sh_degree=3 param_sha=7994bcc0301a7e6d optim_sha=b6829ebe63c9cd39 dinfo_sha=70861ea48b49d6bd densification_info=(2, 946113) use_mcmc=False max_primitives=1000000 densification_end=14900 lr=means:0.00102765,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_room_de6da4d_s0p2x_room_pfx_s0_2026-11-08-15-18-29/checkpoints/state_0005000.pt
+SEGCLOCK step=5100 seg_s=0.429 cum_s=18.793 sparse=0 N=962401 peak_alloc_gib=71.15
+FGS_TRAIN_END N=962401 peak_alloc_gib=71.15 peak_reserved_gib=71.27
+RUNDIR ra_room_noguard2_s0 output/FasterGSUp/fastergsup_room_de6da4d_s0p2ra_room_noguard2_s0_2026-11-09-17-01-44
+PERIMG ra_room_noguard2_s0 n_images=39 min_image=34 min_psnr=20.55
+RESULT ra_room_noguard2_s0 PSNR:29.29693011748485 SSIM:0.8916672865549723 LPIPS:0.33580456865139496 N_Gaussians:962395 ms_it=4.33  allocated: 71.15 GiB
+##### ra_room_nobench2_s0: method=FasterGSUp seed=0 iters=5100 flags= blend=taming 17:03:53
+FGS_RESUME step=5000 N=946113 cum_s=18.364 sh_degree=3 param_sha=7994bcc0301a7e6d optim_sha=b6829ebe63c9cd39 dinfo_sha=70861ea48b49d6bd densification_info=(2, 946113) use_mcmc=False max_primitives=1000000 densification_end=14900 lr=means:0.00102765,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_room_de6da4d_s0p2x_room_pfx_s0_2026-11-08-15-18-29/checkpoints/state_0005000.pt
+SEGCLOCK step=5100 seg_s=0.436 cum_s=18.800 sparse=0 N=962401 peak_alloc_gib=9.45
+FGS_TRAIN_END N=962401 peak_alloc_gib=9.45 peak_reserved_gib=9.52
+RUNDIR ra_room_nobench2_s0 output/FasterGSUp/fastergsup_room_de6da4d_s0p2ra_room_nobench2_s0_2026-11-09-17-04-01
+PERIMG ra_room_nobench2_s0 n_images=39 min_image=34 min_psnr=20.55
+RESULT ra_room_nobench2_s0 PSNR:29.29634759364984 SSIM:0.8916802543860215 LPIPS:0.3357423948935973 N_Gaussians:962395 ms_it=4.41  allocated: 9.45 GiB
+Within-condition differences (reported, not gated):
+  guard vs guard2: PSNR 6.85e-07 SSIM 1.53e-08 LPIPS 5.73e-08; per-image rows identical: True
+  noguard vs noguard2: PSNR 8.31e-07 SSIM 2.14e-08 LPIPS 6.19e-08; per-image rows identical: True
+  nobench vs nobench2: PSNR 6.36e-07 SSIM 2.29e-08 LPIPS 9.32e-08; per-image rows identical: True
+  guard vs nobench: PSNR 4.89e-07 SSIM 4.58e-09 LPIPS 9.17e-08; per-image rows identical: True
+  guard2 vs nobench2: PSNR 5.38e-07 SSIM 3.06e-09 LPIPS 5.58e-08; per-image rows identical: True
+Memory (FGS_TRAIN_END peak allocated, never reset; includes the evaluation at 5000):
+  ra_room_guard_s0: cudnn.benchmark on: peak allocated 71.15 GiB, peak reserved 71.27 GiB
+  ra_room_guard2_s0: cudnn.benchmark on: peak allocated 71.15 GiB, peak reserved 71.27 GiB
+  ra_room_noguard_s0: cudnn.benchmark on: peak allocated 71.15 GiB, peak reserved 71.27 GiB
+  ra_room_noguard2_s0: cudnn.benchmark on: peak allocated 71.15 GiB, peak reserved 71.27 GiB
+  ra_room_nobench_s0: cudnn.benchmark off: peak allocated 9.45 GiB, peak reserved 9.52 GiB
+  ra_room_nobench2_s0: cudnn.benchmark off: peak allocated 9.45 GiB, peak reserved 9.52 GiB
+PASS ra_room_guard_s0: test_5000 metrics present with full-precision means
+PASS ra_room_guard2_s0: test_5000 metrics present with full-precision means
+PASS ra_room_noguard_s0: test_5000 metrics present with full-precision means
+PASS ra_room_noguard2_s0: test_5000 metrics present with full-precision means
+PASS ra_room_nobench_s0: test_5000 metrics present with full-precision means
+PASS ra_room_nobench2_s0: test_5000 metrics present with full-precision means
+PASS A: guard vs noguard: per-image rows identical at output precision
+PASS A: guard vs noguard: full-precision means within tolerance (PSNR 2.93e-07 SSIM 1.07e-08 LPIPS 4.36e-08)
+PASS A: guard vs noguard2: per-image rows identical at output precision
+PASS A: guard vs noguard2: full-precision means within tolerance (PSNR 5.38e-07 SSIM 1.07e-08 LPIPS 1.83e-08)
+PASS A: guard2 vs noguard: per-image rows identical at output precision
+PASS A: guard2 vs noguard: full-precision means within tolerance (PSNR 3.91e-07 SSIM 4.58e-09 LPIPS 1.01e-07)
+PASS A: guard2 vs noguard2: per-image rows identical at output precision
+PASS A: guard2 vs noguard2: full-precision means within tolerance (PSNR 1.22e-06 SSIM 2.60e-08 LPIPS 3.90e-08)
+JOB OK
