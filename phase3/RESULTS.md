@@ -13,7 +13,7 @@ Jobs: garden 4553942 (all three seeds); room 4553943 (seed 0 used; it hit its ti
 and 2 come in full from reruns 4554356 and 4554357, by the rule recorded in PLAN.md before those seeds were analysed.
 All 38 runs are in `experiment_log.csv`.
 
-## Status: the pre-registered decision is NOT EVALUATED
+## Status: the pre-registered decision is NOT EVALUATED (adjudication running, see the end)
 
 The plan says: if check 1 fails, Experiment 1 is invalid until the cause is found. **Check 1 fails on room.** The decision
 is therefore not made. Everything below the check is reported as description only.
@@ -97,21 +97,51 @@ not that relocation alone does.
 **Elapsed time including evaluation:** garden `ctl` takes 806 s from the branch to 30,000 with the 26 evaluations, against
 233 s of training. Evaluation dominates the jobs, and in room it is about 90% of the elapsed time.
 
-## Proposed adjudication (not run; needs the user's decision)
+## Adjudication (pre-registered 2026-11-09, before any of it ran)
+
+The user approved the proposal below on 2026-11-09. It is fixed here, with its implementation, before the jobs are
+submitted. Nothing in it changes after results are seen; any change would be disclosed as one.
 
 The plan's literal instruction is "the loader is fixed first". The loader is already verified bit for bit, so there is
-nothing to fix there. The open question is whether evaluation during training changes the run. A proposal, written down
-before any of it runs:
+nothing to fix there. The open question is whether evaluation during training changes the run.
 
-1. **Evaluation-perturbation test.** Room seed 0, two uninterrupted runs from 0 to 8,000, one evaluating every 1,000
-   steps from 5,000 and one not, both with the view trace. Pass: identical view sequences. View order is drawn from the
-   CUDA generator, so any random draw made by evaluation would show up there.
-2. **Extended check 1 on room.** Six more seeds, 3–8: uninterrupted `up` runs, and prefix plus branched `ctl` (no other
-   arms). Check 1 is then re-run with all 9 seeds per side, with the same criterion: the mean difference must be within
-   the uninterrupted runs' range.
+1. **Evaluation-perturbation test.** Room seed 0, two uninterrupted runs from 0 to 8,000. One evaluates every 1,000
+   steps from 5,000, as the branched runs do. The other does not evaluate. Both record the view trace.
+   - **Pass:** identical view sequences over steps 0–7,999. View order is drawn from the CUDA generator, which
+     densification also draws from, so any random draw made by evaluation would show up there.
+   - Gaussian counts every 1,000 steps are printed as a diagnostic only.
+2. **Extended check 1 on room.** Six more seeds, 3–8.
+   - Each seed gets an uninterrupted `up` run, exactly as in upbench, and a prefix to 5,000 plus a branched `ctl` run,
+     exactly as in `exp1`. There are no other arms. Within a seed the order alternates: `up` first on even seeds,
+     `ctl` first on odd seeds.
+   - Check 1 is then re-run with all 9 seeds per side (seeds 0–2 as already analysed, room seeds 1 and 2 from the
+     reruns).
+   - **Criterion, unchanged:** the mean difference must be within the uninterrupted runs' range (max − min), for final
+     PSNR and for final N.
 3. **Outcome:**
-   - If both pass, the original decision rule is applied to the original 24 continuations, unchanged, and reported
-     with this adjudication disclosed.
-   - If either fails, Experiment 1 stays invalid, the cause is investigated, and the arms are not compared.
+   - If both parts pass, the original decision rule is applied to the original 24 continuations, unchanged. It is
+     reported with this adjudication disclosed.
+   - If either part fails, Experiment 1 stays invalid, the cause is investigated, and the arms are not compared.
 
-Cost: about 3 GPU-hours, dominated by evaluating the six branched `ctl` runs.
+**Implementation:**
+- Stage `x1adj` in `phase2/build_plus.sbatch`. Part 1 is checked inside the job, which prints a PASS/FAIL line.
+- Part 2 is computed by `phase3/adjudicate.py`. It uses the same sources as `analyze_ttq.py`. Run on the original
+  three seeds, it reproduces check 1 exactly: 31.610 vs 31.711, allowed 0.057, fail; N passes.
+
+**Jobs:**
+- `gs-x1adj-a`: part 1, then seeds 3–5.
+- `gs-x1adj-b`: seeds 6–8.
+- If a job hits its time limit, every incomplete seed is rerun whole under the same configuration (the rule already
+  used for Experiment 1).
+
+**Command, after the jobs:**
+
+```
+python phase3/adjudicate.py     --ctl phase2/logs/gs-x1-room-4553943.out phase2/logs/gs-x1-room-s1-4554356.out phase2/logs/gs-x1-room-s2-4554357.out           phase2/logs/gs-x1adj-a-<job>.out phase2/logs/gs-x1adj-b-<job>.out     --ref phase2/logs/gs-up-room-4552204.out phase2/logs/gs-up-room-s2-4552281.out           phase2/logs/gs-x1adj-a-<job>.out phase2/logs/gs-x1adj-b-<job>.out
+```
+
+**One procedural difference, disclosed in advance:** the original three `up` runs ran before the resume and evaluation
+patch existed. The six new ones run with it applied but inactive, since all of its hooks are switched off unless their
+settings are set. Part 1's no-evaluation run uses that same inactive path.
+
+Cost: about 3.5 GPU-hours, mostly evaluating the six branched `ctl` runs (about 27 minutes each on room).

@@ -70,6 +70,7 @@
 #   STAGES=rbbench SCENE=garden CMP_VARIANT=FasterGSPlusDS CMP_ARM=abcds sbatch --job-name=gs-ds-garden --time=00:50:00 phase2/build_plus.sbatch
 #   STAGES=exp1smoke sbatch --job-name=gs-x1-smoke --time=00:30:00 phase2/build_plus.sbatch   (phase3/PLAN.md engineering checks)
 #   STAGES=exp1 SCENE=garden sbatch --job-name=gs-x1-garden --time=03:00:00 phase2/build_plus.sbatch   (phase 3 Experiment 1)
+#   STAGES=x1adj ADJ_EVALTEST=1 SEEDS="3 4 5" sbatch --job-name=gs-x1adj-a --time=02:45:00 phase2/build_plus.sbatch   (Exp 1 adjudication)
 #   STAGES="upbuild upequiv" sbatch --job-name=gs-up-build --time=01:00:00 phase2/build_plus.sbatch   (upstream/README.md)
 #   STAGES=upbench SCENE=garden sbatch --job-name=gs-up-garden --time=01:30:00 phase2/build_plus.sbatch
 #   STAGES=upncu sbatch --job-name=gs-up-ncu --time=00:40:00 phase2/build_plus.sbatch
@@ -527,7 +528,7 @@ x_arm_cfg() {  # arm N_at_branch N_oracle -> CFG_SET value
     oracle) echo "USE_MCMC=true,MAX_PRIMITIVES=$3,LAMBDA_OPACITY_REGULARIZATION=0.01,LAMBDA_SCALE_REGULARIZATION=0.01,LEARNING_RATE_OPACITIES=0.05" ;;
   esac
 }
-if has exp1smoke || has exp1; then
+if has exp1smoke || has exp1 || has x1adj; then
   M=${EXP1_METHOD:-FasterGSUp}
   python "$REPO/cluster/patches/fastergs_resume.py" "$DATA/nerficg/src/Methods/$M/Trainer.py"
 fi
@@ -626,6 +627,52 @@ if has exp1; then
       fi
     fi
     x_clean $pfx keepstate
+  done
+fi
+
+# Experiment 1 adjudication (phase3/RESULTS.md, "Adjudication", pre-registered before any of it ran). Room only.
+#   x1adj  ADJ_EVALTEST=1: part 1, room seed 0, two uninterrupted runs 0 -> 8000 with the view trace, one evaluating every
+#          1000 steps from 5000 (as the branched runs do) and one not. Then, for each of SEEDS: the uninterrupted `up` run
+#          exactly as in upbench, and prefix 0 -> 5000 plus branched ctl exactly as in exp1; order alternates by seed.
+if has x1adj; then
+  BSCENE=room; BSCALE=0.5; EXP1_AT=5000
+  echo "########## x1adj (room, eval test ${ADJ_EVALTEST:-0}, seeds ${SEEDS:?set SEEDS for x1adj})"
+  if [ "${ADJ_EVALTEST:-0}" = 1 ]; then
+    TRAIN_ENV="FGS_EVAL_EVERY=1000 FGS_EVAL_FROM=5000 FGS_VIEW_TRACE=$OUT/a_room_ev_s0.views" train a_room_ev_s0 $M 0 8000 "" taming 1000
+    x_clean a_room_ev_s0
+    TRAIN_ENV="FGS_VIEW_TRACE=$OUT/a_room_ne_s0.views" train a_room_ne_s0 $M 0 8000 "" taming 1000
+    x_clean a_room_ne_s0
+    python3 - "$OUT" <<'PY' || FAILED+=(x1adj_evaltest)
+import re, sys
+out = sys.argv[1]
+views = lambda n: [l for l in open(f'{out}/a_room_{n}_s0.views').read().split('\n') if l]
+ev, ne = views('ev'), views('ne')
+nclk = lambda n: {int(a): int(b) for a, b in re.findall(r'SEGCLOCK step=(\d+) .* N=(\d+) peak', open(f'{out}/a_room_{n}_s0.seg').read())}
+first = next((i for i, (a, b) in enumerate(zip(ev, ne)) if a != b), None)
+print(f'EVALTEST view trace lines: with evaluation {len(ev)}, without {len(ne)}; first difference at line {first}')
+print('EVALTEST N every 1000 steps (diagnostic), with evaluation:', nclk('ev'), '\nEVALTEST without:', nclk('ne'))
+ok = len(ev) == len(ne) == 8000 and ev == ne
+print(('PASS ' if ok else 'FAIL ') + 'part 1: identical training-view sequences 0-7999 with and without evaluation')
+sys.exit(0 if ok else 1)
+PY
+  fi
+  for seed in $SEEDS; do
+    order="up ctl"; [ $(( seed % 2 )) = 1 ] && order="ctl up"
+    for what in $order; do
+      if [ $what = up ]; then
+        TRAIN_ENV="FGS_WALL=0,15000,30000" train "b_room_up_s$seed" FasterGSUp "$seed" 30000 "" taming
+        continue
+      fi
+      pfx=x_room_pfx_s$seed
+      TRAIN_ENV="FGS_SAVE_STATE=$EXP1_AT" train $pfx $M "$seed" $EXP1_AT "" taming 1000
+      ST=$DATA/nerficg/$(cat "$OUT/runs/$pfx/rundir.txt" 2>/dev/null)/checkpoints/state_$(printf %07d $EXP1_AT).pt
+      NB=$(sed -n "s/^FGS_SAVE_STATE step=$EXP1_AT N=\([0-9]*\).*/\1/p" "$OUT/$pfx.seg")
+      if [ ! -f "$ST" ] || [ -z "$NB" ]; then echo "FAILED x1adj $pfx: no state file / N"; FAILED+=("$pfx"); continue; fi
+      echo "EXP1_BRANCH room s$seed step=$EXP1_AT N=$NB state=$ST"
+      TRAIN_ENV="FGS_RESUME=$ST FGS_EVAL_EVERY=1000 FGS_EVAL_FROM=$EXP1_AT FGS_WALL=$EXP1_AT,30000 CFG_SET=$(x_arm_cfg ctl $NB 0)" train x_room_ctl_s$seed $M "$seed" 30000 "" taming 1000
+      x_clean x_room_ctl_s$seed
+      x_clean $pfx
+    done
   done
 fi
 
