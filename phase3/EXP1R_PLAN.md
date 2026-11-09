@@ -474,6 +474,17 @@ Jobs:
 - It launches only on the user's go-ahead.
 - This file becomes the final pre-registration at launch, with the commit it is frozen at.
 
+## Launch (2026-11-09)
+
+Submitted at commit c3ea481, stage `exp1r`. The cluster checkout is not touched while these jobs run.
+
+| job | scene | seeds | time limit |
+|---|---|---|---|
+| 4559237 | garden | 10, 11, 12 | 4:30 |
+| 4559238 | room | 10 | 3:00 |
+| 4559239 | room | 11 | 3:00 |
+| 4559240 | room | 12 | 3:00 |
+
 ## Changes after launch
 
 (None.)
