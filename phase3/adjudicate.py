@@ -37,16 +37,16 @@ def results(path, pat):
     return out, text
 
 
-ctl, part1 = {}, []
+ctl, part1 = {}, {}   # part 1 lines keyed by log path: one log may be given in both --ctl and --ref
 for p in args.ctl:
     r, text = results(p, r'x_room_ctl_s(\d+)')
-    part1 += re.findall(r'^(?:PASS|FAIL) part 1: .*$', text, re.M)
+    part1[os.path.abspath(p)] = re.findall(r'^(?:PASS|FAIL) part 1: .*$', text, re.M)
     for s, v in r.items():
         ctl[s] = v[-1]
 ref = {}
 for p in args.ref:
     r, text = results(p, r'b_room_up_s(\d+)')
-    part1 += re.findall(r'^(?:PASS|FAIL) part 1: .*$', text, re.M)
+    part1[os.path.abspath(p)] = re.findall(r'^(?:PASS|FAIL) part 1: .*$', text, re.M)
     for s, v in r.items():
         ref.setdefault(s, []).extend(v)
 
@@ -64,6 +64,7 @@ for s in args.seeds:
     if len(ref.get(s, [])) == 1:
         up.append(ref[s][0][0]); un.append(ref[s][0][1])
 print('## Adjudication\n')
+part1 = [l for v in part1.values() for l in v]
 print('Part 1: ' + (' / '.join(part1) if part1 else 'no PASS/FAIL line found'))
 p1 = len(part1) == 1 and part1[0].startswith('PASS')
 print('\nPart 2, check 1 on room, seeds ' + ' '.join(map(str, args.seeds)) + ':\n')

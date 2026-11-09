@@ -231,3 +231,65 @@ whatever part 2 shows.
 **Fix for future runs (not applied; the running jobs use this method directory):**
 - Save the CPU and CUDA generator states before each in-training evaluation and restore them after.
 - Then repeat part 1 to verify that the view sequences match.
+
+## Part 2 result and adjudication outcome (jobs 4555954 and 4555955, 2026-11-09)
+
+Full output: [adjudication-analysis.md](adjudication-analysis.md). All 18 part 2 runs completed. Job 4555954 is marked
+FAILED by Slurm only because part 1 failed. The 20 new runs are in `experiment_log.csv`.
+
+**Outcome: part 1 FAIL, part 2 PASS. Experiment 1 stays invalid under the pre-registered rules, and the arms are not
+compared.** The descriptive arm table above stays description only.
+
+### Part 2 under the frozen rule: pass
+
+| | branched `ctl` (9 seeds) | uninterrupted `up` (9 seeds) | difference | allowed (range of `up`) | result |
+|---|---|---|---|---|---|
+| final PSNR | 31.586 dB | 31.666 dB | −0.080 dB | 0.200 dB | pass |
+| final N | 1.296 M | 1.291 M | +0.005 M | 0.036 M | pass |
+
+The PSNR gap barely moved: −0.101 dB at three seeds, −0.080 dB at nine. The pass comes from the allowed range, which
+grew from 0.057 dB to 0.200 dB. That is the weakness of this criterion noted above.
+
+### Supplementary diagnostics (declared before results)
+
+Paired by seed, branched `ctl` minus `up`, full-precision final PSNR:
+
+| | mean | 95% t interval | seeds negative |
+|---|---|---|---|
+| all test views | −0.082 dB | [−0.191, +0.027] | 7 of 9 |
+| views 34 and 35 left out | −0.032 dB | [−0.123, +0.060] | 5 of 9 |
+
+- **Reading fixed in advance:** the interval includes zero, so the clause "a systematic gap of about that size may
+  remain" is **not** triggered. The data neither establish a systematic gap nor rule out one of up to about 0.19 dB.
+- Part 1's state at 8,000 (no noise reference; descriptive): 13,327 fewer Gaussians and −0.041 dB PSNR with evaluation.
+  The largest per-view difference is +1.63 dB (view 29); views 34 and 35 differ by −0.96 and +1.19 dB.
+
+**Observation, chosen after seeing the data (not a finding):** on view 35, branched `ctl` is lower than `up` in 8 of 9
+seeds, by +1.70 to −4.14 dB. If the seeds were independent coin flips, 8 or more of 9 in one direction would have a
+two-sided probability of about 0.04. This comparison was not declared in advance, and views 34 and 35 were singled out
+after the first three seeds. On view 34, 7 of 9 seeds are lower.
+
+### What is established
+
+1. In-training evaluation changes the training run. Building the LPIPS-VGG metric at each evaluation advances the CPU
+   generator that NeRFICG's view sampler uses, so the view order differs from the next reshuffle on. Measured in part 1,
+   and confirmed in an isolated test.
+2. Across nine room seeds, branched runs that evaluate score 0.08 dB lower on average than uninterrupted runs that do
+   not. The 95% interval runs from −0.19 to +0.03 dB, and the gap is mostly on views 34 and 35.
+3. Experiment 1 cannot support a decision. Its branched runs differ from the reference by more than the restore path
+   (bit for bit) and atomic-order noise.
+
+### Disclosed after results
+
+- A bug in `adjudicate.py` counted part 1's line twice when the same log was passed to both `--ctl` and `--ref`, as the
+  command above does. It would have miscounted a part 1 pass as a fail. It did not change this outcome, since part 1
+  failed. It was fixed after the first run of the analysis, and `adjudication-analysis.md` is the fixed output.
+
+### Possible next step (not decided; needs a new pre-registration)
+
+An Experiment 1 rerun with the generator states saved before each evaluation and restored after:
+- part 1 repeated first, to verify that the view sequences then match;
+- check 1 against fresh uninterrupted runs;
+- the original arms and decision rule unchanged.
+
+This would be a new experiment, not a repair of this one.

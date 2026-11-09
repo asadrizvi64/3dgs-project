@@ -1,0 +1,9 @@
+SEGCLOCK step=1000 seg_s=3.220 cum_s=3.220 sparse=0 N=173380 peak_alloc_gib=5.37
+SEGCLOCK step=2000 seg_s=3.362 cum_s=6.582 sparse=0 N=425607 peak_alloc_gib=5.62
+SEGCLOCK step=3000 seg_s=3.886 cum_s=10.468 sparse=0 N=669756 peak_alloc_gib=5.89
+SEGCLOCK step=4000 seg_s=3.682 cum_s=14.150 sparse=0 N=758336 peak_alloc_gib=5.97
+SEGCLOCK step=5000 seg_s=4.091 cum_s=18.242 sparse=0 N=950718 peak_alloc_gib=6.18
+SEGCLOCK step=6000 seg_s=4.380 cum_s=22.621 sparse=0 N=1116210 peak_alloc_gib=6.36
+SEGCLOCK step=7000 seg_s=4.537 cum_s=27.158 sparse=0 N=1097384 peak_alloc_gib=6.36
+SEGCLOCK step=8000 seg_s=4.772 cum_s=31.930 sparse=0 N=1207462 peak_alloc_gib=6.47
+FGS_TRAIN_END N=1207462 peak_alloc_gib=6.47 peak_reserved_gib=6.75
