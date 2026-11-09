@@ -13,7 +13,7 @@ Jobs: garden 4553942 (all three seeds); room 4553943 (seed 0 used; it hit its ti
 and 2 come in full from reruns 4554356 and 4554357, by the rule recorded in PLAN.md before those seeds were analysed.
 All 38 runs are in `experiment_log.csv`.
 
-## Status: the pre-registered decision is NOT EVALUATED (adjudication running, see the end)
+## Status: Experiment 1 is INVALID under the pre-registered rules (adjudication part 1 failed; see the end)
 
 The plan says: if check 1 fails, Experiment 1 is invalid until the cause is found. **Check 1 fails on room.** The decision
 is therefore not made. Everything below the check is reported as description only.
@@ -54,6 +54,9 @@ Final Gaussian counts match on both scenes (garden 4.156 M vs 4.159 M, room 1.29
 - The smoke test already showed that a resumed run restores the saved state bit for bit (SHA-256) and replays the same
   training views. What no test has covered is whether **evaluating during training** changes the run. The uninterrupted
   reference runs never evaluate before the end, while every branched run evaluates 26 times.
+  - *Correction (2026-11-09, adjudication part 1):* the smoke test's runs all evaluated at the same step, so the matching
+    views there do not cover runs that evaluate differently. Evaluation does change the later view order; see "Part 1
+    result" at the end.
 
 So the gap is consistent with seed noise on two unstable views. It is also consistent with an effect of in-training
 evaluation. Three seeds cannot separate the two, and the plan does not allow choosing after the fact.
@@ -108,7 +111,8 @@ nothing to fix there. The open question is whether evaluation during training ch
 1. **Evaluation-perturbation test.** Room seed 0, two uninterrupted runs from 0 to 8,000. One evaluates every 1,000
    steps from 5,000, as the branched runs do. The other does not evaluate. Both record the view trace.
    - **Pass:** identical view sequences over steps 0–7,999. View order is drawn from the CUDA generator, which
-     densification also draws from. A draw by evaluation from that generator would therefore show up there. A draw from
+     densification also draws from. *(Corrected after part 1 ran: the sampler draws from the CPU generator. See
+     "Part 1 result" at the end.)* A draw by evaluation from that generator would therefore show up there. A draw from
      another generator, or one whose state is restored afterwards, would not. (Rationale reworded 2026-11-09, while the
      jobs ran and before any of their results; the criterion is unchanged.)
    - Gaussian counts every 1,000 steps are printed as a diagnostic only.
@@ -188,3 +192,42 @@ criteria above are unchanged. Every new number is computed by `adjudicate.py` fr
 - If both parts pass, the result is described as "Experiment 1 supported after a documented post-result adjudication".
   It is never described as a passed validation.
 - If either part fails, Experiment 1 stays invalid, as stated above.
+
+## Part 1 result (job 4555954; recorded 2026-11-09, while the part 2 runs continue)
+
+**Part 1 fails.** Under the pre-registered outcome rule, **Experiment 1 stays invalid and the arms are not compared**,
+whatever part 2 shows.
+
+**What the job measured** (room seed 0, 0 → 8,000):
+- The view sequences are identical over steps 0–5,167 and differ from step 5,168 on: 2,823 of the remaining 2,832 steps.
+- 5,168 = 19 × 272, where 272 is the number of training views. It is the first reshuffle of the view order after the
+  first evaluation, at step 5,000. All 19 earlier reshuffles match.
+- Diagnostics, descriptive only: at step 8,000 the run with evaluation has 1,194,125 Gaussians against 1,207,452 without,
+  and test PSNR 29.844 against 29.886 dB. The counts already differ slightly at step 1,000 (173,090 against 173,380),
+  long before any evaluation, from the order of atomic additions.
+
+**Cause, found and confirmed in isolation** (CPU-only test on a login node, same environment):
+- NeRFICG's view sampler (`RandomSequentialSampler.shuffle`) reshuffles with `torch.randperm` on the **CPU** generator.
+  My pre-registration said CUDA; that was wrong, and it is corrected above.
+- Every test evaluation builds new metric objects (`BaseRenderer.compute_image_metrics`). Building
+  `LearnedPerceptualImagePatchSimilarity(net_type='vgg')` initialises its network from the CPU generator before the
+  pretrained weights are loaded.
+- In the test, building it changed the CPU generator state, and the next `randperm(272)` came out different. Building
+  the PSNR and SSIM metrics left the state unchanged.
+
+**What this means for Experiment 1:**
+- Every branched run of every arm evaluated at step 5,000, so from step 5,168 on each saw a different view order than an
+  uninterrupted run with the same seed. The branched `ctl` runs are therefore not replicas of the uninterrupted
+  reference after that point, and check 1 compared runs with different view orders.
+- This is a cause of non-identity. It is **not yet shown** to cause the −0.10 dB room gap: a different view order is
+  another random draw, not an obvious bias. Part 2 measures whether a gap remains across nine seeds. It still runs, as
+  investigation of the cause, not to rescue the decision.
+- Within Experiment 1, the arms evaluated on the same schedule. Their CPU generators were therefore advanced alike by
+  evaluation, but no view traces were recorded for those runs, and the arms may draw from that generator differently
+  themselves.
+- Benchmarks without in-training evaluation (phases 1 and 2 timing, upbench) are unaffected. The phase 2 `stages` runs
+  were already labelled as changed by their evaluations.
+
+**Fix for future runs (not applied; the running jobs use this method directory):**
+- Save the CPU and CUDA generator states before each in-training evaluation and restore them after.
+- Then repeat part 1 to verify that the view sequences match.
