@@ -1,7 +1,10 @@
 # Experiment 1R: Experiment 1 rerun with observational evaluation (DRAFT, 2026-11-09)
 
-**Status: DRAFT. Not pre-registered. Returned to review on 2026-11-09:** one smoke gate failed as written, and the noise
-pilot gives more than 12 seeds for check 1b on room. See "Smoke test and pilot results" at the end.
+**Status: DRAFT. Not pre-registered. Revised after review on 2026-11-09:** check 1 is now exact gates plus a paired
+report, and smoke test A has a revised tolerance and is being repeated. Approved to proceed to this revised validation
+stage only, not to the experiment. See "Revisions after the smoke test and pilot" near the end. Before that, on
+2026-11-09, the plan was returned to review: one smoke gate failed as written, and the noise pilot gave more than 12
+seeds for the earlier check 1b on room.
 - Nothing in the experiment runs until its smoke tests pass and this file is marked final.
 - The smoke tests and the noise pilot below are engineering runs. They are reported here, and they do not test any arm.
 - Once the plan is final, any change is listed with its date and reason, as in [PLAN.md](PLAN.md).
@@ -85,11 +88,37 @@ Experiment 1's results on seeds 0–2 have been seen. New seeds make this a repl
 For each seed, one uninterrupted `up` run to 30,000 without evaluation, on the same build and patch. View traces are
 recorded for every run.
 
-### 4. Check 1 replaced by an exact check plus a paired equivalence test
+### 4. Check 1: exact gates plus a paired report (revised 2026-11-09)
 
 Experiment 1's check 1 compared a difference of means with the range of the reference runs. That criterion grows more
 lenient as seeds are added. It is dropped. This change follows an outside review and is made before any Experiment 1R
 run.
+
+**Current version.** Decided by review on 2026-11-09, after the noise pilot's results were seen and before any Experiment
+1R arm ran. It replaces the equivalence version below, which is kept as first written.
+
+Check 1 now asks whether branching preserves the intended training process. It no longer asks whether two
+non-deterministic trajectories end at nearly the same PSNR. The pilot showed that two uninterrupted runs, with identical
+views, differ by an SD of 0.05–0.07 dB in final PSNR.
+
+| check | requirement, for every seed of every scene | type |
+|---|---|---|
+| **1a** | The prefix's view trace (steps 0 to 4,999) followed by `ctl`'s (5,000 to 29,999) equals the same-seed reference run's (0 to 29,999), line for line | gate |
+| **1b** | Every branched arm loaded exactly the saved state: N, parameter and optimizer SHA-256 equal to the prefix's `FGS_SAVE_STATE` (densification statistics too, except MCMC arms, which drop them) | gate |
+| **1c** | In every branched arm, at every in-training evaluation (5,000 to 29,000), `FGS_EVALCHECK` shows the four random states restored, parameters, optimizer state and densification statistics unchanged, and the training flag and dataset mode restored | gate |
+| **1d** | Configuration. `ctl`'s training configuration equals the reference's except the run name. `stop`, `mcmc` and `oracle` differ from `ctl` only in their own keys. The settings in effect after loading (MCMC on or off, densification end, opacity learning rate, both regularisation weights, MCMC cap) equal the arm's configuration. The prefix differs from the reference only in name and `NUM_ITERATIONS`, with PPISP and the 3D filter off, so `NUM_ITERATIONS` has no effect before step 5,000. | gate |
+| **1e** | Per seed: `ctl` − reference final PSNR (full precision) and final N, also in units of the pilot's same-seed SD; the two largest per-view differences; the run order | reported, not a gate |
+
+- These checks run on the experiment's own runs, not only in the smoke tests. Every branched run evaluates with
+  `FGS_EVAL_CHECK=1`, and every run records a view trace.
+- **Outcome:** if 1a–1d pass on both scenes, the arms are evaluated by the decision rule. If any of them fails,
+  Experiment 1R is invalid until the cause is found.
+- **Limitation, to be stated wherever the result is reported:** passing 1a–1d establishes implementation fidelity. It
+  does not establish statistical equivalence of final PSNR between branched and uninterrupted training.
+- **Not chosen:** widening the ±0.05 dB margin after the pilot failed to support it, and running more than 12 seeds per
+  scene to reach the margin.
+
+**Superseded version (2026-11-09, before the pilot; kept as written):**
 
 - **1a (exact):** `ctl`'s view trace over steps 0–29,999 must equal its same-seed reference run's, for every seed.
 - **1b (paired equivalence, TOST):** per scene, the 90% t interval of the mean paired difference `ctl` − `up` must lie
@@ -110,6 +139,26 @@ run.
   - Always reported: the per-seed differences, their mean and interval, and the per-view differences on the lowest
     views.
 
+### 5. Run order alternates (added 2026-11-09)
+
+- In the pilot, 7 of 8 same-seed differences were negative (the second run lower). That is not evidence of a bias, but
+  the pilot cannot be assumed to be centred on zero.
+- The reference run therefore runs **first for even seeds and last for odd seeds**:
+  - seed 10: `up`, prefix, arms, `oracle`;
+  - seed 11: prefix, arms, `oracle`, `up`;
+  - seed 12: as seed 10.
+- Each job prints the actual order on an `EXP1R_ORDER` line, and 1e reports it per seed.
+- This is a scheduling control, not an arm.
+
+### 6. Reading the result against the noise floor (added 2026-11-09)
+
+- The decision rule is unchanged. The same-seed PSNR noise (SD 0.05–0.07 dB) is the size of the 0.05 dB target offset,
+  so the first crossing time T can itself move.
+- The existing sensitivity targets (−0.10 and −0.20 dB) and "reaches −0.05 dB and stays" are reported for every arm.
+- If an arm passes at −0.05 dB but its advantage disappears at the other targets, the result is described as
+  sensitive to target selection.
+- An advantage that holds across all of them is the stronger result.
+
 ## Before launch: smoke tests and the noise pilot
 
 The smoke job runs stages `exp1smoke x1rsmoke`, all on room seed 0 except exp1smoke, which uses garden. The pilot runs
@@ -128,6 +177,18 @@ as its own job. Gates must pass; diagnostics are reported only.
 | **Noise pilot** | Garden and room, seeds 20–23: two identical uninterrupted 30k runs each, with view traces | Report same-seed SDs; n for check 1b by the rule above. Each pair's view traces must be identical | gate on views; n by rule |
 | **Analysis** | `analyze_ttq.py` gains checks 1a and 1b, with references from the same job's `b_<scene>_up_s<seed>` runs | Fixture tests with a mismatched trace and with a failing interval | gate |
 
+**Revised validation stage (2026-11-09).** The rows above are kept as first planned; their results are at the end. The
+revised plan adds or replaces these:
+
+| test | what runs | requirement | type |
+|---|---|---|---|
+| **A, repeated** (stage `x1ra`) | The same saved room seed-0 state at 5,000 (job 4553943), resumed to 5,100 and evaluated once at 5,000, unprofiled: guard on ×2, guard off ×2, guard on with `cudnn.benchmark` off ×2 | For each of the 4 guard-on / guard-off pairs: per-image rows identical at their output precision, and full-precision means within 1e-5 dB PSNR, 1e-6 SSIM and 1e-6 LPIPS. Replaces the failed bit-identity criterion, which stays documented. | gate |
+| **A, within-condition differences** | same | The same differences within each condition, and with benchmark off | diagnostic |
+| **Evaluation memory** | same | Peak allocated memory at the last training step. It is never reset, so it includes the evaluation at 5,000. Compared with `cudnn.benchmark` on (4 runs) and off (2 runs). No profiler and no added synchronisation. | diagnostic, not blocking |
+| **B gates** | unchanged; passed in job 4556213 | Also applied inside the experiment, as check 1c | gate |
+| **Stage smoke** (`exp1r`, short) | Garden, seeds 0 and 1 (both run orders), branch at 2,000, end at 3,000: reference, prefix, all four arms, all through the new stage | `analyze_ttq.py --exp1r --branch 2000 --end 3000 --seeds 0 1 --checks-only` passes on the real output: validation and 1a–1d | gate |
+| **Analysis** | `analyze_ttq.py --exp1r` (checks 1a–1e); `phase3/tests/exp1r_fixture.py` | Clean fixture passes and reaches a decision. Six planted faults are each caught by the intended check and stop the decision (exit 2): a changed view (1a), a wrong parameter digest (1b), an unrestored random state (1c), a configuration difference, a setting in effect that differs from the configuration, and a prefix configuration difference (1d). Experiment 1's analysis gives identical output before and after the change. | gate, passed 2026-11-09 |
+
 **Note on the count and metric diagnostic.** Once the four exact gates in B pass, evaluation can affect training only
 through GPU non-determinism, which runs without evaluation have too. A tolerance on two evaluated runs against two
 non-evaluated ones would therefore test no further mechanism. It would also fail by chance often. The size of that
@@ -142,7 +203,11 @@ noise is measured directly by the pilot, at 30,000 steps and with more pairs. Th
   - room: one job per seed, about 2 hours each.
   - About 9–10 GPU-hours in all.
 - **Additional check-1 seeds, if the pilot calls for them:** about 20 minutes per garden seed and 33 minutes per room
-  seed. Six extra per scene would add about 5.3 GPU-hours.
+  seed. Six extra per scene would add about 5.3 GPU-hours. *(Dropped with the revised check 1, 2026-11-09.)*
+- **Revised validation stage:** test A repeated, about 0.4 GPU-hours; stage smoke, about 0.5 GPU-hours.
+- **Added cost in the experiment:** `FGS_EVAL_CHECK` hashes the full model and optimizer state twice per evaluation. That
+  time falls inside the evaluation, so it is excluded from the training clock but adds to elapsed time. The stage smoke
+  measures it.
 - **Timeout rule, as in Experiment 1:** a (scene, seed) block that does not complete is rerun whole (prefix, arms and
   reference) under the same configuration.
 
@@ -155,6 +220,10 @@ noise is measured directly by the pilot, at 30,000 steps and with more pairs. Th
   room (seeds 10–12, H100).
 - If check 1 fails or is inconclusive with identical view traces, the remaining difference is something other than
   view order. Investigating it comes before any arm comparison.
+- Added 2026-11-09:
+  - Check 1 establishes implementation fidelity, not statistical equivalence of final PSNR.
+  - With three seeds per scene, the result does not establish generalisation beyond these scenes.
+  - The revisions to check 1 and smoke test A were made after the pilot's results were seen, and are reported as such.
 
 ## Out of scope
 
@@ -172,11 +241,12 @@ noise is measured directly by the pilot, at 30,000 steps and with more pairs. Th
      change the reference runs too.
    - In Experiment 1's smoke test, `stop` and `mcmc` saw a different view order from the uninterrupted run after the
      branch. That is not explained yet; the traces will show whether it recurs.
-   - Default in this draft: no.
+   - Default in this draft: no. The 2026-11-09 review did not change this, so it stays no.
 2. **Seeds.** Fresh seeds 10–12 (default) or seeds 0–2 again? Fresh seeds give an independent replication. The same
-   seeds would allow a run-by-run comparison with Experiment 1.
+   seeds would allow a run-by-run comparison with Experiment 1. *Resolved 2026-11-09 by review: fresh seeds 10, 11, 12.*
 3. **The margins for 1b**: 0.05 dB and 1% of N. They are set from what matters to the decision, not from the pilot, and
-   they are fixed before it runs.
+   they are fixed before it runs. *Resolved 2026-11-09: the equivalence test is dropped from the gate (section 4), and
+   the margin is not widened.*
 
 ## Smoke test and pilot results (2026-11-09)
 
@@ -327,3 +397,24 @@ count is not the limit: power is ≥ 97% from 4 seeds on both scenes.
 3. **The 64 GiB peak.** It is not a gate. It is still unexplained, and the profiler as built does not reproduce it.
 4. **The decision rule's measures.** The noise floor matters beyond check 1. Same-seed PSNR noise of 0.05–0.07 dB is
    comparable to the decision rule's −0.10 dB quality allowance, and to the 0.05 dB target offset.
+
+## Revisions after the smoke test and pilot (2026-11-09)
+
+Decided by outside review of commit 0e3477b, after the smoke-test and pilot results above were seen, and before any
+Experiment 1R arm ran. The review approved the revised validation stage, not the experiment itself.
+
+| # | change | reason |
+|---|---|---|
+| 1 | Check 1 becomes exact gates 1a–1d plus the paired report 1e (section 4). The TOST equivalence gate is dropped; the ±0.05 dB margin is not widened; no seeds beyond 12. | Same-seed GPU non-determinism (SD 0.05–0.07 dB) makes a ±0.05 dB equivalence gate unreachable at 12 seeds. Fidelity of the branch is the question check 1 can answer. |
+| 2 | Smoke test A: bit-identical means replaced by absolute tolerances of 1e-5 dB PSNR, 1e-6 SSIM and 1e-6 LPIPS. Per-image rows must still match at output precision. | Observed run-to-run differences were at most 1.5e-7 dB PSNR, 1.1e-8 SSIM and 7.8e-8 LPIPS, including between two guard-on runs. The failed criterion stays documented above. |
+| 3 | Smoke test A is repeated with two guard-on and two guard-off resumes of the same state (stage `x1ra`). | The tolerance must hold for every guard-on / guard-off pair, with the within-condition spread reported alongside. |
+| 4 | Seeds stay 10, 11, 12, and every arm, threshold and target stays as planned. | No change to the scientific design. |
+| 5 | The reference run alternates position by seed (section 5). | 7 of 8 pilot differences were negative. |
+| 6 | Sensitivity targets are read as in section 6. | The noise floor is the size of the target offset. |
+| 7 | The analysis-script tests come before the plan is final (passed 2026-11-09, table above). The new stage gets its own short smoke run. | Required by the review. |
+
+- **The 64 GiB peak does not block Experiment 1R.** All arms use the same evaluation procedure. The memory diagnostic in
+  `x1ra` is an unprofiled comparison with `cudnn.benchmark` on and off. Speeding up evaluation (image saving takes
+  about three quarters of each evaluation) is a separate engineering task.
+- **Experiment 1R launches only if** test A (repeated), the stage smoke and the analysis tests all pass, and the user
+  gives the go-ahead after seeing them.

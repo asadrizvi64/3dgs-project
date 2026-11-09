@@ -73,6 +73,9 @@
 #   STAGES=x1adj ADJ_EVALTEST=1 SEEDS="3 4 5" sbatch --job-name=gs-x1adj-a --time=02:45:00 phase2/build_plus.sbatch   (Exp 1 adjudication)
 #   STAGES="exp1smoke x1rsmoke" sbatch --job-name=gs-x1r-smoke --time=01:45:00 phase2/build_plus.sbatch   (Exp 1R smoke tests)
 #   STAGES=noisepilot sbatch --job-name=gs-x1r-pilot --time=02:15:00 phase2/build_plus.sbatch   (Exp 1R noise pilot)
+#   STAGES=x1ra sbatch --job-name=gs-x1ra --time=00:45:00 phase2/build_plus.sbatch   (Exp 1R smoke test A, repeated)
+#   STAGES=exp1r SCENE=garden SEEDS="0 1" EXP1_AT=2000 X_ITERS=3000 sbatch --job-name=gs-x1r-stagesmoke --time=00:45:00 phase2/build_plus.sbatch
+#   STAGES=exp1r SCENE=garden sbatch --job-name=gs-x1r-garden --time=04:00:00 phase2/build_plus.sbatch   (Exp 1R; room: one job per seed)
 #   STAGES="upbuild upequiv" sbatch --job-name=gs-up-build --time=01:00:00 phase2/build_plus.sbatch   (upstream/README.md)
 #   STAGES=upbench SCENE=garden sbatch --job-name=gs-up-garden --time=01:30:00 phase2/build_plus.sbatch
 #   STAGES=upncu sbatch --job-name=gs-up-ncu --time=00:40:00 phase2/build_plus.sbatch
@@ -365,7 +368,8 @@ if has ncublend; then   # step 5c: Nsight Compute on the blend kernels, A+B+C vs
         "$NCU" --import "$REP/$name.ncu-rep" --page raw --csv > "$OUT/$name.raw.csv" 2>/dev/null || true
         echo "NCU $name kernels=$(python3 -c "import csv,sys; print(len({r['ID'] for r in csv.DictReader(open(sys.argv[1]))}))" "$OUT/$name.details.csv" 2>/dev/null || echo 0) rep $REP/$name.ncu-rep"
       else
-        echo "FAILED $name: no report"; tr '' '
+        echo "FAILED $name: no report"; tr '
+' '
 ' < "$OUT/$name.log" | grep -E "==ERROR==|==WARNING==|Traceback|Error" | head; FAILED+=("$name")
       fi
     done
@@ -530,7 +534,7 @@ x_arm_cfg() {  # arm N_at_branch N_oracle -> CFG_SET value
     oracle) echo "USE_MCMC=true,MAX_PRIMITIVES=$3,LAMBDA_OPACITY_REGULARIZATION=0.01,LAMBDA_SCALE_REGULARIZATION=0.01,LEARNING_RATE_OPACITIES=0.05" ;;
   esac
 }
-if has exp1smoke || has exp1 || has x1adj || has x1rsmoke || has noisepilot; then
+if has exp1smoke || has exp1 || has x1adj || has x1rsmoke || has noisepilot || has x1ra || has exp1r; then
   M=${EXP1_METHOD:-FasterGSUp}
   python "$REPO/cluster/patches/fastergs_resume.py" "$DATA/nerficg/src/Methods/$M/Trainer.py"
 fi
@@ -758,6 +762,66 @@ for k, v in ok.items():
     print(('PASS ' if v else 'FAIL ') + k)
 sys.exit(0 if all(ok.values()) else 1)
 PY
+fi
+# Experiment 1R, revised after review (phase3/EXP1R_PLAN.md, "Revisions after the smoke test and pilot").
+#   x1ra   smoke test A, repeated: the same saved room seed-0 state (job 4553943) resumed 5000 -> 5100, evaluated once at
+#          5000, without profiling: guard on x2, guard off x2 (gate: tolerances on the full-precision means for every
+#          guard-on / guard-off pair, identical per-image rows at output precision), plus cudnn.benchmark off x2. Memory
+#          diagnostic: FGS_TRAIN_END peak (never reset, so it includes the evaluation) with benchmark on vs off.
+#   exp1r  SCENE, SEEDS (default 10 11 12): per seed the uninterrupted reference b_<scene>_up_s<seed> (no evaluation) and
+#          the prefix 0 -> EXP1_AT, then ctl / stop / mcmc (rotated by seed) and oracle, as exp1, with test metrics every
+#          1000 steps and FGS_EVAL_CHECK in every branched run; view traces for every run. The reference runs first for
+#          even seeds and last for odd seeds (EXP1R_ORDER line). X_ITERS (default 30000) and EXP1_AT (default 5000) are
+#          only changed for the stage's own smoke test.
+if has x1ra; then
+  BSCENE=room; BSCALE=0.5
+  echo "########## x1ra (room seed 0, same saved state at 5000: guard on x2 / off x2 / benchmark off x2, unprofiled)"
+  ST=${X1R_STATE:-$DATA/nerficg/$(cat "$REPO/phase2/logs/run_4553943/runs/x_room_pfx_s0/rundir.txt" 2>/dev/null)/checkpoints/state_0005000.pt}
+  if [ ! -f "$ST" ]; then echo "FAILED x1ra: no state $ST"; FAILED+=(x1ra_state); else
+    for r in guard noguard nobench guard2 noguard2 nobench2; do
+      e=""; case $r in noguard*) e="FGS_EVAL_RNG_GUARD=0" ;; nobench*) e="FGS_EVAL_CUDNN_BENCH=0" ;; esac
+      TRAIN_ENV="FGS_RESUME=$ST FGS_EVAL_EVERY=1000 FGS_EVAL_FROM=5000 $e" train ra_room_${r}_s0 $M 0 5100 "" taming 100
+      x_clean ra_room_${r}_s0
+    done
+    python3 "$REPO/phase3/check_x1ra.py" "$OUT" || FAILED+=(x1ra_check)
+  fi
+fi
+if has exp1r; then
+  BSCENE=${SCENE:?set SCENE for the exp1r stage}
+  case $BSCENE in room|counter|kitchen|bonsai) BSCALE=0.5 ;; *) BSCALE=0.25 ;; esac
+  EXP1_AT=${EXP1_AT:-5000}; XI=${X_ITERS:-30000}
+  XARMS=(ctl stop mcmc); NA=3
+  echo "########## exp1r (scene $BSCENE scale $BSCALE, seeds ${SEEDS:-10 11 12}, branch at $EXP1_AT, end $XI, arms ${XARMS[*]} + oracle after ctl)"
+  x1r_up() {
+    TRAIN_ENV="FGS_WALL=0,$XI FGS_VIEW_TRACE=$OUT/b_${BSCENE}_up_s$1.views" train b_${BSCENE}_up_s$1 $M "$1" $XI "" taming 1000
+  }
+  for seed in ${SEEDS:-10 11 12}; do
+    order=(); for (( k = 0; k < NA; k++ )); do order+=(${XARMS[$(( (k + seed) % NA ))]}); done
+    if [ $(( seed % 2 )) = 0 ]; then echo "EXP1R_ORDER $BSCENE s$seed up pfx ${order[*]} oracle"; else echo "EXP1R_ORDER $BSCENE s$seed pfx ${order[*]} oracle up"; fi
+    [ $(( seed % 2 )) = 0 ] && x1r_up $seed
+    pfx=x_${BSCENE}_pfx_s$seed
+    TRAIN_ENV="FGS_SAVE_STATE=$EXP1_AT FGS_VIEW_TRACE=$OUT/$pfx.views" train $pfx $M "$seed" $EXP1_AT "" taming 1000
+    ST=$DATA/nerficg/$(cat "$OUT/runs/$pfx/rundir.txt" 2>/dev/null)/checkpoints/state_$(printf %07d $EXP1_AT).pt
+    NB=$(sed -n "s/^FGS_SAVE_STATE step=$EXP1_AT N=\([0-9]*\).*/\1/p" "$OUT/$pfx.seg")
+    if [ ! -f "$ST" ] || [ -z "$NB" ]; then echo "FAILED exp1r $pfx: no state file / N"; FAILED+=("$pfx")
+    else
+      echo "EXP1_BRANCH $BSCENE s$seed step=$EXP1_AT N=$NB state=$ST"
+      XE="FGS_RESUME=$ST FGS_EVAL_EVERY=1000 FGS_EVAL_FROM=$EXP1_AT FGS_EVAL_CHECK=1 FGS_WALL=$EXP1_AT,$XI"
+      for arm in "${order[@]}"; do
+        TRAIN_ENV="$XE FGS_VIEW_TRACE=$OUT/x_${BSCENE}_${arm}_s$seed.views CFG_SET=$(x_arm_cfg $arm $NB 0)" train x_${BSCENE}_${arm}_s$seed $M "$seed" $XI "" taming 1000
+        x_clean x_${BSCENE}_${arm}_s$seed
+      done
+      NC=$(sed -n 's/^FGS_TRAIN_END N=\([0-9]*\).*/\1/p' "$OUT/x_${BSCENE}_ctl_s$seed.seg" 2>/dev/null)
+      if [ -z "$NC" ]; then echo "FAILED exp1r oracle s$seed: no ctl count"; FAILED+=("x_${BSCENE}_oracle_s$seed"); else
+        echo "EXP1_ORACLE_CAP $BSCENE s$seed N=$NC"
+        TRAIN_ENV="$XE FGS_VIEW_TRACE=$OUT/x_${BSCENE}_oracle_s$seed.views CFG_SET=$(x_arm_cfg oracle $NB $NC)" train x_${BSCENE}_oracle_s$seed $M "$seed" $XI "" taming 1000
+        x_clean x_${BSCENE}_oracle_s$seed
+      fi
+      x_clean $pfx keepstate
+    fi
+    [ $(( seed % 2 )) = 1 ] && x1r_up $seed
+    x_clean b_${BSCENE}_up_s$seed
+  done
 fi
 if has noisepilot; then
   for BSCENE in ${SCENES:-garden room}; do
