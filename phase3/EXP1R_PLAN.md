@@ -1,6 +1,16 @@
-# Experiment 1R: Experiment 1 rerun with observational evaluation (DRAFT, 2026-11-09)
+# Experiment 1R: Experiment 1 rerun with observational evaluation (pre-registered 2026-11-09)
 
-**Status: DRAFT. Not pre-registered. Revised after review on 2026-11-09:** check 1 is now exact gates plus a paired
+**Status: FINAL PRE-REGISTRATION, frozen 2026-11-09 at launch, in the commit that adds this line.**
+- All revised validation gates passed (jobs 4559014 and 4559015), and the user gave the go-ahead.
+- The binding parts of this plan:
+  - what stays as in Experiment 1;
+  - sections 1–6 of "What changes", with check 1 in its current version;
+  - "How the result will be reported", including the 2026-11-09 additions.
+- Any change from here on is listed below "Changes after launch", with its date and reason.
+- The analysis command, fixed now: `python phase3/analyze_ttq.py <garden log> <room logs> --exp1r --seeds 10 11 12`.
+  Logs of reruns under the timeout rule are added with `--rerun`.
+
+**History:** DRAFT until launch. **Revised after review on 2026-11-09:** check 1 is now exact gates plus a paired
 report, and smoke test A has a revised tolerance and is being repeated. Approved to proceed to this revised validation
 stage only, not to the experiment. See "Revisions after the smoke test and pilot" near the end. Before that, on
 2026-11-09, the plan was returned to review: one smoke gate failed as written, and the noise pilot gave more than 12
@@ -463,3 +473,7 @@ Jobs:
 - Experiment 1R is ready to launch: garden in one job, room in one job per seed, seeds 10–12, stage `exp1r`.
 - It launches only on the user's go-ahead.
 - This file becomes the final pre-registration at launch, with the commit it is frozen at.
+
+## Changes after launch
+
+(None.)
