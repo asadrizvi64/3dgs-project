@@ -210,3 +210,10 @@ decision rule:
   from job 4553943; **seeds 1 and 2 are taken in full from reruns** (jobs 4554356 and 4554357, same code be935a0 and same
   settings, queued to start after 4553943 ends), whatever 4553943 completed for them. Each rerun redoes that seed's prefix
   and all four arms, so every arm of a seed branches from the same state.
+
+Correction noted on 2026-11-09, after Experiment 1 and its adjudication (see RESULTS.md):
+
+- **View-order reshuffle uses the CPU generator, not CUDA.** The smoke-test note above says reshuffling draws from the
+  CUDA generator. NeRFICG's sampler uses `torch.randperm` on the CPU generator. In-training evaluation advances that
+  generator, by building the LPIPS-VGG metric. The smoke test's matching control views hold only because all of its
+  runs evaluated at the same step. The rerun is drafted in [EXP1R_PLAN.md](EXP1R_PLAN.md).
