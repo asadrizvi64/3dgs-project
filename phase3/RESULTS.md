@@ -108,7 +108,9 @@ nothing to fix there. The open question is whether evaluation during training ch
 1. **Evaluation-perturbation test.** Room seed 0, two uninterrupted runs from 0 to 8,000. One evaluates every 1,000
    steps from 5,000, as the branched runs do. The other does not evaluate. Both record the view trace.
    - **Pass:** identical view sequences over steps 0–7,999. View order is drawn from the CUDA generator, which
-     densification also draws from, so any random draw made by evaluation would show up there.
+     densification also draws from. A draw by evaluation from that generator would therefore show up there. A draw from
+     another generator, or one whose state is restored afterwards, would not. (Rationale reworded 2026-11-09, while the
+     jobs ran and before any of their results; the criterion is unchanged.)
    - Gaussian counts every 1,000 steps are printed as a diagnostic only.
 2. **Extended check 1 on room.** Six more seeds, 3–8.
    - Each seed gets an uninterrupted `up` run, exactly as in upbench, and a prefix to 5,000 plus a branched `ctl` run,
@@ -152,8 +154,10 @@ These diagnostics come from an outside review. They add reporting only. The jobs
 criteria above are unchanged. Every new number is computed by `adjudicate.py` from files the jobs already write.
 
 **1. Identical views do not prove an identical optimisation.**
-- Part 1 rules out evaluation drawing random numbers. It does not rule out evaluation changing the model state or the
-  numerics in some other way.
+- A pass in part 1 shows that no perturbation of training-view sampling was detected. It does not show that
+  evaluation draws no random numbers at all: it could draw from another generator, or restore the generator's state,
+  without changing the view sequence. Nor does it rule out evaluation changing the model state or the numerics in some
+  other way.
 - Reported alongside, for the two 8,000-step runs: final N; PSNR, SSIM and LPIPS at 8,000; and the per-view PSNR
   differences (the largest one, and views 34 and 35).
 - These have no noise reference. Two runs without evaluation also differ, through the order of atomic additions, and
