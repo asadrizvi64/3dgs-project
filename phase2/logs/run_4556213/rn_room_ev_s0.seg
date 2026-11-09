@@ -1,0 +1,12 @@
+SEGCLOCK step=1000 seg_s=3.167 cum_s=3.167 sparse=0 N=172953 peak_alloc_gib=5.37
+SEGCLOCK step=2000 seg_s=3.359 cum_s=6.526 sparse=0 N=422486 peak_alloc_gib=5.61
+SEGCLOCK step=3000 seg_s=3.853 cum_s=10.379 sparse=0 N=667427 peak_alloc_gib=5.88
+SEGCLOCK step=4000 seg_s=3.651 cum_s=14.030 sparse=0 N=757166 peak_alloc_gib=5.96
+SEGCLOCK step=5000 seg_s=4.055 cum_s=18.085 sparse=0 N=950012 peak_alloc_gib=6.18
+FGS_EVALCHECK step=5000 guard=1 rng_before=cpu:1ccf17250133,cuda:e6529bdf0f5f,py:46f264538534,np:78f7efcf3466 rng_after_render=cpu:1ccf17250133,cuda:6b3279152278,py:46f264538534,np:78f7efcf3466 rng_after_restore=cpu:1ccf17250133,cuda:e6529bdf0f5f,py:46f264538534,np:78f7efcf3466 state_before=3d9023723ee51ba3,ae83cc8e99bd1e34,bf5b50ffbd41e022 state_after=3d9023723ee51ba3,ae83cc8e99bd1e34,bf5b50ffbd41e022 training_before=True training_after_render=False training_after_restore=True mode_before=train mode_after_render=test mode_after_restore=train
+SEGCLOCK step=6000 seg_s=4.387 cum_s=22.473 sparse=0 N=1116121 peak_alloc_gib=71.15
+FGS_EVALCHECK step=6000 guard=1 rng_before=cpu:1ccf17250133,cuda:9bd7537e5dbe,py:46f264538534,np:78f7efcf3466 rng_after_render=cpu:1ccf17250133,cuda:a1e9a2cd3f78,py:46f264538534,np:78f7efcf3466 rng_after_restore=cpu:1ccf17250133,cuda:9bd7537e5dbe,py:46f264538534,np:78f7efcf3466 state_before=d912b1879425290a,e091dfca38734757,8ce314c7923c3040 state_after=d912b1879425290a,e091dfca38734757,8ce314c7923c3040 training_before=True training_after_render=False training_after_restore=True mode_before=train mode_after_render=test mode_after_restore=train
+SEGCLOCK step=7000 seg_s=4.550 cum_s=27.022 sparse=0 N=1093976 peak_alloc_gib=71.15
+FGS_EVALCHECK step=7000 guard=1 rng_before=cpu:1ccf17250133,cuda:453b7901865d,py:46f264538534,np:78f7efcf3466 rng_after_render=cpu:1ccf17250133,cuda:a61801ad7242,py:46f264538534,np:78f7efcf3466 rng_after_restore=cpu:1ccf17250133,cuda:453b7901865d,py:46f264538534,np:78f7efcf3466 state_before=e65a19898e06f981,52e304797834c99d,0a078822b0e0d367 state_after=e65a19898e06f981,52e304797834c99d,0a078822b0e0d367 training_before=True training_after_render=False training_after_restore=True mode_before=train mode_after_render=test mode_after_restore=train
+SEGCLOCK step=8000 seg_s=4.790 cum_s=31.812 sparse=0 N=1203739 peak_alloc_gib=71.15
+FGS_TRAIN_END N=1203739 peak_alloc_gib=71.15 peak_reserved_gib=71.29

@@ -1,0 +1,5 @@
+FGS_N iteration=15000 N=4156258
+FGS_WALL from=0 to=15000 s=107.197 views=1812e0a50a2cfb25
+FGS_WALL from=15000 to=30000 s=127.357 views=4690ada6eb32f14
+SEGCLOCK step=30000 seg_s=229.502 cum_s=229.502 sparse=0 N=4156258 peak_alloc_gib=6.45
+FGS_TRAIN_END N=4156258 peak_alloc_gib=6.45 peak_reserved_gib=8.29

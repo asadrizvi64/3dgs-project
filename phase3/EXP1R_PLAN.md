@@ -1,6 +1,7 @@
 # Experiment 1R: Experiment 1 rerun with observational evaluation (DRAFT, 2026-11-09)
 
-**Status: DRAFT. Not pre-registered.**
+**Status: DRAFT. Not pre-registered. Returned to review on 2026-11-09:** one smoke gate failed as written, and the noise
+pilot gives more than 12 seeds for check 1b on room. See "Smoke test and pilot results" at the end.
 - Nothing in the experiment runs until its smoke tests pass and this file is marked final.
 - The smoke tests and the noise pilot below are engineering runs. They are reported here, and they do not test any arm.
 - Once the plan is final, any change is listed with its date and reason, as in [PLAN.md](PLAN.md).
@@ -10,8 +11,10 @@
 **Experiment 1 is invalid under its own rules ([RESULTS.md](RESULTS.md)). It was invalidated by evaluation-induced
 random-number contamination:**
 - Every in-training evaluation builds a new LPIPS-VGG metric.
-- Building it initialises a network from the CPU random generator.
-- NeRFICG's view sampler reshuffles from that same generator.
+- Building it initialises a network from a global random generator.
+- NeRFICG's view sampler reshuffles from that same generator. On the GPU nodes this is the CUDA generator, because
+  NeRFICG makes CUDA tensors the default. An earlier version of this draft said CPU; corrected 2026-11-09 from the
+  smoke test (see the results at the end).
 
 So a run that evaluates sees a different view order from the first reshuffle after its first evaluation. Every branched
 run evaluated; the uninterrupted reference runs did not.
@@ -64,8 +67,9 @@ even if evaluation raises:
 - the model's training flag and the dataset's mode;
 - `cudnn.benchmark`.
 
-**Other generators:** NeRFICG's source contains no explicitly constructed `torch.Generator` objects (searched
-2026-11-09), so restoring the global states covers every generator in the training path. MCMC's sampling
+**Other generators:** the code path these runs use contains no explicitly constructed `torch.Generator` objects
+(searched 2026-11-09), so restoring the global states covers every generator in the training path. Track R's
+`FasterGSReinit` method has its own, and it is not used here. MCMC's sampling
 (`torch.multinomial` on GPU tensors) uses the CUDA state.
 
 **Not changed: building LPIPS once and reusing it.** That would rewrite NeRFICG's metric code, which the final evaluation
@@ -174,6 +178,152 @@ noise is measured directly by the pilot, at 30,000 steps and with more pairs. Th
 3. **The margins for 1b**: 0.05 dB and 1% of N. They are set from what matters to the decision, not from the pilot, and
    they are fixed before it runs.
 
-## Smoke test and pilot results
+## Smoke test and pilot results (2026-11-09)
 
-(Recorded here when the jobs finish.)
+Jobs: smoke **4556213** (stages `exp1smoke x1rsmoke`, repo 6c37ab0, 37 min, ended FAILED on the x1rsmoke check) and
+pilot **4556214** (stage `noisepilot`, 71 min, completed). Logs: `phase2/logs/gs-x1r-smoke-4556213.out`,
+`phase2/logs/gs-x1r-pilot-4556214.out`. Pilot analysis: [noise-pilot-analysis.md](noise-pilot-analysis.md).
+
+**Outcome: the plan returns to review before launch.** Two reasons, both under rules fixed before the jobs ran:
+1. Smoke gate A (identical full-precision means) failed as written.
+2. The pilot gives n > 12 seeds for room under the check 1b rule.
+
+### Gates
+
+| gate | result |
+|---|---|
+| Resume path (`exp1smoke`, all existing checks) | PASS (37 of 37) |
+| A. Identical per-image metrics, guard on vs off, same state at 5,000 | PASS |
+| **A. Identical full-precision means, guard on vs off** | **FAIL** |
+| B. Four view traces of 8,000 steps, all identical | PASS (no difference anywhere) |
+| B. Random states restored after every evaluation (5,000, 6,000, 7,000; both evaluating runs) | PASS |
+| B. Parameters, optimizer state and densification statistics unchanged by every evaluation (SHA-256) | PASS |
+| B. Training flag and dataset mode restored after every evaluation | PASS |
+| Pilot: identical view traces within each same-seed pair | PASS (8 of 8 pairs) |
+| Analysis gate (`analyze_ttq.py` checks 1a and 1b, fixture tests) | not built yet |
+
+**The failed gate.** The three resumes of the same saved state gave these full-precision means at 5,000:
+
+| run | PSNR | SSIM | LPIPS |
+|---|---|---|---|
+| guard on | 29.254138702 | 0.8904180374 | 0.3371558503 |
+| guard off | 29.254138751 | 0.8904180435 | 0.3371558266 |
+| guard on, benchmark off | 29.254138604 | 0.8904180481 | 0.3371557723 |
+
+- Every pair differs, in about the eighth significant digit. That includes the two guard-on runs, which differ only in
+  the cuDNN benchmark setting.
+- Up to the end of the first evaluation, guard on and guard off run the same code: the guard acts only after rendering.
+- So the most likely cause is run-to-run GPU non-determinism in rendering or the metrics, not the guard. The gate
+  assumed that a metric computation from the same state is bit-identical across processes. It is not.
+- This is a diagnosis, not a pass. The gate stays failed as written. A replacement needs review. Candidate: guard on and
+  off must differ by no more than two guard-on repeats of the same state do. That would need a rerun of test A with a
+  repeat.
+
+### What the evaluation does to the random states (correction)
+
+- In every evaluation, rendering changed the **CUDA** state and left the CPU, Python and NumPy states unchanged. The
+  restore then brought the CUDA state back.
+- The CPU state digest is the same at 5,000, 6,000 and 7,000. Between those points the sampler reshuffled the 272 room
+  views at least 7 times, so the reshuffle does not draw from the CPU generator on the GPU nodes.
+- The reason: on a GPU node NeRFICG sets `torch.set_default_tensor_type(torch.cuda.FloatTensor)`
+  (`src/Framework.py:291`). `torch.randperm` in the sampler and the LPIPS network's initialisation therefore draw from
+  the CUDA generator.
+- My login-node test had no GPU, so it saw the CPU generator. My 2026-11-09 correction, "CPU, not CUDA", was therefore
+  itself wrong for the cluster runs. The original statement, CUDA, was right. The mechanism (evaluation and the sampler
+  share one generator) and the v7 fix are unaffected, since v7 restores all four states. Corrected in PLAN.md and
+  RESULTS.md, with the earlier text kept.
+- "No explicit generators": true for the code path these runs use. Track R's `FasterGSReinit` method creates its own
+  generators, but it is not part of Experiment 1 or 1R.
+
+### Diagnostics
+
+**Evaluation memory.**
+
+| run | evaluation | peak allocated at the last training step |
+|---|---|---|
+| rn_room_ev_s0, rn_room_ev2_s0 | 5,000, 6,000, 7,000; no profiling | 71.15, 71.16 GiB |
+| rn_room_ne_s0, rn_room_ne2_s0 | none | 6.47 GiB |
+| rs_room_* (all three) | 5,000, 6,000; profiled | 9.62 GiB |
+| garden `exp1smoke` runs | at 2,000; no profiling | 67.97 GiB |
+
+- With profiling on, the total peak over each whole evaluation was 9.45–9.62 GiB, with or without the cuDNN benchmark.
+  The largest stage was the LPIPS forward pass.
+- Without profiling, the same evaluation path still leaves a peak about 64 GiB above training.
+- The profiled runs therefore did not show the 64 GiB peak, and the cause is **not identified**. The cuDNN-benchmark
+  explanation is neither confirmed nor ruled out: the benchmark-off comparison was made only in profiled runs, where
+  the peak did not occur either way.
+- One possibility, untested: the profiler's synchronisations and peak resets change what cuDNN's algorithm search
+  sees, for example the free memory it sizes its workspace from.
+- A test that would separate these: unprofiled evaluating runs, benchmark on vs off, with a peak reset just before and
+  a reading just after each evaluation.
+
+**Evaluation time (room, 39 test views, profiled).** About 54 s per evaluation:
+
+| stage | time |
+|---|---|
+| saving images (78 files) | 40.5 s |
+| metric computation | 12.2–12.5 s |
+| loading the photos | 10.7 s |
+| LPIPS forward | 1.1 s |
+| rendering | 0.08 s |
+
+Loading the photos happens inside the metric stage, so the stage times overlap. Saving images is about three quarters of
+the cost.
+
+**Benchmark off.** Same metrics to about the eighth significant digit as benchmark on (table above).
+
+**Gaussian count and metrics, room seed 0, 0 → 8,000.**
+
+| run | N at 1,000 | N at 8,000 | test PSNR at 8,000 |
+|---|---|---|---|
+| rn_room_ev_s0 (evaluates) | 172,953 | 1,203,739 | 30.042 |
+| rn_room_ev2_s0 (evaluates) | 173,326 | 1,213,418 | 29.956 |
+| rn_room_ne_s0 (no evaluation) | 172,153 | 1,206,482 | 29.954 |
+| rn_room_ne2_s0 (no evaluation) | 173,044 | 1,201,176 | 29.906 |
+
+- The counts differ from step 1,000, before any evaluation, in both pairs. That is GPU non-determinism.
+- The evaluating pair and the non-evaluating pair overlap in N and in PSNR.
+
+### Noise pilot
+
+- Two identical uninterrupted 30k runs per seed (20–23), on both scenes.
+- View traces were identical in every pair, so the pairs differ only through GPU non-determinism.
+
+| scene | d PSNR, up2 − up (dB) | mean | SD | SD of d N | largest per-view d |
+|---|---|---|---|---|---|
+| garden | −0.012, −0.078, −0.125, −0.030 | −0.061 | 0.050 | 0.39% of N | −1.10 dB (view 1) |
+| room | −0.073, −0.150, +0.012, −0.084 | −0.074 | 0.066 | 0.36% of N | −2.85 dB (view 35) |
+
+**By the rule fixed above** (smallest n with ≥ 80% TOST power on both measures and both scenes):
+- garden needs 11 seeds;
+- room needs more than 12 (58% power at 12).
+
+Check 1b therefore cannot be made conclusive at a ±0.05 dB margin, and **the plan returns to review**. The Gaussian
+count is not the limit: power is ≥ 97% from 4 seeds on both scenes.
+
+**Observations, descriptive only:**
+- Same-seed, same-view-order PSNR differences reach 0.15 dB. Their mean on room (−0.074 dB) is the size of Experiment 1's
+  room `ctl` − `up` gap (−0.082 dB). That gap is therefore well within what GPU non-determinism alone produces between
+  two otherwise identical runs.
+- 7 of the 8 differences are negative (the second run lower). With 8 pairs, a split at least this uneven happens by
+  chance about 7% of the time, so this is not evidence of an order effect. It is noted because a systematic effect would
+  bias a paired check.
+- On room, view 35 has the largest per-view difference in 3 of 4 pairs. In Experiment 1, view 35 carried the largest
+  `ctl` − `up` difference in 8 of 9 seeds. That view is unstable under non-determinism alone.
+- An SD from 4 pairs is imprecise. Its 95% interval spans roughly 0.6 to 3.7 times the estimate.
+
+### For review
+
+1. **Check 1b.**
+   - Under the fixed rule, check 1b cannot be made conclusive at ±0.05 dB with up to 12 seeds.
+   - Options:
+     - a wider PSNR margin, disclosed as set after the pilot;
+     - more seeds, beyond 12;
+     - a check 1 that relies on the exact gates (1a and the B gates), with the paired PSNR difference reported
+       descriptively against the pilot's same-seed spread.
+   - The choice belongs to review. Nothing here picks one.
+2. **Gate A.** Replace "bit-identical means" with a criterion that allows for measured run-to-run non-determinism, and
+   rerun test A with a repeat.
+3. **The 64 GiB peak.** It is not a gate. It is still unexplained, and the profiler as built does not reproduce it.
+4. **The decision rule's measures.** The noise floor matters beyond check 1. Same-seed PSNR noise of 0.05–0.07 dB is
+   comparable to the decision rule's −0.10 dB quality allowance, and to the 0.05 dB target offset.

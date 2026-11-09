@@ -1,0 +1,12 @@
+FGS_RESUME step=2000 N=1043831 cum_s=5.195 sh_degree=1 param_sha=134fd914e74839bb optim_sha=cca6ae0afeea44a0 dinfo_sha=none densification_info=none use_mcmc=True max_primitives=1043831 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.05,scales:0.005,rotations:0.001 lambda_opacity=0.01 lambda_scale=0.01 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_pfx_s0_2026-11-09-04-03-16/checkpoints/state_0002000.pt
+SEGCLOCK step=2100 seg_s=0.381 cum_s=5.577 sparse=0 N=1043831 peak_alloc_gib=67.97
+SEGCLOCK step=2200 seg_s=0.376 cum_s=5.952 sparse=0 N=1043831 peak_alloc_gib=67.97
+SEGCLOCK step=2300 seg_s=0.381 cum_s=6.334 sparse=0 N=1043831 peak_alloc_gib=67.97
+SEGCLOCK step=2400 seg_s=0.378 cum_s=6.712 sparse=0 N=1043831 peak_alloc_gib=67.97
+SEGCLOCK step=2500 seg_s=0.379 cum_s=7.091 sparse=0 N=1043831 peak_alloc_gib=67.97
+SEGCLOCK step=2600 seg_s=0.372 cum_s=7.463 sparse=0 N=1043831 peak_alloc_gib=67.97
+SEGCLOCK step=2700 seg_s=0.375 cum_s=7.838 sparse=0 N=1043831 peak_alloc_gib=67.97
+SEGCLOCK step=2800 seg_s=0.366 cum_s=8.204 sparse=0 N=1043831 peak_alloc_gib=67.97
+SEGCLOCK step=2900 seg_s=0.368 cum_s=8.571 sparse=0 N=1043831 peak_alloc_gib=67.97
+SEGCLOCK step=3000 seg_s=0.368 cum_s=8.939 sparse=0 N=1043831 peak_alloc_gib=67.97
+FGS_TRAIN_END N=1043831 peak_alloc_gib=67.97 peak_reserved_gib=68.05

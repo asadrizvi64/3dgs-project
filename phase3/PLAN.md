@@ -217,3 +217,12 @@ Correction noted on 2026-11-09, after Experiment 1 and its adjudication (see RES
   CUDA generator. NeRFICG's sampler uses `torch.randperm` on the CPU generator. In-training evaluation advances that
   generator, by building the LPIPS-VGG metric. The smoke test's matching control views hold only because all of its
   runs evaluated at the same step. The rerun is drafted in [EXP1R_PLAN.md](EXP1R_PLAN.md).
+
+Second correction, 2026-11-09, from Experiment 1R smoke job 4556213:
+
+- **The correction above is itself wrong for the cluster runs: the reshuffle uses the CUDA generator.** On a GPU node,
+  NeRFICG sets `torch.set_default_tensor_type(torch.cuda.FloatTensor)` (`src/Framework.py:291`). `torch.randperm` in the
+  sampler and the LPIPS network's initialisation therefore both draw from the CUDA generator. The CPU-only login-node test
+  that prompted the correction ran without a GPU. In the smoke job, the CPU state was unchanged across 3,000 steps of
+  training and three evaluations, while each evaluation changed the CUDA state. The original note (CUDA) was right. The
+  mechanism, evaluation and the sampler sharing one generator, is unchanged.

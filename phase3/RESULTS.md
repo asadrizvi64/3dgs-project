@@ -112,7 +112,8 @@ nothing to fix there. The open question is whether evaluation during training ch
    steps from 5,000, as the branched runs do. The other does not evaluate. Both record the view trace.
    - **Pass:** identical view sequences over steps 0–7,999. View order is drawn from the CUDA generator, which
      densification also draws from. *(Corrected after part 1 ran: the sampler draws from the CPU generator. See
-     "Part 1 result" at the end.)* A draw by evaluation from that generator would therefore show up there. A draw from
+     "Part 1 result" at the end.)* *(That correction was itself wrong on the GPU nodes: the sampler draws from the CUDA
+     generator after all. See the second correction under "Part 1 result".)* A draw by evaluation from that generator would therefore show up there. A draw from
      another generator, or one whose state is restored afterwards, would not. (Rationale reworded 2026-11-09, while the
      jobs ran and before any of their results; the criterion is unchanged.)
    - Gaussian counts every 1,000 steps are printed as a diagnostic only.
@@ -214,6 +215,13 @@ whatever part 2 shows.
   pretrained weights are loaded.
 - In the test, building it changed the CPU generator state, and the next `randperm(272)` came out different. Building
   the PSNR and SSIM metrics left the state unchanged.
+
+**Second correction, 2026-11-09 (Experiment 1R smoke job 4556213):** the generator named above is wrong for the cluster
+runs. On a GPU node NeRFICG sets `torch.set_default_tensor_type(torch.cuda.FloatTensor)` (`src/Framework.py:291`).
+`randperm` in the sampler and the LPIPS initialisation therefore both draw from the **CUDA** generator. The login-node
+test had no GPU, so it saw the CPU generator. In the smoke job, each evaluation changed the CUDA state, while the CPU
+state did not change at all across 3,000 steps. The cause stands with "CPU" read as "CUDA": evaluation and the sampler
+share one generator. The text above is kept as written.
 
 **What this means for Experiment 1:**
 - Every branched run of every arm evaluated at step 5,000, so from step 5,168 on each saw a different view order than an

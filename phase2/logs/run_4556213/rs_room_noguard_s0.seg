@@ -1,0 +1,26 @@
+FGS_RESUME step=5000 N=946113 cum_s=18.364 sh_degree=3 param_sha=7994bcc0301a7e6d optim_sha=b6829ebe63c9cd39 dinfo_sha=70861ea48b49d6bd densification_info=(2, 946113) use_mcmc=False max_primitives=1000000 densification_end=14900 lr=means:0.00102765,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_room_de6da4d_s0p2x_room_pfx_s0_2026-11-08-15-18-29/checkpoints/state_0005000.pt
+FGS_EVALPROF step=5000 stage=compute_image_metrics calls=1 time_s=20.752 peak_gib=71.15
+FGS_EVALPROF step=5000 stage=load_images calls=2 time_s=11.101 peak_gib=5.58
+FGS_EVALPROF step=5000 stage=lpips_construct calls=1 time_s=0.203 peak_gib=6.10
+FGS_EVALPROF step=5000 stage=lpips_forward calls=39 time_s=8.892 peak_gib=71.15
+FGS_EVALPROF step=5000 stage=psnr_construct calls=1 time_s=0.006 peak_gib=5.58
+FGS_EVALPROF step=5000 stage=psnr_forward calls=39 time_s=0.058 peak_gib=5.74
+FGS_EVALPROF step=5000 stage=render_image calls=39 time_s=0.081 peak_gib=5.94
+FGS_EVALPROF step=5000 stage=save_image calls=78 time_s=40.551 peak_gib=5.62
+FGS_EVALPROF step=5000 stage=ssim_construct calls=1 time_s=0.000 peak_gib=5.58
+FGS_EVALPROF step=5000 stage=ssim_forward calls=39 time_s=0.131 peak_gib=6.12
+FGS_EVALPROF step=5000 stage=total time_s=62.430 alloc_before_gib=5.54 peak_gib=71.15 alloc_after_gib=5.63 reserved_after_gib=9.53 cudnn_benchmark=1
+SEGCLOCK step=6000 seg_s=4.411 cum_s=22.774 sparse=0 N=1112339 peak_alloc_gib=9.45
+FGS_EVALPROF step=6000 stage=compute_image_metrics calls=1 time_s=12.538 peak_gib=9.62
+FGS_EVALPROF step=6000 stage=load_images calls=2 time_s=11.048 peak_gib=5.78
+FGS_EVALPROF step=6000 stage=lpips_construct calls=1 time_s=0.192 peak_gib=6.29
+FGS_EVALPROF step=6000 stage=lpips_forward calls=39 time_s=1.050 peak_gib=9.62
+FGS_EVALPROF step=6000 stage=psnr_construct calls=1 time_s=0.002 peak_gib=5.78
+FGS_EVALPROF step=6000 stage=psnr_forward calls=39 time_s=0.028 peak_gib=5.90
+FGS_EVALPROF step=6000 stage=render_image calls=39 time_s=0.074 peak_gib=6.17
+FGS_EVALPROF step=6000 stage=save_image calls=78 time_s=40.522 peak_gib=5.81
+FGS_EVALPROF step=6000 stage=ssim_construct calls=1 time_s=0.000 peak_gib=5.78
+FGS_EVALPROF step=6000 stage=ssim_forward calls=39 time_s=0.098 peak_gib=6.29
+FGS_EVALPROF step=6000 stage=total time_s=54.195 alloc_before_gib=5.74 peak_gib=9.62 alloc_after_gib=5.80 reserved_after_gib=9.74 cudnn_benchmark=1
+SEGCLOCK step=7000 seg_s=4.545 cum_s=27.320 sparse=0 N=1091678 peak_alloc_gib=9.62
+FGS_TRAIN_END N=1091678 peak_alloc_gib=9.62 peak_reserved_gib=9.74

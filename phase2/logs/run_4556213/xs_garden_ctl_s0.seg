@@ -1,0 +1,3 @@
+FGS_RESUME step=2000 N=1043831 cum_s=5.195 sh_degree=1 param_sha=134fd914e74839bb optim_sha=cca6ae0afeea44a0 dinfo_sha=b4c12dc42eafbec3 densification_info=(2, 1043831) use_mcmc=False max_primitives=1000000 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2xs_garden_pfx_s0_2026-11-09-04-03-16/checkpoints/state_0002000.pt
+SEGCLOCK step=3000 seg_s=4.546 cum_s=9.741 sparse=0 N=1942005 peak_alloc_gib=67.97
+FGS_TRAIN_END N=1942005 peak_alloc_gib=67.97 peak_reserved_gib=68.07
