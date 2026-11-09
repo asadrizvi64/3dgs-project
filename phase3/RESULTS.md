@@ -145,3 +145,42 @@ patch existed. The six new ones run with it applied but inactive, since all of i
 settings are set. Part 1's no-evaluation run uses that same inactive path.
 
 Cost: about 3.5 GPU-hours, mostly evaluating the six branched `ctl` runs (about 27 minutes each on room).
+
+### Supplementary diagnostics and limitations (added 2026-11-09, while jobs 4555954 and 4555955 run, before any of their results)
+
+These diagnostics come from an outside review. They add reporting only. The jobs, their configuration and both pass
+criteria above are unchanged. Every new number is computed by `adjudicate.py` from files the jobs already write.
+
+**1. Identical views do not prove an identical optimisation.**
+- Part 1 rules out evaluation drawing random numbers. It does not rule out evaluation changing the model state or the
+  numerics in some other way.
+- Reported alongside, for the two 8,000-step runs: final N; PSNR, SSIM and LPIPS at 8,000; and the per-view PSNR
+  differences (the largest one, and views 34 and 35).
+- These have no noise reference. Two runs without evaluation also differ, through the order of atomic additions, and
+  no such pair exists at 8,000. They are descriptive only.
+
+**2. The nine-seed criterion is more permissive than the three-seed one.**
+- The allowed difference is the range of the uninterrupted runs. A range tends to grow with the number of runs, so a
+  systematic gap of the size seen at three seeds could pass with nine.
+- Reported alongside: the ctl − up difference for each seed, paired by seed (the two share the seed and, up to the
+  branch, the view sequence), using full-precision final PSNR; the same difference with views 34 and 35 left out; the
+  per-seed differences on views 34 and 35; and for each, the mean, a 95% t interval and the number of negative seeds.
+- On the original three seeds: mean −0.105 dB, interval [−0.246, +0.037], all 3 negative. With views 34 and 35 left
+  out: −0.030 dB, [−0.136, +0.077], 2 of 3 negative.
+- **How this will be read, fixed now:**
+  - If the rule passes but the nine-seed interval lies entirely below zero, the report says a systematic gap of about
+    that size may remain.
+  - Arm differences smaller than that gap are then not claimed. The decision itself still follows the rule.
+
+**3. A precision detail of the frozen check.**
+- Check 1, in `analyze_ttq.py` and `adjudicate.py` alike, reads ctl's final PSNR from the test-set summary, which is
+  rounded to 0.01 dB. It reads the uninterrupted runs' PSNR at full precision.
+- The rounding moves a mean by at most 0.005 dB. The rule keeps the frozen source; the diagnostics use full precision
+  on both sides.
+
+**4. How the outcome will be reported.**
+- The original three-seed check 1 **failed**. The adjudication was designed after that failure was seen, although its
+  criteria were recorded before the new runs.
+- If both parts pass, the result is described as "Experiment 1 supported after a documented post-result adjudication".
+  It is never described as a passed validation.
+- If either part fails, Experiment 1 stays invalid, as stated above.

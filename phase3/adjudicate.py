@@ -87,4 +87,52 @@ p2 = ok_p and ok_n
 print(f'\nPart 1 {"PASS" if p1 else "FAIL"}, part 2 {"PASS" if p2 else "FAIL"}: '
       + ('apply the original decision rule to the original 24 continuations.' if p1 and p2
          else 'Experiment 1 stays invalid; the arms are not compared.'))
+
+# ------------------------------------------------------------ supplementary diagnostics (declared 2026-11-09, not the rule)
+T975 = {1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571, 6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228}
+
+
+def per_image(arch, name, it=30000):
+    t = open(os.path.join(arch, name, f'test_{it}', 'metrics_8bit.txt')).read().partition('Image')[2]
+    return {int(m.group(1)): float(m.group(2)) for m in re.finditer(r'^(\d+)\t([\d.]+)', t, re.M)}
+
+
+print('\n## Supplementary diagnostics (declared before results; they do not change the rule above)\n')
+# part 1: final state of the two 8000-step runs
+p1r = {}
+for p in args.ctl + args.ref:
+    text = open(p, encoding='utf-8', errors='replace').read()
+    job = re.search(r'^node=\S+ job=(\S+)', text, re.M).group(1)
+    for m in re.finditer(r'^RESULT a_room_(ev|ne)_s0 PSNR:(\S+) SSIM:(\S+) LPIPS:(\S+) N_Gaussians:(\d+)', text, re.M):
+        p1r[m.group(1)] = (float(m.group(2)), float(m.group(3)), float(m.group(4)), int(m.group(5)),
+                           os.path.join(os.path.dirname(p), f'run_{job}', 'runs'))
+if len(p1r) == 2:
+    e, n = p1r['ev'], p1r['ne']
+    print('Part 1 at step 8000 (with evaluation / without):')
+    print(f'- N {e[3]} / {n[3]} (difference {e[3] - n[3]:+d}); PSNR {e[0]:.3f} / {n[0]:.3f} ({e[0] - n[0]:+.3f}); '
+          f'SSIM {e[1]:.4f} / {n[1]:.4f}; LPIPS {e[2]:.4f} / {n[2]:.4f}')
+    ie, ine = per_image(e[4], 'a_room_ev_s0', 8000), per_image(n[4], 'a_room_ne_s0', 8000)
+    dd = {i: ie[i] - ine[i] for i in ie if i in ine}
+    w = max(dd, key=lambda i: abs(dd[i]))
+    print(f'- per-view PSNR difference: largest {dd[w]:+.2f} dB (view {w}); views 34 / 35: {dd.get(34, 0):+.2f} / {dd.get(35, 0):+.2f}')
+    print('- Two runs without evaluation would also differ here (atomic-addition order), and no such pair exists at 8000,'
+          ' so these numbers have no noise reference. Descriptive only.')
+else:
+    print('Part 1 at step 8000: runs a_room_ev_s0 / a_room_ne_s0 not found')
+# part 2: differences paired by seed (ctl and up share the seed and, up to the branch, the view sequence)
+print('\nPart 2, ctl minus up paired by seed, full-precision final PSNR (RESULT line), and per view for 34 and 35:\n')
+print('| seed | ΔPSNR | Δ without views 34, 35 | Δ view 34 | Δ view 35 |\n|---|---|---|---|---|')
+d, dx = [], []
+for s in args.seeds:
+    ic, iu = per_image(ctl[s][2], f'x_room_ctl_s{s}'), per_image(ref[s][0][2], f'b_room_up_s{s}')
+    keep = [i for i in ic if i not in (34, 35)]
+    d.append(ctl[s][0] - ref[s][0][0])
+    dx.append(st.mean(ic[i] for i in keep) - st.mean(iu[i] for i in keep))
+    print(f'| {s} | {d[-1]:+.3f} | {dx[-1]:+.3f} | {ic[34] - iu[34]:+.2f} | {ic[35] - iu[35]:+.2f} |')
+for label, v in (('ΔPSNR', d), ('Δ without views 34, 35 (per-view values at 0.01 dB)', dx)):
+    h = T975[len(v) - 1] * st.stdev(v) / len(v) ** 0.5
+    print(f'- {label}: mean {st.mean(v):+.3f} dB, 95% t interval [{st.mean(v) - h:+.3f}, {st.mean(v) + h:+.3f}] '
+          f'(n={len(v)}), {sum(x < 0 for x in v)} of {len(v)} seeds negative')
+print('- The rule\'s allowed difference is the range of the uninterrupted runs, which tends to grow with the number of'
+      ' seeds; the interval above shows whether a systematic gap remains.')
 sys.exit(0 if p1 and p2 else 1)
