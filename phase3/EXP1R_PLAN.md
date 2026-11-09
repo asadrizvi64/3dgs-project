@@ -485,6 +485,9 @@ Submitted at commit c3ea481, stage `exp1r`. The cluster checkout is not touched 
 | 4559239 | room | 11 | 3:00 |
 | 4559240 | room | 12 | 3:00 |
 
+**Result (2026-11-09):** all checks pass; `mcmc` passes the decision rule, `stop` fails, the oracle passes. See
+[EXP1R_RESULTS.md](EXP1R_RESULTS.md).
+
 ## Changes after launch
 
 (None.)

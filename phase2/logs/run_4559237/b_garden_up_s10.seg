@@ -1,0 +1,33 @@
+SEGCLOCK step=1000 seg_s=2.136 cum_s=2.136 sparse=0 N=268456 peak_alloc_gib=2.38
+SEGCLOCK step=2000 seg_s=3.037 cum_s=5.173 sparse=0 N=1041687 peak_alloc_gib=3.20
+SEGCLOCK step=3000 seg_s=4.506 cum_s=9.679 sparse=0 N=1946444 peak_alloc_gib=4.14
+SEGCLOCK step=4000 seg_s=5.514 cum_s=15.193 sparse=0 N=2455953 peak_alloc_gib=4.67
+SEGCLOCK step=5000 seg_s=6.598 cum_s=21.791 sparse=0 N=3082500 peak_alloc_gib=5.32
+SEGCLOCK step=6000 seg_s=7.223 cum_s=29.014 sparse=0 N=3558863 peak_alloc_gib=5.82
+SEGCLOCK step=7000 seg_s=7.599 cum_s=36.613 sparse=0 N=3632040 peak_alloc_gib=5.90
+SEGCLOCK step=8000 seg_s=7.929 cum_s=44.542 sparse=0 N=3846843 peak_alloc_gib=6.12
+SEGCLOCK step=9000 seg_s=8.222 cum_s=52.764 sparse=0 N=4020479 peak_alloc_gib=6.31
+SEGCLOCK step=10000 seg_s=8.318 cum_s=61.082 sparse=0 N=3992470 peak_alloc_gib=6.32
+SEGCLOCK step=11000 seg_s=8.358 cum_s=69.440 sparse=0 N=4061859 peak_alloc_gib=6.35
+SEGCLOCK step=12000 seg_s=8.450 cum_s=77.890 sparse=0 N=4138114 peak_alloc_gib=6.43
+SEGCLOCK step=13000 seg_s=8.506 cum_s=86.396 sparse=0 N=4089290 peak_alloc_gib=6.43
+SEGCLOCK step=14000 seg_s=8.476 cum_s=94.872 sparse=0 N=4124050 peak_alloc_gib=6.43
+SEGCLOCK step=15000 seg_s=8.510 cum_s=103.382 sparse=0 N=4161147 peak_alloc_gib=6.45
+FGS_N iteration=15000 N=4161147
+SEGCLOCK step=16000 seg_s=8.459 cum_s=111.840 sparse=0 N=4161147 peak_alloc_gib=6.45
+SEGCLOCK step=17000 seg_s=8.448 cum_s=120.288 sparse=0 N=4161147 peak_alloc_gib=6.45
+SEGCLOCK step=18000 seg_s=8.411 cum_s=128.699 sparse=0 N=4161147 peak_alloc_gib=6.45
+SEGCLOCK step=19000 seg_s=8.387 cum_s=137.085 sparse=0 N=4161147 peak_alloc_gib=6.45
+SEGCLOCK step=20000 seg_s=8.388 cum_s=145.474 sparse=0 N=4161147 peak_alloc_gib=6.45
+SEGCLOCK step=21000 seg_s=8.380 cum_s=153.854 sparse=0 N=4161147 peak_alloc_gib=6.45
+SEGCLOCK step=22000 seg_s=8.369 cum_s=162.223 sparse=0 N=4161147 peak_alloc_gib=6.45
+SEGCLOCK step=23000 seg_s=8.345 cum_s=170.569 sparse=0 N=4161147 peak_alloc_gib=6.45
+SEGCLOCK step=24000 seg_s=8.331 cum_s=178.900 sparse=0 N=4161147 peak_alloc_gib=6.45
+SEGCLOCK step=25000 seg_s=8.307 cum_s=187.206 sparse=0 N=4161147 peak_alloc_gib=6.45
+SEGCLOCK step=26000 seg_s=8.313 cum_s=195.519 sparse=0 N=4161147 peak_alloc_gib=6.45
+SEGCLOCK step=27000 seg_s=8.285 cum_s=203.805 sparse=0 N=4161147 peak_alloc_gib=6.45
+SEGCLOCK step=28000 seg_s=8.300 cum_s=212.105 sparse=0 N=4161147 peak_alloc_gib=6.45
+SEGCLOCK step=29000 seg_s=8.285 cum_s=220.390 sparse=0 N=4161147 peak_alloc_gib=6.45
+FGS_WALL from=0 to=30000 s=233.970 views=34e72abffadaccd
+SEGCLOCK step=30000 seg_s=8.276 cum_s=228.666 sparse=0 N=4161147 peak_alloc_gib=6.45
+FGS_TRAIN_END N=4161147 peak_alloc_gib=6.45 peak_reserved_gib=8.10

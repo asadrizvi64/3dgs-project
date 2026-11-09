@@ -301,3 +301,6 @@ An Experiment 1 rerun with the generator states saved before each evaluation and
 - the original arms and decision rule unchanged.
 
 This would be a new experiment, not a repair of this one.
+
+*(2026-11-09: run as Experiment 1R. All checks passed and `mcmc` passed the decision rule; see
+[EXP1R_RESULTS.md](EXP1R_RESULTS.md). Experiment 1 itself stays invalid.)*
