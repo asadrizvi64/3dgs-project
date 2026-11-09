@@ -71,6 +71,8 @@
 #   STAGES=exp1smoke sbatch --job-name=gs-x1-smoke --time=00:30:00 phase2/build_plus.sbatch   (phase3/PLAN.md engineering checks)
 #   STAGES=exp1 SCENE=garden sbatch --job-name=gs-x1-garden --time=03:00:00 phase2/build_plus.sbatch   (phase 3 Experiment 1)
 #   STAGES=x1adj ADJ_EVALTEST=1 SEEDS="3 4 5" sbatch --job-name=gs-x1adj-a --time=02:45:00 phase2/build_plus.sbatch   (Exp 1 adjudication)
+#   STAGES="exp1smoke x1rsmoke" sbatch --job-name=gs-x1r-smoke --time=01:45:00 phase2/build_plus.sbatch   (Exp 1R smoke tests)
+#   STAGES=noisepilot sbatch --job-name=gs-x1r-pilot --time=02:15:00 phase2/build_plus.sbatch   (Exp 1R noise pilot)
 #   STAGES="upbuild upequiv" sbatch --job-name=gs-up-build --time=01:00:00 phase2/build_plus.sbatch   (upstream/README.md)
 #   STAGES=upbench SCENE=garden sbatch --job-name=gs-up-garden --time=01:30:00 phase2/build_plus.sbatch
 #   STAGES=upncu sbatch --job-name=gs-up-ncu --time=00:40:00 phase2/build_plus.sbatch
@@ -528,7 +530,7 @@ x_arm_cfg() {  # arm N_at_branch N_oracle -> CFG_SET value
     oracle) echo "USE_MCMC=true,MAX_PRIMITIVES=$3,LAMBDA_OPACITY_REGULARIZATION=0.01,LAMBDA_SCALE_REGULARIZATION=0.01,LEARNING_RATE_OPACITIES=0.05" ;;
   esac
 }
-if has exp1smoke || has exp1 || has x1adj; then
+if has exp1smoke || has exp1 || has x1adj || has x1rsmoke || has noisepilot; then
   M=${EXP1_METHOD:-FasterGSUp}
   python "$REPO/cluster/patches/fastergs_resume.py" "$DATA/nerficg/src/Methods/$M/Trainer.py"
 fi
@@ -672,6 +674,99 @@ PY
       TRAIN_ENV="FGS_RESUME=$ST FGS_EVAL_EVERY=1000 FGS_EVAL_FROM=$EXP1_AT FGS_WALL=$EXP1_AT,30000 CFG_SET=$(x_arm_cfg ctl $NB 0)" train x_room_ctl_s$seed $M "$seed" 30000 "" taming 1000
       x_clean x_room_ctl_s$seed
       x_clean $pfx
+    done
+  done
+fi
+
+# Experiment 1R smoke tests (phase3/EXP1R_PLAN.md; resume patch v7). Room seed 0.
+#   x1rsmoke  A: the saved Experiment 1 room seed-0 state (job 4553943), resumed 5000 -> 7000 three times, evaluating at
+#                5000 and 6000 with the per-stage profile (FGS_EVAL_PROF): guard on / guard off (v6 behaviour) /
+#                guard on with cudnn.benchmark off. Same state at 5000, so the test_5000 metrics must be identical
+#                between guard on and off; benchmark off is the memory comparison.
+#             B: four uninterrupted runs 0 -> 8000, two evaluating every 1000 from 5000 with FGS_EVAL_CHECK, two not,
+#                all with view traces. Every evaluation must leave the random states, parameters, optimizer state,
+#                densification statistics, training flag and dataset mode as they were, and all four view traces must
+#                be identical.
+#   noisepilot  SCENES (default garden room), PILOT_SEEDS (default 20 21 22 23): two identical uninterrupted 30k
+#                FasterGSUp runs per seed (b_<scene>_up / _up2), with view traces: the same-seed numerical noise that
+#                sets Experiment 1R's check 1 sample size.
+if has x1rsmoke; then
+  BSCENE=room; BSCALE=0.5
+  echo "########## x1rsmoke (room seed 0: A metric path + evaluation profile, B evaluation neutrality)"
+  ST=${X1R_STATE:-$DATA/nerficg/$(cat "$REPO/phase2/logs/run_4553943/runs/x_room_pfx_s0/rundir.txt" 2>/dev/null)/checkpoints/state_0005000.pt}
+  if [ ! -f "$ST" ]; then echo "FAILED x1rsmoke: no state $ST"; FAILED+=(x1rsmoke_state); else
+    for r in guard noguard nobench; do
+      e=""; [ $r = noguard ] && e="FGS_EVAL_RNG_GUARD=0"; [ $r = nobench ] && e="FGS_EVAL_CUDNN_BENCH=0"
+      TRAIN_ENV="FGS_RESUME=$ST FGS_EVAL_EVERY=1000 FGS_EVAL_FROM=5000 FGS_EVAL_PROF=1 $e" train rs_room_${r}_s0 $M 0 7000 "" taming 1000
+      x_clean rs_room_${r}_s0
+    done
+  fi
+  for r in ev ne ev2 ne2; do
+    e=""; case $r in ev*) e="FGS_EVAL_EVERY=1000 FGS_EVAL_FROM=5000 FGS_EVAL_CHECK=1" ;; esac
+    TRAIN_ENV="$e FGS_VIEW_TRACE=$OUT/rn_room_${r}_s0.views" train rn_room_${r}_s0 $M 0 8000 "" taming 1000
+    x_clean rn_room_${r}_s0
+  done
+  python3 - "$OUT" <<'PY' || FAILED+=(x1rsmoke_check)
+import os, re, sys
+out = sys.argv[1]
+ok = {}
+seg = lambda n: open(f'{out}/{n}.seg').read() if os.path.exists(f'{out}/{n}.seg') else ''
+mf = lambda n, it: open(f'{out}/runs/{n}/test_{it}/metrics_8bit.txt').read()
+rows = lambda n, it: re.findall(r'^\d+\t.*$', mf(n, it), re.M)
+full = lambda n, it: mf(n, it).strip().splitlines()[-1]
+# ---- A: metric path and profile
+G, NG, NB = 'rs_room_guard_s0', 'rs_room_noguard_s0', 'rs_room_nobench_s0'
+try:
+    ok['A: guard on / off give identical per-image metrics at 5000 (same state; the guard does not touch the metric path)'] = rows(G, 5000) == rows(NG, 5000)
+    ok['A: guard on / off give identical full-precision means at 5000'] = full(G, 5000) == full(NG, 5000)
+    print('A full-precision means at 5000: guard', full(G, 5000), '| no guard', full(NG, 5000), '| benchmark off', full(NB, 5000))
+    rg, rb = rows(G, 5000), rows(NB, 5000)
+    d = [[abs(float(a) - float(b)) for a, b in zip(x.split('\t')[1:], y.split('\t')[1:])] for x, y in zip(rg, rb)]
+    print('A benchmark off vs on at 5000 (diagnostic): per-image rows identical:', rg == rb,
+          '| max abs difference PSNR / SSIM / LPIPS:', [max(c) for c in zip(*d)] if d else None)
+except FileNotFoundError as e:
+    ok[f'A: metrics files present ({e.filename})'] = False
+for n in (G, NG, NB):
+    for l in re.findall(r'^FGS_EVALPROF .*$', seg(n), re.M):
+        print(n, l)
+# ---- B: neutrality
+EV, NE = ('rn_room_ev_s0', 'rn_room_ev2_s0'), ('rn_room_ne_s0', 'rn_room_ne2_s0')
+views = {n: [l for l in open(f'{out}/{n}.views').read().split('\n') if l] for n in EV + NE if os.path.exists(f'{out}/{n}.views')}
+ok['B: four view traces of 8000 steps'] = len(views) == 4 and all(len(v) == 8000 for v in views.values())
+ref = views.get(NE[0])
+for n in EV + NE[1:]:
+    v = views.get(n, [])
+    first = next((i for i, (a, b) in enumerate(zip(v, ref or [])) if a != b), None)
+    ok[f'B: {n} view trace identical to {NE[0]} (first difference: {first})'] = v == ref
+for n in EV:
+    chk = re.findall(r'^FGS_EVALCHECK step=(\d+) guard=1 rng_before=(\S+) rng_after_render=(\S+) rng_after_restore=(\S+) '
+                     r'state_before=(\S+) state_after=(\S+) training_before=(\S+) training_after_render=(\S+) '
+                     r'training_after_restore=(\S+) mode_before=(\S+) mode_after_render=(\S+) mode_after_restore=(\S+)', seg(n), re.M)
+    ok[f'B: {n} has evaluation checks at 5000, 6000, 7000'] = [int(c[0]) for c in chk] == [5000, 6000, 7000]
+    ok[f'B: {n} random states restored after every evaluation'] = bool(chk) and all(c[1] == c[3] for c in chk)
+    ok[f'B: {n} parameters, optimizer state and densification statistics unchanged by every evaluation (SHA-256)'] = bool(chk) and all(c[4] == c[5] for c in chk)
+    ok[f'B: {n} training flag and dataset mode restored after every evaluation'] = bool(chk) and all(c[6] == c[8] and c[9] == c[11] for c in chk)
+    for c in chk:
+        print(f'{n} step {c[0]}: rendering changed the random states: {c[1] != c[2]} '
+              f'({",".join(k for k, (a, b) in zip(("cpu", "cuda", "py", "np"), zip(c[1].split(","), c[2].split(","))) if a != b) or "none"}); '
+              f'training flag {c[6]} -> {c[7]} -> {c[8]}; mode {c[9]} -> {c[10]} -> {c[11]}')
+nclk = lambda n: {int(a): int(b) for a, b in re.findall(r'SEGCLOCK step=(\d+) .* N=(\d+) peak', seg(n))}
+for n in EV + NE:
+    r = re.search(r'PSNR:(\S+) SSIM:(\S+) LPIPS:(\S+)', full(n, 8000)) if os.path.exists(f'{out}/runs/{n}/test_8000/metrics_8bit.txt') else None
+    print(f'B diagnostic {n}: N {nclk(n)} | test at 8000 {r.groups() if r else None}')
+for k, v in ok.items():
+    print(('PASS ' if v else 'FAIL ') + k)
+sys.exit(0 if all(ok.values()) else 1)
+PY
+fi
+if has noisepilot; then
+  for BSCENE in ${SCENES:-garden room}; do
+    case $BSCENE in room|counter|kitchen|bonsai) BSCALE=0.5 ;; *) BSCALE=0.25 ;; esac
+    echo "########## noisepilot (scene $BSCENE scale $BSCALE, seeds ${PILOT_SEEDS:-20 21 22 23}, two identical uninterrupted runs each)"
+    for seed in ${PILOT_SEEDS:-20 21 22 23}; do
+      for r in up up2; do
+        TRAIN_ENV="FGS_WALL=0,15000,30000 FGS_VIEW_TRACE=$OUT/b_${BSCENE}_${r}_s$seed.views" train "b_${BSCENE}_${r}_s$seed" FasterGSUp "$seed" 30000 "" taming
+      done
     done
   done
 fi
