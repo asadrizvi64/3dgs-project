@@ -1,9 +1,20 @@
-# Experiment 1A: which parts of the MCMC policy make it faster (DRAFT, 2026-11-10)
+# Experiment 1A: which parts of the MCMC policy make it faster (pre-registered 2026-11-10)
 
-**Status: DRAFT. Not pre-registered, and nothing in it has run.**
-- It becomes final (this line changed, committed) only after the engineering in "Before launch" passes its smoke tests
-  and the open questions are settled. It launches only after that commit.
-- Any change after that is listed under "Changes after launch", with its date and reason.
+**Status: FINAL PRE-REGISTRATION, frozen 2026-11-10 at launch, in the commit that adds this line.**
+- All engineering gates passed: jobs 4561006, 4561007, 4561028 and 4561041, and 14 analysis test scenarios. The open
+  questions were settled by review. The user gave the go-ahead.
+- Binding:
+  - the design (eight arms, seeds 30–32);
+  - the measures and the two clocks;
+  - the decision rule (steps 1–4), with the revisions of 2026-11-10;
+  - the checks before the decision, including the callback-record requirement;
+  - the reporting limits.
+- The analysis command, fixed now:
+  `python phase3/analyze_ttq.py <the three garden logs> <the three room logs> --abl --seeds 30 31 32`. A (scene, seed)
+  block rerun under the timeout rule replaces its original through `--rerun`.
+- Any change from here on is listed under "Changes after launch", with its date and reason.
+
+**History:** DRAFT until launch. Revised twice after review on 2026-11-10; see the dated notes throughout.
 
 ## Question
 
