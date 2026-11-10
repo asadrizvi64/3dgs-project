@@ -83,7 +83,16 @@ Per pair (scene, seed), with T from the primary target:
 - **Noise reference:** f_rep = (T(`mrep`) − T(`mcmc`)) / A. It is 0 in expectation.
 - **Quality:** each `m*` arm's final PSNR and LPIPS minus `mcmc`'s, and `creset`'s minus `ctl`'s.
 
-The pooled statistics use all six pairs (two scenes × three seeds). Per-scene values are always reported alongside.
+- **Pairs used for classification:** a pair is used only if A ≥ 10% of T(`ctl`). That is a positive advantage of at
+  least the size the replication rule asks for. Per-scene values are always reported alongside.
+
+**Two clocks (revised 2026-11-10):**
+- **The training clock (`SEGCLOCK`)** covers only the training step itself. The densify, Morton-ordering and
+  opacity-reset callbacks run between steps, outside it. This was true for Experiment 1R too
+  ([EXP1R_RESULTS.md](EXP1R_RESULTS.md), disclosed there). The primary T stays on this clock, for comparability with 1R.
+- **Secondary clock:** the training clock plus the measured time of those three callbacks, from patch v2's
+  `FGS_ABL_CB` (CUDA events, cumulative before each evaluation point, the prefix's included). Every fraction and
+  classification is also computed on this clock.
 
 ## Decision rule (fixed before launch)
 
@@ -91,35 +100,53 @@ The pooled statistics use all six pairs (two scenes × three seeds). Per-scene v
 - median ΔT ≥ 10% on both scenes;
 - T lower in ≥ 5 of 6 pairs;
 - both quality limits;
-- no more one-view failures.
+- no more one-view failures than `ctl`, on the control-based reference below.
+
+**One-view failures (revised 2026-11-10).**
+- Image i of a run is a failure if its final PSNR is more than 3 dB below the median of image i over the scene's `ctl`
+  runs and uninterrupted reference runs (all seeds), excluding the run itself.
+- That reference does not depend on which ablation arms are present. Experiment 1R's definition (the median over every
+  run of the scene) would change with the eight arms.
+- The 1R-style counts are printed for comparison only. They are not described as a reproduction of 1R's criterion.
 
 If it does not pass, nothing below is interpreted, and the result is reported as a failure to replicate 1R.
 
-**Step 2. Resolution.** Classifications are made only if the experiment can resolve fractions of the size used below:
-the median of |f_rep| over the six pairs must be ≤ 0.2. Otherwise steps 3 and 4 are reported descriptively, with the
-reason.
+**Step 2. Resolution (revised 2026-11-10).** Classifications are made only if all three of these hold. Otherwise every
+component is **not resolved**, and the fractions are reported descriptively with the reason.
+- At least 5 pairs are used, each with A ≥ 10% of T(`ctl`). So `mcmc` may replicate with 5 of 6 wins and still be
+  decomposed, over those 5 pairs.
+- `mrep` reaches the target in every used pair. A replicate that never reaches it fails this step, whatever the median
+  of the others.
+- The median of |f_rep| over the used pairs is ≤ 0.2.
 
-**Step 3. Each component R, Z, G, L:**
-- **needed:** median f_k ≥ 0.5, and f_k > 0 in ≥ 5 of 6 pairs;
-- **not needed:** median f_k ≤ 0.2, and the arm's mean final ΔPSNR against `mcmc` ≥ −0.10 dB on both scenes;
+**Step 3. Each component R, Z, G, L**, over the n used pairs:
+- **needed:** median f_k ≥ 0.5, and f_k > 0 in at least n − 1 pairs;
+- **not needed:** median f_k ≤ 0.2, and on both scenes the arm's mean final ΔPSNR against `mcmc` ≥ −0.10 dB and mean
+  ΔLPIPS ≤ +0.002;
 - **not resolved:** anything else.
 
-**Step 4. Opacity resets:**
-- **resets explain a major part of the gap:** median g ≥ 0.5, and g > 0 in ≥ 5 of 6 pairs;
+**Step 4. Opacity resets**, over the same pairs:
+- **resets explain a major part of the gap:** median g ≥ 0.5, and g > 0 in at least n − 1 pairs;
 - **resets explain little:** median g ≤ 0.2;
 - **not resolved:** anything else.
 
 **Always reported:**
 - every f_k, g and f_rep per pair;
 - the same quantities at the −0.10 and −0.20 dB targets, and for "reaches and stays";
-- the quality differences;
+- the quality differences (PSNR and LPIPS);
+- one-view failures per arm;
+- callback time per arm;
 - each arm's N over time.
 
 **How to read the result:**
 - The leave-one-out fractions need not add up to 1. Components can interact, and several can each be "needed".
 - If an arm's classification at the primary target disagrees with its classification at the sensitivity targets,
   that component is described as sensitive to target selection.
-- A "needed" component is needed given the rest of this policy, on these two scenes. It is not shown to work alone.
+- If it disagrees with its classification on the secondary clock, it is described as sensitive to the clock boundary.
+- A "needed" component is needed given the rest of this policy, on these two scenes and three seeds. It is not shown
+  to work alone, and it is not called necessary in general.
+- `creset` measures what removing resets from the control policy does. It is not the contribution of resets inside
+  MCMC.
 
 ## Checks before the decision
 
@@ -152,8 +179,17 @@ from the environment. Their defaults reproduce the current behaviour:
 - It also adds counters, printed with `FGS_ABL=1` on one `FGS_ABL` line at the end of training: the switch values,
   relocation events, Gaussians relocated, dead Gaussians left in place, noise steps, and the iterations of the opacity
   resets. The v7 resume patch is left unchanged.
-- Counting dead Gaussians costs one device sync per densification step. It is done in every MCMC arm alike, and it is
-  timed as training.
+- Counting dead Gaussians costs one device sync per densification step. It is done in every MCMC arm alike.
+  *Corrected 2026-11-10, after review:* an earlier version of this draft said this time is counted as training. It is
+  not. It falls in the densify callback, outside the training clock (see "Two clocks"). Smoke test `x1atime` checks
+  that counting does not change the training clock.
+- **v2 (2026-11-10):** with `FGS_ABL=1`, the densify, Morton-ordering and opacity-reset callbacks are timed with CUDA
+  events, adding no synchronisation.
+  - Output: one `FGS_ABL_CB` line with their total time by callback, and the cumulative time before every 1,000-step
+    point.
+  - The prefix runs with `FGS_ABL=1` too, so its callback time before the branch is known.
+  - Upgrading from v1 means restoring the trainer saved before v1 and applying v2. The patch refuses to run on top of
+    v1.
 - The regularisation and opacity learning rate need no patch: they are set through `CFG_SET`, as in 1R.
 
 **Smoke tests** (garden, short: branch at 2,000, end at 3,000, plus one long-enough check for the resets):
@@ -165,6 +201,8 @@ from the environment. Their defaults reproduce the current behaviour:
 | Resets | A `ctl` and a `creset` run from 5,000 to 13,000: `ctl` logs resets at 6,000, 9,000 and 12,000, `creset` none | gate |
 | Analysis | `analyze_ttq.py` (or a new `analyze_abl.py`) computes f_k, g and f_rep and the classifications. Fixture tests with known answers for each class, a non-replicating `mcmc`, an unresolvable `mrep`, and a "not reached" arm | gate |
 | Stage smoke | The new stage end to end on a short garden run, both run orders, through the analysis's checks | gate |
+| Counting vs clock (`x1atime`, added 2026-11-10) | `ctl` and `mcmc` from the same state, 5,000 → 8,000, no evaluation, counting on and off, two runs each. Per arm, the mean training time with counting is within 2% of the mean without. Wall time and callback time reported. | gate |
+| Stage smoke on v2 | The stage smoke repeated with patch v2, so the analysis reads real `FGS_ABL_CB` lines | gate |
 
 **Built 2026-11-10:**
 - `cluster/patches/fastergs_ablate.py`: tested on a copy of the deployed trainer. It is idempotent and changes only
@@ -179,6 +217,13 @@ from the environment. Their defaults reproduce the current behaviour:
   - a wrong noise count, and a wrong switch: both stop the decision.
 
   The Experiment 1 and 1R analyses give byte-identical output before and after the change.
+- **Revised 2026-11-10, after review of 6b67dbe** (patch v2 and analysis): thirteen fixture scenarios, adding:
+  - `mcmc` winning 5 of 6 pairs, decomposed over the 5 used pairs;
+  - `mrep` never reaching the target, which is not resolved;
+  - an arm with worse LPIPS, which is then not classified as "not needed";
+  - a one-view failure on the control-based reference, which fails replication;
+  - a component whose class changes with the clock, which is flagged;
+  - logs without callback timing, where the second clock is reported as not available.
 - `x1asmoke` uses Experiment 1R's saved garden seed-10 state. Gate "defaults unchanged": `ctl` with no switch set sees
   exactly 1R's `ctl` views over 5,000–12,999.
 
@@ -211,7 +256,17 @@ not done here, so the measurements stay comparable with 1R.
 - Other population sizes, and the oracle.
 - Experiment 2's schedule levers. [EXP2_PLAN.md](EXP2_PLAN.md) stays frozen as a draft.
 
-## Open questions for review
+## Decisions after review (2026-11-10)
+
+These were made on the review of 6b67dbe, before any Experiment 1A arm ran:
+- **Open question 1:** no `mcmc` + resets arm; `creset` stays as it is.
+- **Open question 2:** no add-one arms for now.
+- **Open question 3:** the 0.5 / 0.2 thresholds are kept, as operational thresholds.
+- **Open question 4:** three fresh seeds are acceptable for a diagnostic ablation.
+- **Open question 5:** `cudnn.benchmark` stays on.
+- No further arms.
+
+## Open questions for review (as first drafted)
 
 1. **The reset component inside MCMC.** `mcmc` + resets would complete the leave-one-out set. It is left out because a
    reset clamps every opacity to 0.01, just above the 0.005 relocation threshold (`Model.reset_opacities`), which would mix two components in one arm. `creset` asks the

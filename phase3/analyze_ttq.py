@@ -481,57 +481,113 @@ print('\n' + '; '.join(f'{sc} {a}: {fails[(sc, a)]}' for sc in scenes for a in A
 # ---------------------------------------------------------------- Experiment 1A decision (phase3/EXP1A_PLAN.md)
 COMPONENTS = (('R', 'mreloc', 'relocation'), ('Z', 'mnoise', 'noise injection'), ('G', 'mreg', 'regularisation'),
               ('L', 'mlr', 'opacity learning rate 0.05'))
+MIN_ADV = 0.10   # a pair is used for classification only if T(ctl) - T(mcmc) >= 10% of T(ctl)
 
 
-def abl_fractions(delta, stay=False):
-    """Per pair (scene, seed): A = T(ctl) - T(mcmc); f for every arm; g for creset. None where A <= 0 or T(ctl) / T(mcmc)
-    is missing (undefined); +inf where the arm never reaches the target (for g: -inf)."""
+def abl_cb(lines):
+    """FGS_ABL_CB cumulative callback seconds before each 1000-step point, or None (patch v1 logs)."""
+    m = [re.match(r'FGS_ABL_CB total_s=(\S+) by=(\S+) calls=(\d+) cum=(\S+)', l) for l in lines]
+    m = [x for x in m if x]
+    if len(m) != 1:
+        return None
+    return {int(a): float(b) for a, b in (x.split(':') for x in m[0].group(4).split(','))}, float(m[0].group(1)), m[0].group(2)
+
+
+def abl_incl(sc, s, run):
+    """The run with callback time added to its clock: prefix callbacks before the branch plus the arm's own."""
+    p = blocks.get((sc, 'pfx', str(s)))
+    cp, ca = (abl_cb(p[-1]) if p else None), abl_cb(run['lines'])
+    if not cp or not ca:
+        return None
+    base = cp[0].get(args.branch, 0.0)
+    clk = {k: (t + base + ca[0].get(k, 0.0), n) for k, (t, n) in run['clk'].items()}
+    return dict(run, clk=clk)
+
+
+def abl_fails():
+    """One-view failures with a fixed, control-based reference: image i of a run fails if its PSNR at the end is more
+    than 3 dB below the median of image i over the scene's ctl runs and uninterrupted reference runs (all seeds),
+    excluding the run itself. Independent of which ablation arms are present."""
+    ub, uarch = blocks_of(args.logs, r'##### b_([a-z]+)_(up)_s(\d+):')
+    out, lines = defaultdict(int), []
+    for sc in scenes:
+        refs = {}
+        for s in args.seeds:
+            if (sc, 'ctl', s) in runs:
+                refs[('ctl', s)] = runs[(sc, 'ctl', s)]['per'][END]
+            f = os.path.join(uarch.get((sc, 'up', str(s)), ''), f'b_{sc}_up_s{s}', f'test_{END}', 'metrics_8bit.txt')
+            if os.path.exists(f):
+                refs[('up', s)] = metrics(f)[1]
+        for (rsc, a, s), r in sorted(runs.items()):
+            if rsc != sc:
+                continue
+            for i, v in r['per'][END].items():
+                o = [p[i] for k, p in refs.items() if k != (a, s) and i in p]
+                if len(o) >= 3 and v < st.median(o) - SEVERE:
+                    out[(sc, a)] += 1
+                    lines.append(f'- {sc} {a} s{s}: image {i} {v - st.median(o):+.1f} dB')
+    return out, lines
+
+
+def abl_fractions(get_run, delta, stay=False):
     out = {}
     for sc in scenes:
         for s in args.seeds:
-            c, m = runs.get((sc, 'ctl', s)), runs.get((sc, 'mcmc', s))
+            c, m = get_run(sc, 'ctl', s), get_run(sc, 'mcmc', s)
             if not c or not m:
                 continue
-            tgt = c['curve'][END]['PSNR'] - delta
+            tgt = runs[(sc, 'ctl', s)]['curve'][END]['PSNR'] - delta
             tc, tm = ttq(c, tgt, stay), ttq(m, tgt, stay)
             A = None if tc is None or tm is None else tc - tm
-            row = {'A': A, 'T_ctl': tc, 'T_mcmc': tm}
+            row = {'A': A, 'T_ctl': tc, 'T_mcmc': tm, 'used': A is not None and A >= MIN_ADV * tc}
             for a in ('mrep', 'mreloc', 'mnoise', 'mreg', 'mlr'):
-                r = runs.get((sc, a, s))
+                r = get_run(sc, a, s)
                 t = ttq(r, tgt, stay) if r else None
-                row[a] = None if not A or A <= 0 or not r else (float('inf') if t is None else (t - tm) / A)
-            r = runs.get((sc, 'creset', s))
+                row[a] = None if not row['used'] or not r else (float('inf') if t is None else (t - tm) / A)
+            r = get_run(sc, 'creset', s)
             t = ttq(r, tgt, stay) if r else None
-            row['creset'] = None if not A or A <= 0 or not r else (float('-inf') if t is None else (tc - t) / A)
+            row['creset'] = None if not row['used'] or not r else (float('-inf') if t is None else (tc - t) / A)
             out[(sc, s)] = row
     return out
 
 
 def abl_classify(fr):
-    pairs = [fr[k] for k in sorted(fr)]
-    med = lambda xs: st.median(xs) if xs else None
-    rep = [abs(p['mrep']) for p in pairs if p['mrep'] is not None]
-    resolved = len(rep) == 6 and med(rep) <= 0.2
+    used = [fr[k] for k in sorted(fr) if fr[k]['used']]
+    nq = len(used)
+    reason = None
+    if nq < 5:
+        reason = f'only {nq} of 6 pairs have an advantage of at least {MIN_ADV:.0%} of T(ctl)'
+    elif any(p['mrep'] is None or p['mrep'] == float('inf') for p in used):
+        reason = 'the identical mcmc replicate (mrep) is missing or never reaches the target in a used pair'
+    rep = [abs(p['mrep']) for p in used if p['mrep'] is not None]
+    mrep_med = st.median(rep) if rep else None
+    if reason is None and mrep_med > 0.2:
+        reason = f'median |f mrep| = {mrep_med:.2f} > 0.20'
     cls = {}
     for code, arm, _ in COMPONENTS:
-        v = [p[arm] for p in pairs if p[arm] is not None]
-        pos = sum(x > 0 for x in v)
-        dq = {sc: st.mean(runs[(sc, arm, s)]['curve'][END]['PSNR'] - runs[(sc, 'mcmc', s)]['curve'][END]['PSNR']
-                          for s in args.seeds if (sc, arm, s) in runs and (sc, 'mcmc', s) in runs) for sc in scenes}
-        if med(v) is not None and med(v) >= 0.5 and pos >= 5:
+        v = [p[arm] for p in used if p[arm] is not None]
+        if reason or len(v) != nq:
+            cls[code] = 'not resolved'
+            continue
+        dq = {sc: (st.mean(runs[(sc, arm, s)]['curve'][END]['PSNR'] - runs[(sc, 'mcmc', s)]['curve'][END]['PSNR'] for s in args.seeds),
+                   st.mean(runs[(sc, arm, s)]['curve'][END]['LPIPS'] - runs[(sc, 'mcmc', s)]['curve'][END]['LPIPS'] for s in args.seeds))
+              for sc in scenes}
+        if st.median(v) >= 0.5 and sum(x > 0 for x in v) >= nq - 1:
             cls[code] = 'needed'
-        elif med(v) is not None and med(v) <= 0.2 and all(x >= -0.10 for x in dq.values()):
+        elif st.median(v) <= 0.2 and all(p_ >= -0.10 and l_ <= 0.002 for p_, l_ in dq.values()):
             cls[code] = 'not needed'
         else:
             cls[code] = 'not resolved'
-    v = [p['creset'] for p in pairs if p['creset'] is not None]
-    if med(v) is not None and med(v) >= 0.5 and sum(x > 0 for x in v) >= 5:
+    v = [p['creset'] for p in used if p['creset'] is not None]
+    if reason or len(v) != nq:
+        cls['O'] = 'not resolved'
+    elif st.median(v) >= 0.5 and sum(x > 0 for x in v) >= nq - 1:
         cls['O'] = 'resets explain a major part of the gap'
-    elif med(v) is not None and med(v) <= 0.2:
+    elif st.median(v) <= 0.2:
         cls['O'] = 'resets explain little'
     else:
         cls['O'] = 'not resolved'
-    return resolved, med(rep), cls
+    return reason, mrep_med, nq, cls
 
 
 def abl_decision():
@@ -542,7 +598,15 @@ def abl_decision():
         if not args.descriptive:
             sys.exit(2)
         print('\n**Descriptive only (--descriptive): the rule applied anyway. This is NOT the pre-registered decision.**\n')
-    # step 1: replication of Experiment 1R's mcmc result, by 1R's rule
+    af, flines = abl_fails()
+    print('### One-view failures (control-based reference: median of the scene\'s ctl and uninterrupted runs, excluding the run itself)\n')
+    print('\n'.join(flines) if flines else '- none')
+    print('\n| arm | ' + ' | '.join(scenes) + ' |\n|---|' + '---|' * len(scenes))
+    for a in ARMS:
+        print(f'| {a} | ' + ' | '.join(str(af[(sc, a)]) for sc in scenes) + ' |')
+    print('\nFor comparison only (Experiment 1R\'s definition, median over all runs present, which depends on the arm set): '
+          + '; '.join(f'{sc} {a}: {fails[(sc, a)]}' for sc in scenes for a in ARMS) + '\n')
+    # step 1: replication of Experiment 1R's mcmc result, by 1R's rule (one-view failures from the control-based reference)
     crit = {}
     for sc in scenes:
         d = summary[(sc, 'mcmc')]
@@ -551,43 +615,77 @@ def abl_decision():
         crit[f'{sc}: mean ΔLPIPS <= +0.002'] = st.mean(d['dls']) <= 0.002
     faster = sum(x is not None and x > 0 for sc in scenes for x in summary[(sc, 'mcmc')]['dts'])
     crit[f'T lower than ctl in >= 5 of 6 pairs ({faster})'] = faster >= 5
-    crit['one-view failures not above ctl'] = sum(fails[(sc, 'mcmc')] for sc in scenes) <= sum(fails[(sc, 'ctl')] for sc in scenes)
+    crit['one-view failures (control-based reference) not above ctl'] = sum(af[(sc, 'mcmc')] for sc in scenes) <= sum(af[(sc, 'ctl')] for sc in scenes)
     rep_ok = all(crit.values())
     print(f'**Step 1, replication: mcmc vs ctl by Experiment 1R\'s rule: {"PASS" if rep_ok else "FAIL"}**')
     for k, v in crit.items():
         print(f'  - {"meets" if v else "misses"} {k}')
+    print('\n### Quality of each arm against mcmc (ctl and creset against ctl), mean over seeds\n')
+    print('| arm | ' + ' | '.join(f'{sc} ΔPSNR | {sc} ΔLPIPS' for sc in scenes) + ' |\n|---|' + '---|---|' * len(scenes))
+    for a in ARMS[2:]:
+        ref = 'ctl' if a == 'creset' else 'mcmc'
+        cells = []
+        for sc in scenes:
+            ss = [s for s in args.seeds if (sc, a, s) in runs and (sc, ref, s) in runs]
+            cells += [f'{st.mean(runs[(sc, a, s)]["curve"][END]["PSNR"] - runs[(sc, ref, s)]["curve"][END]["PSNR"] for s in ss):+.3f}' if ss else 'n/a',
+                      f'{st.mean(runs[(sc, a, s)]["curve"][END]["LPIPS"] - runs[(sc, ref, s)]["curve"][END]["LPIPS"] for s in ss):+.4f}' if ss else 'n/a']
+        print(f'| {a} (vs {ref}) | ' + ' | '.join(cells) + ' |')
+    print('\n### Callback time (densify, Morton ordering, opacity resets; outside the training clock), seconds from the branch to the end\n')
+    print('| arm | ' + ' | '.join(scenes) + ' |\n|---|' + '---|' * len(scenes))
+    for a in ARMS:
+        cells = []
+        for sc in scenes:
+            v = [abl_cb(runs[(sc, a, s)]['lines']) for s in args.seeds if (sc, a, s) in runs]
+            cells.append('n/a' if not v or None in v else ' / '.join(f'{x[1]:.1f}' for x in v))
+        print(f'| {a} | ' + ' | '.join(cells) + ' |')
     fmt = lambda x: 'n/a' if x is None else ('not reached' if x in (float('inf'), float('-inf')) else f'{x:+.2f}')
+    plain = lambda sc, a, s: runs.get((sc, a, s))
+    incl = lambda sc, a, s: abl_incl(sc, s, runs[(sc, a, s)]) if (sc, a, s) in runs else None
     tables = {}
-    for label, delta, stay in (('−0.05 dB (primary)', DELTA, False), ('−0.10 dB', 0.10, False), ('−0.20 dB', 0.20, False),
-                               ('−0.05 dB and stays', DELTA, True)):
-        fr = abl_fractions(delta, stay)
-        tables[label] = (fr, abl_classify(fr))
-        print(f'\n### Fractions at target {label}\n')
-        print('| scene | seed | A = T(ctl) − T(mcmc) (s) | f mrep | f mreloc (R) | f mnoise (Z) | f mreg (G) | f mlr (L) | g creset (O) |')
-        print('|---|---|---|---|---|---|---|---|---|')
-        for (sc, s), p in sorted(fr.items()):
-            a = 'n/a' if p['A'] is None else f'{p["A"]:.1f}'
-            print(f'| {sc} | {s} | {a} | ' + ' | '.join(fmt(p[k]) for k in ('mrep', 'mreloc', 'mnoise', 'mreg', 'mlr', 'creset')) + ' |')
+    have_cb = all(abl_incl(sc, s, r) is not None for (sc, a, s), r in runs.items())
+    if not have_cb:
+        print('\nCallback clock: not available (no FGS_ABL_CB lines in at least one run, e.g. patch v1 logs); only the '
+              'training clock is analysed.')
+    for clock, getr in (('training clock', plain), ('training clock + callbacks', incl)):
+        if clock != 'training clock' and not have_cb:
+            continue
+        for label, delta, stay in (('−0.05 dB (primary)', DELTA, False), ('−0.10 dB', 0.10, False), ('−0.20 dB', 0.20, False),
+                                   ('−0.05 dB and stays', DELTA, True)):
+            if clock != 'training clock' and label != '−0.05 dB (primary)':
+                continue
+            fr = abl_fractions(getr, delta, stay)
+            tables[(clock, label)] = (fr, abl_classify(fr))
+            print(f'\n### Fractions at target {label}, {clock}\n')
+            print('| scene | seed | A = T(ctl) − T(mcmc) (s) | used | f mrep | f mreloc (R) | f mnoise (Z) | f mreg (G) | f mlr (L) | g creset (O) |')
+            print('|---|---|---|---|---|---|---|---|---|---|')
+            for (sc, s), p in sorted(fr.items()):
+                a = 'n/a' if p['A'] is None else f'{p["A"]:.1f}'
+                print(f'| {sc} | {s} | {a} | {"yes" if p["used"] else "no"} | '
+                      + ' | '.join(fmt(p[k]) for k in ('mrep', 'mreloc', 'mnoise', 'mreg', 'mlr', 'creset')) + ' |')
     if not rep_ok:
         print('\nOUTCOME: mcmc does not replicate Experiment 1R here. No component is classified (plan, step 1).')
         return
-    fr, (resolved, mrep_med, cls) = tables['−0.05 dB (primary)']
-    print(f'\n**Step 2, resolution: median |f mrep| = {"n/a" if mrep_med is None else f"{mrep_med:.2f}"} '
-          f'(must be <= 0.20): {"PASS" if resolved else "FAIL"}**')
-    if not resolved:
-        print('\nOUTCOME: the experiment cannot resolve fractions of this size (same-seed mcmc runs disagree too much). '
-              'Steps 3 and 4 are descriptive only; the fractions above are reported without classification.')
+    fr, (reason, mrep_med, nq, cls) = tables[('training clock', '−0.05 dB (primary)')]
+    print(f'\n**Step 2, resolution ({nq} pairs used; median |f mrep| = {"n/a" if mrep_med is None else f"{mrep_med:.2f}"}, '
+          f'must be <= 0.20): {"PASS" if reason is None else "FAIL: " + reason}**')
+    if reason:
+        print('\nOUTCOME: the decomposition is not resolved. mcmc\'s speed-up replicates, but the data cannot be decomposed '
+              'at the planned resolution; the fractions above are reported without classification.')
         return
-    print('\n**Steps 3 and 4, classification at the primary target:**\n')
-    for code, arm, name in COMPONENTS:
-        others = {lab: t[1][2][code] for lab, t in tables.items() if lab != '−0.05 dB (primary)'}
-        sens = '' if all(v == cls[code] for v in others.values()) else ' — **sensitive to target selection** (' + '; '.join(f'{k}: {v}' for k, v in others.items()) + ')'
-        print(f'- {code} ({name}, arm {arm}): **{cls[code]}**{sens}')
-    others = {lab: t[1][2]['O'] for lab, t in tables.items() if lab != '−0.05 dB (primary)'}
-    sens = '' if all(v == cls['O'] for v in others.values()) else ' — **sensitive to target selection** (' + '; '.join(f'{k}: {v}' for k, v in others.items()) + ')'
-    print(f'- O (opacity resets, arm creset): **{cls["O"]}**{sens}')
-    print('\nReading: "needed" means needed given the other components of this policy, on these scenes; leave-one-out '
-          'fractions need not add up to 1.')
+    print('\n**Steps 3 and 4, classification at the primary target, training clock:**\n')
+    for code, name, arm in [(c, n, a) for c, a, n in COMPONENTS] + [('O', 'opacity resets, removed from ctl', 'creset')]:
+        alt = {f'{lab} ({clk})': t[1][3][code] for (clk, lab), t in tables.items() if (clk, lab) != ('training clock', '−0.05 dB (primary)')}
+        sens_t = {k: v for k, v in alt.items() if 'callbacks' not in k and v != cls[code]}
+        sens_c = {k: v for k, v in alt.items() if 'callbacks' in k and v != cls[code]}
+        note = ''
+        if sens_t:
+            note += ' — **sensitive to target selection** (' + '; '.join(f'{k}: {v}' for k, v in sens_t.items()) + ')'
+        if sens_c:
+            note += ' — **sensitive to the clock boundary** (' + '; '.join(f'{k}: {v}' for k, v in sens_c.items()) + ')'
+        print(f'- {code} ({name}, arm {arm}): **{cls[code]}**{note}')
+    print('\nReading: "needed" means needed given the other components of this policy, on these two scenes and three seeds; '
+          'leave-one-out fractions need not add up to 1. creset measures removing resets from the control policy, not '
+          'the contribution of resets inside MCMC.')
 
 
 if args.abl:

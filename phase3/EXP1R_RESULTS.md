@@ -100,6 +100,17 @@ By the plan's own reading, the result is **not sensitive to target selection**.
   30–43% sooner) is in the same direction and of similar size. Experiment 1R, on fresh seeds with observational
   evaluation, is the result that counts.
 
+## Disclosed after results (2026-11-10)
+
+**What the training clock covers.** T is measured on `SEGCLOCK`, which is the CUDA-event time of each training step
+(`training_iteration`). The densify callback (gradient densification in `ctl`, relocation in `mcmc` and `oracle`), the
+Morton-ordering callback and the opacity-reset callback run between steps, outside that clock, in every arm.
+- The plan said "training time = SEGCLOCK, CUDA events, evaluation excluded". That is correct, but it did not say that
+  these callbacks are excluded too.
+- Their cost is not measured here. Elapsed time (`FGS_WALL`) includes them, but it is dominated by the 25 evaluations.
+- Experiment 1A times these callbacks, and reports T on both clocks.
+- Found during review of the Experiment 1A plan. The decision above is unchanged, and stated for the training clock.
+
 ## Limits
 
 - Two scenes, three seeds each, one GPU type (H100), one build (`FasterGSUp`, dense Adam). No claim beyond these.

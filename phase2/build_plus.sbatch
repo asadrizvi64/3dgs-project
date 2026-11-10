@@ -77,6 +77,7 @@
 #   STAGES=exp1r SCENE=garden SEEDS="0 1" EXP1_AT=2000 X_ITERS=3000 sbatch --job-name=gs-x1r-stagesmoke --time=00:45:00 phase2/build_plus.sbatch
 #   STAGES=exp1r SCENE=garden sbatch --job-name=gs-x1r-garden --time=04:00:00 phase2/build_plus.sbatch   (Exp 1R; room: one job per seed)
 #   STAGES=x1asmoke sbatch --job-name=gs-x1a-smoke --time=01:00:00 phase2/build_plus.sbatch   (Exp 1A switch smoke test)
+#   STAGES=x1atime sbatch --job-name=gs-x1a-time --time=00:45:00 phase2/build_plus.sbatch   (Exp 1A: counting vs training clock)
 #   STAGES=exp1a SCENE=garden SEEDS="0 1" EXP1_AT=2000 X_ITERS=3000 sbatch --job-name=gs-x1a-stagesmoke --time=01:00:00 phase2/build_plus.sbatch
 #   STAGES=exp1a SCENE=room SEEDS=30 sbatch --job-name=gs-x1a-room-s30 --time=04:30:00 phase2/build_plus.sbatch   (Exp 1A: one job per scene and seed)
 #   STAGES="upbuild upequiv" sbatch --job-name=gs-up-build --time=01:00:00 phase2/build_plus.sbatch   (upstream/README.md)
@@ -537,10 +538,10 @@ x_arm_cfg() {  # arm N_at_branch N_oracle -> CFG_SET value
     oracle) echo "USE_MCMC=true,MAX_PRIMITIVES=$3,LAMBDA_OPACITY_REGULARIZATION=0.01,LAMBDA_SCALE_REGULARIZATION=0.01,LEARNING_RATE_OPACITIES=0.05" ;;
   esac
 }
-if has exp1smoke || has exp1 || has x1adj || has x1rsmoke || has noisepilot || has x1ra || has exp1r || has x1asmoke || has exp1a; then
+if has exp1smoke || has exp1 || has x1adj || has x1rsmoke || has noisepilot || has x1ra || has exp1r || has x1asmoke || has exp1a || has x1atime; then
   M=${EXP1_METHOD:-FasterGSUp}
   python "$REPO/cluster/patches/fastergs_resume.py" "$DATA/nerficg/src/Methods/$M/Trainer.py"
-  if has x1asmoke || has exp1a; then python "$REPO/cluster/patches/fastergs_ablate.py" "$DATA/nerficg/src/Methods/$M/Trainer.py"; fi
+  if has x1asmoke || has exp1a || has x1atime; then python "$REPO/cluster/patches/fastergs_ablate.py" "$DATA/nerficg/src/Methods/$M/Trainer.py"; fi
 fi
 if has exp1smoke; then
   BSCENE=garden; BSCALE=0.25; EXP1_AT=2000
@@ -861,6 +862,27 @@ if has x1asmoke; then
       x_clean sa_garden_${arm}_s10
     done
     python3 "$REPO/phase3/check_x1a.py" "$OUT" "$R1" || FAILED+=(x1asmoke_check)
+  fi
+fi
+#   x1atime   does counting change the training clock? ctl and mcmc from the same Experiment 1R state, 5000 -> 8000, no
+#             evaluation, FGS_ABL=1 and FGS_ABL=0, two runs each, alternating; phase3/check_x1atime.py: training time
+#             5000 -> 8000 with counting within 2% of without, per arm; elapsed wall time and callback time reported.
+if has x1atime; then
+  BSCENE=garden; BSCALE=0.25
+  echo "########## x1atime (garden seed 10, Experiment 1R state at 5000: ctl / mcmc, FGS_ABL 1 vs 0, two each)"
+  R1=$REPO/phase2/logs/run_4559237
+  ST=$DATA/nerficg/$(cat "$R1/runs/x_garden_pfx_s10/rundir.txt" 2>/dev/null)/checkpoints/state_0005000.pt
+  NB=$(sed -n 's/^FGS_SAVE_STATE step=5000 N=\([0-9]*\).*/\1/p' "$R1/x_garden_pfx_s10.seg" 2>/dev/null)
+  if [ ! -f "$ST" ] || [ -z "$NB" ]; then echo "FAILED x1atime: no state $ST / N"; FAILED+=(x1atime_state); else
+    for rep in 1 2; do
+      for arm in ctl mcmc; do
+        for c in 1 0; do
+          TRAIN_ENV="FGS_RESUME=$ST FGS_ABL=$c FGS_WALL=5000,8000 $(x_abl_env $arm $NB)" train ta_garden_${arm}_c${c}r${rep}_s10 $M 10 8000 "" taming 1000
+          x_clean ta_garden_${arm}_c${c}r${rep}_s10
+        done
+      done
+    done
+    python3 "$REPO/phase3/check_x1atime.py" "$OUT" || FAILED+=(x1atime_check)
   fi
 fi
 if has exp1a; then

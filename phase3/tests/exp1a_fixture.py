@@ -13,6 +13,15 @@
 #   resets      creset g = 0.8                               -> resets explain a major part
 #   badnoise    mnoise logs noise steps (garden seed 31)     -> check 2 error, not evaluated
 #   badswitch   mreloc runs with relocate=1 (garden seed 31) -> 1d and check 2 errors, not evaluated
+#   fivewins    mcmc slower than ctl on garden seed 31        -> replication passes (5 of 6); 5 pairs used; classes as good
+#   repnotreached  mrep never reaches the target on room seed 30 -> step 2 fails (not resolved)
+#   lpips       mnoise ends +0.005 LPIPS worse than mcmc      -> Z not resolved instead of not needed
+#   onefail     mcmc garden seed 30 has one image 4 dB low    -> one view failure against the control-based reference;
+#               replication fails
+#   clock       mreloc has no callback time, the others 0.002 s per step -> R needed on the training clock, not needed
+#               with callbacks included: flagged as sensitive to the clock boundary
+#   nocb        no FGS_ABL_CB lines (patch v1 logs)           -> classes as good; callback clock reported as not available
+# Callback time (FGS_ABL_CB) is otherwise 0.001 s per step in every arm, so the two clocks agree.
 import math
 import os
 import re
@@ -47,16 +56,33 @@ def cfg(name, iters=30000, **kv):
     return t
 
 
-psnr = lambda a, st, b: b + OFF[a] - 3.0 * math.exp(-(st - BR) / 4000)
-cum = lambda a, st: 40.0 + RATE[a] * (st - BR)
+CB = {a: ((0.0 if a == 'mreloc' else 0.002) if scen == 'clock' else 0.001) for a in ARMS}
+LP = {a: 0.125 if (scen == 'lpips' and a == 'mnoise') else 0.12 for a in ARMS}
 
 
-def metrics(d, p):
+def rate(a, sc, s):
+    if scen == 'fivewins' and a == 'mcmc' and sc == 'garden' and s == 31:
+        return RC * 1.02
+    return RATE[a]
+
+
+def off(a, sc, s):
+    return -0.3 if scen == 'repnotreached' and a == 'mrep' and sc == 'room' and s == 30 else OFF[a]
+
+
+def metrics(d, p, lp=0.12, low=None):
     os.makedirs(d, exist_ok=True)
-    imgs = '\n'.join(f'{i}\t{p:.2f}\t0.8\t0.12' for i in range(10))
+    imgs = '\n'.join(f'{i}\t{p - (4.0 if i == low else 0.0):.2f}\t0.8\t{lp}' for i in range(10))
     open(os.path.join(d, 'metrics_8bit.txt'), 'w').write(
-        f'Metric\tMean\tMedian\tPixelMean\nPSNR\t{p:.4f}\t{p:.4f}\t{p:.4f}\nSSIM\t0.8\t0.8\t0.8\nLPIPS\t0.12\t0.12\t0.12\n\n'
-        f'Image\tPSNR\tSSIM\tLPIPS\n{imgs}\nPSNR:{p:.10f} SSIM:0.8 LPIPS:0.12\n')
+        f'Metric\tMean\tMedian\tPixelMean\nPSNR\t{p:.4f}\t{p:.4f}\t{p:.4f}\nSSIM\t0.8\t0.8\t0.8\nLPIPS\t{lp}\t{lp}\t{lp}\n\n'
+        f'Image\tPSNR\tSSIM\tLPIPS\n{imgs}\nPSNR:{p:.10f} SSIM:0.8 LPIPS:{lp}\n')
+
+
+def cbline(r_, lo, hi):
+    if scen == 'nocb':
+        return 'no callback timing in patch v1'
+    return (f'FGS_ABL_CB total_s={r_ * (hi - lo):.4f} by=densify:{r_ * (hi - lo):.4f} calls=100 cum='
+            + ','.join(f'{s_}:{r_ * max(0, min(s_, hi) - lo):.4f}' for s_ in range(1000, hi + 1, 1000)))
 
 
 def views(path, seed, lo, hi):
@@ -74,6 +100,8 @@ for sc, base, job in (('garden', 27.5, 'j1'), ('room', 31.0, 'j2')):
         fault = lambda kind: scen == kind and sc == 'garden' and s == 31
         L.append(f'EXP1R_ORDER {sc} s{s} ' + ('up pfx ' + ' '.join(ARMS) if s % 2 == 0 else 'pfx ' + ' '.join(ARMS) + ' up'))
         b = base + 0.01 * (s - 30)
+        psnr = lambda a, st, b: b + off(a, sc, s) - 3.0 * math.exp(-(st - BR) / 4000)
+        cum = lambda a, st: 40.0 + rate(a, sc, s) * (st - BR)
         name = f'b_{sc}_up_s{s}'
         L += [f'##### {name}: method=FasterGSUp seed={s} iters=30000',
               f'RESULT {name} PSNR:{psnr("ctl", END, b) + 0.01:.10f} SSIM:0.8 LPIPS:0.12 N_Gaussians:{N0 + 2_000_000} ms_it=6']
@@ -83,7 +111,7 @@ for sc, base, job in (('garden', 27.5, 'j1'), ('room', 31.0, 'j2')):
         views(os.path.join(run, f'{name}.views'), s, 0, END)
         name = f'x_{sc}_pfx_s{s}'
         L += [f'##### {name}: method=FasterGSUp seed={s} iters=5000',
-              f'FGS_SAVE_STATE step=5000 N={N0} cum_s=40.000 param_sha=p{s} optim_sha=o{s} dinfo_sha=d{s} path=x']
+              f'FGS_SAVE_STATE step=5000 N={N0} cum_s=40.000 param_sha=p{s} optim_sha=o{s} dinfo_sha=d{s} path=x', cbline(0.002, 0, BR)]
         os.makedirs(os.path.join(run, 'runs', name), exist_ok=True)
         open(os.path.join(run, 'runs', name, 'training_config.yaml'), 'w').write(cfg(name, 5000))
         views(os.path.join(run, f'{name}.views'), s, 0, BR)
@@ -119,10 +147,13 @@ for sc, base, job in (('garden', 27.5, 'j1'), ('room', 31.0, 'j2')):
             L += [f'FGS_TRAIN_END N={nend} peak_alloc_gib=5.00 peak_reserved_gib=6.00',
                   f'FGS_ABL relocate={sw[0]} noise={sw[1]} reset={sw[2]} use_mcmc={mc} relocation_events={events} '
                   f'relocated={events * 1000} dead_left={0 if events else 5000} noise_steps={noise} resets={resets}',
+                  cbline(CB[a], BR, END),
                   f'FGS_WALL from=5000 to=30000 s={cum(a, END) - 40.0 + 130:.3f} views=0',
-                  f'RESULT {name} PSNR:{psnr(a, END, b):.10f} SSIM:0.8 LPIPS:0.12 N_Gaussians:{nend} ms_it=6']
+                  f'RESULT {name} PSNR:{psnr(a, END, b):.10f} SSIM:0.8 LPIPS:{LP[a]} N_Gaussians:{nend} ms_it=6']
             for st in range(BR, END + 1, 1000):
-                metrics(os.path.join(run, 'runs', name, f'test_{st}'), psnr(a, st, b) if st > BR else b - 3.0)
+                low = 3 if (scen == 'onefail' and a == 'mcmc' and sc == 'garden' and s == 30 and st == END) else None
+                metrics(os.path.join(run, 'runs', name, f'test_{st}'), psnr(a, st, b) if st > BR else b - 3.0,
+                        LP[a] if st == END else 0.12, low)
             views(os.path.join(run, f'{name}.views'), s, BR, END)
     open(os.path.join(root, f'gs-x1a-{sc}-{job}.out'), 'w').write('\n'.join(L) + '\n')
 print(f'fixture written to {root} (scenario: {scen})')
