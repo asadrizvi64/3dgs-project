@@ -367,6 +367,20 @@ These were made on the review of 6b67dbe, before any Experiment 1A arm ran:
 5. **`cudnn.benchmark` during evaluation.** Turning it off would cut evaluation memory from about 71 to 9.5 GiB, with
    metrics unchanged to about 5e-7 dB (job 4559014). Default: keep it on, for comparability with 1R.
 
+## Launch (2026-11-10)
+
+Submitted at commit 76366e8, stage `exp1a`, patch v2 on the cluster. The cluster checkout is not touched while these
+jobs run.
+
+| job | scene | seed | time limit |
+|---|---|---|---|
+| 4561623 | garden | 30 | 3:30 |
+| 4561625 | garden | 31 | 3:30 |
+| 4561627 | garden | 32 | 3:30 |
+| 4561624 | room | 30 | 4:30 |
+| 4561626 | room | 31 | 4:30 |
+| 4561628 | room | 32 | 4:30 |
+
 ## Changes after launch
 
 - 2026-11-10, after the freeze (026f6d1) and before any job was submitted: with `--rerun`, the analysis now takes the
