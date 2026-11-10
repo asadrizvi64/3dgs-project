@@ -1,0 +1,212 @@
+# Experiment 1A: which parts of the MCMC policy make it faster (DRAFT, 2026-11-10)
+
+**Status: DRAFT. Not pre-registered, and nothing in it has run.**
+- It becomes final (this line changed, committed) only after the engineering in "Before launch" passes its smoke tests
+  and the open questions are settled. It launches only after that commit.
+- Any change after that is listed under "Changes after launch", with its date and reason.
+
+## Question
+
+Experiment 1R ([EXP1R_RESULTS.md](EXP1R_RESULTS.md)) found that the combined MCMC policy, switched on at step 5,000,
+reaches the control's quality sooner on garden and room:
+- median T 31% and 36% lower;
+- 6 of 6 pairs, at every sensitivity target;
+- final PSNR 0.19 and 0.30 dB higher, with about 27% fewer Gaussians.
+
+That arm changed five things at once. **Which of them are needed for the speed-up?**
+
+| # | component | `ctl` | `mcmc` | switched by |
+|---|---|---|---|---|
+| R | population rule | grow by gradient (clone / split) and prune, every 100 steps until 14,900 | fixed N; every 100 steps until 14,900 (the same callback window), Gaussians below opacity 0.005 are relocated onto living ones, sampled by opacity | `USE_MCMC` |
+| Z | noise injection | none | `add_noise` on positions after every optimizer step, scaled by the position learning rate | `USE_MCMC` |
+| O | opacity resets | at 6,000, 9,000 and 12,000 | none | `USE_MCMC` |
+| G | regularisation | opacity 0, scale 0 | opacity 0.01, scale 0.01 | config |
+| L | opacity learning rate | 0.025 | 0.05 | config |
+
+(Read from `Methods/FasterGSUp/Trainer.py` and `Model.py`, 2026-11-10. With `MAX_PRIMITIVES` = N at the branch,
+`mcmc_densification` adds no Gaussians, so R is relocation only.)
+
+**Not part of the question:**
+- the oracle;
+- the population size itself (Experiment 1R's oracle has `ctl`'s size and ends higher still);
+- combining any of this with Experiment 2's schedule levers.
+
+## What stays as in Experiment 1R
+
+- **Build, clock and evaluation:**
+  - build `FasterGSUp`, dense Adam;
+  - resume patch v7, with evaluation observational and `FGS_EVAL_CHECK` in every branched run;
+  - test metrics every 1,000 steps from 5,000;
+  - `cudnn.benchmark` on, as in 1R.
+- **Scenes and branch:** garden 1/4 and room 1/2, with a shared prefix 0 → 5,000 per (scene, seed).
+- **Run length:** 30,000 steps.
+- **Measures:** T to the target (`ctl`'s final PSNR − 0.05 dB, training-only time, interpolated), the sensitivity
+  targets, final ΔPSNR and ΔLPIPS, and one-view failures.
+- **Check 1**, exactly as in 1R:
+  - 1a–1d are the gates;
+  - 1e is reported only;
+  - an uninterrupted reference per seed, whose position alternates by seed.
+
+## Design
+
+- **Seeds:** fresh, 30, 31, 32. Seeds 0–23 have all been used before.
+- **Arms**, all branching from the same saved state at 5,000:
+
+| arm | what it is | R | Z | O | G | L |
+|---|---|---|---|---|---|---|
+| `ctl` | standard Faster-GS | grow / prune | – | resets | 0 | 0.025 |
+| `mcmc` | 1R's MCMC arm, unchanged | relocate | on | none | 0.01 | 0.05 |
+| `mcmc2` | an identical second `mcmc` run, same seed | relocate | on | none | 0.01 | 0.05 |
+| `m-reloc` | `mcmc` without relocation: fixed N, dead Gaussians stay | **none** | on | none | 0.01 | 0.05 |
+| `m-noise` | `mcmc` without noise injection | relocate | **–** | none | 0.01 | 0.05 |
+| `m-reg` | `mcmc` without regularisation | relocate | on | none | **0** | 0.05 |
+| `m-lr` | `mcmc` with `ctl`'s opacity learning rate | relocate | on | none | 0.01 | **0.025** |
+| `c-reset` | `ctl` without opacity resets after the branch | grow / prune | – | **none** | 0 | 0.025 |
+
+- **Leave-one-out arms** (`m-*`): each removes one component from the full policy. They test whether a component is
+  **needed** given the others. They do not test whether a component is enough on its own.
+- **`c-reset`** asks one specific question. `ctl`'s curve drops at each opacity reset, which could by itself explain
+  part of the gap. This arm removes only the resets from `ctl`.
+- **`mcmc2`** measures the same-seed noise of T in this experiment. The noise pilot measured final PSNR, not T.
+- **Order:** the arms run in an order rotated by seed. The reference `up` runs first for even seeds and last for odd
+  seeds, as in 1R.
+- **Runs:** 2 scenes × 3 seeds × (prefix + 8 arms + reference) = 60.
+
+## Measures for the question
+
+Per pair (scene, seed), with T from the primary target:
+
+- **Advantage:** A = T(`ctl`) − T(`mcmc`).
+- **Fraction lost when component k is removed:** f_k = (T(`m-k`) − T(`mcmc`)) / A. An arm that never reaches the target
+  counts as f = +∞, which is at least 1.
+- **Fraction recovered by removing the resets:** g = (T(`ctl`) − T(`c-reset`)) / A.
+- **Noise reference:** f_rep = (T(`mcmc2`) − T(`mcmc`)) / A. It is 0 in expectation.
+- **Quality:** each `m-*` arm's final PSNR and LPIPS minus `mcmc`'s, and `c-reset`'s minus `ctl`'s.
+
+The pooled statistics use all six pairs (two scenes × three seeds). Per-scene values are always reported alongside.
+
+## Decision rule (fixed before launch)
+
+**Step 1. Replication.** `mcmc` must pass Experiment 1R's decision rule against `ctl` in this experiment:
+- median ΔT ≥ 10% on both scenes;
+- T lower in ≥ 5 of 6 pairs;
+- both quality limits;
+- no more one-view failures.
+
+If it does not pass, nothing below is interpreted, and the result is reported as a failure to replicate 1R.
+
+**Step 2. Resolution.** Classifications are made only if the experiment can resolve fractions of the size used below:
+the median of |f_rep| over the six pairs must be ≤ 0.2. Otherwise steps 3 and 4 are reported descriptively, with the
+reason.
+
+**Step 3. Each component R, Z, G, L:**
+- **needed:** median f_k ≥ 0.5, and f_k > 0 in ≥ 5 of 6 pairs;
+- **not needed:** median f_k ≤ 0.2, and the arm's mean final ΔPSNR against `mcmc` ≥ −0.10 dB on both scenes;
+- **not resolved:** anything else.
+
+**Step 4. Opacity resets:**
+- **resets explain a major part of the gap:** median g ≥ 0.5, and g > 0 in ≥ 5 of 6 pairs;
+- **resets explain little:** median g ≤ 0.2;
+- **not resolved:** anything else.
+
+**Always reported:**
+- every f_k, g and f_rep per pair;
+- the same quantities at the −0.10 and −0.20 dB targets, and for "reaches and stays";
+- the quality differences;
+- each arm's N over time.
+
+**How to read the result:**
+- The leave-one-out fractions need not add up to 1. Components can interact, and several can each be "needed".
+- If an arm's classification at the primary target disagrees with its classification at the sensitivity targets,
+  that component is described as sensitive to target selection.
+- A "needed" component is needed given the rest of this policy, on these two scenes. It is not shown to work alone.
+
+## Checks before the decision
+
+- **Validation and check 1 (1a–1d), as in 1R.** Check 1d now also covers the new switches:
+  - each arm's switch values, printed on its `FGS_RESUME` line, must be the ones in the table above;
+  - each arm's configuration may differ from `ctl`'s only in its own keys.
+- **Check 2: each arm did what it says.** Read from new counters, printed once at the end of training:
+
+| arm | requirement |
+|---|---|
+| `mcmc`, `mcmc2`, `m-noise`, `m-reg`, `m-lr` | relocations > 0; N held at N at the branch |
+| `m-reloc` | relocations = 0; N held |
+| `m-noise` | noise steps = 0 |
+| every other MCMC arm | noise steps = 25,000 |
+| `ctl` | 3 opacity resets after the branch (6,000, 9,000, 12,000) |
+| `c-reset` and all MCMC arms | 0 opacity resets |
+| `ctl` and `c-reset` | N grows after the branch (as `ctl` in 1R) |
+
+## Before launch: engineering and smoke tests
+
+**Trainer patch** (`cluster/patches/fastergs_ablate.py`, new; v7 resume patch unchanged). It adds three switches, read
+from the environment. Their defaults reproduce the current behaviour:
+
+| switch | default | effect when 0 |
+|---|---|---|
+| `FGS_MCMC_RELOCATE` | 1 | MCMC densification skips relocation; with the cap at N it then does nothing |
+| `FGS_MCMC_NOISE` | 1 | `post_optimizer_step` gets `inject_noise=False` |
+| `FGS_OPACITY_RESET` | 1 | `reset_opacities` does nothing; the extra reset at 500 is untouched, as it is before the branch |
+
+- It also adds counters, printed on an `FGS_ABL` line at the end of training: relocation events, Gaussians relocated,
+  noise steps, opacity resets after the branch. The switch values are added to the `FGS_RESUME` line.
+- The regularisation and opacity learning rate need no patch: they are set through `CFG_SET`, as in 1R.
+
+**Smoke tests** (garden, short: branch at 2,000, end at 3,000, plus one long-enough check for the resets):
+
+| test | requirement | type |
+|---|---|---|
+| Defaults unchanged | With all switches unset, `ctl` and `mcmc` pass 1R's checks 1a–1d and their counters match the table above, on the same saved state | gate |
+| Each switch does only its own thing | With one switch at 0, only that counter changes (relocations, noise steps or resets), and 1b–1c still pass | gate |
+| Resets | A `ctl` and a `c-reset` run from 5,000 to 13,000: `ctl` logs resets at 6,000, 9,000 and 12,000, `c-reset` none | gate |
+| Analysis | `analyze_ttq.py` (or a new `analyze_abl.py`) computes f_k, g and f_rep and the classifications. Fixture tests with known answers for each class, a non-replicating `mcmc`, an unresolvable `mcmc2`, and a "not reached" arm | gate |
+| Stage smoke | The new stage end to end on a short garden run, both run orders, through the analysis's checks | gate |
+
+## Cost
+
+Estimates scaled from Experiment 1R (garden about 12 minutes per run, room about 18 minutes, mostly the 25
+evaluations):
+- **Garden:** one job per seed, 11 runs each (reference, prefix, 8 arms), about 2.2 h.
+- **Room:** one job per seed, about 3.4 h.
+- **In all:** about 17 GPU-hours, plus about 1 GPU-hour of smoke tests.
+- **Time limits:** 3:30 for garden jobs and 4:30 for room jobs.
+- **Timeout rule, as in 1R:** a (scene, seed) block that does not complete is rerun whole.
+
+**Evaluation dominates the cost.** On room, elapsed time from 5,000 to 30,000 is about 1,440 s, against 145 s of
+training. Saving the test images is about three quarters of each evaluation, but it cannot simply be skipped: NeRFICG
+computes the metrics from the saved 8-bit images. Making evaluation cheaper would change the metric path. That is
+not done here, so the measurements stay comparable with 1R.
+
+## How the result will be reported
+
+- Experiment 1A is designed after Experiment 1R's result was seen. Its question comes from that result. It uses fresh
+  seeds.
+- Claims are limited to: which components of this MCMC policy are needed for its speed-up on garden and room (seeds
+  30–32, H100), given the other components.
+- If `mcmc` does not replicate, that is the headline, and no component is classified.
+
+## Out of scope
+
+- Add-one arms: each component added alone to `ctl`. They would test sufficiency, not necessity (open question 2).
+- Other population sizes, and the oracle.
+- Experiment 2's schedule levers. [EXP2_PLAN.md](EXP2_PLAN.md) stays frozen as a draft.
+
+## Open questions for review
+
+1. **The reset component inside MCMC.** `mcmc` + resets would complete the leave-one-out set. It is left out because a
+   reset clamps every opacity to 0.01, just above the 0.005 relocation threshold (`Model.reset_opacities`), which would mix two components in one arm. `c-reset` asks the
+   reset question from the `ctl` side instead. Default: not included.
+2. **Add-one arms for G and L.** These are cheap: `ctl` with MCMC's regularisation, and `ctl` with opacity learning rate
+   0.05, both through `CFG_SET`. They would show whether either alone speeds up `ctl`. Default: not included, to keep
+   the question to necessity; about 2.4 GPU-hours if added.
+3. **Thresholds.** 0.5 for "needed", 0.2 for "not needed" and for the noise check. Set from what would count as a large
+   or small share of the effect, before any run. `mcmc2` decides whether they can be resolved.
+4. **Three seeds.** Same as 1R. With the noise check in step 2, too few seeds shows up as "not resolved", not as a
+   false classification.
+5. **`cudnn.benchmark` during evaluation.** Turning it off would cut evaluation memory from about 71 to 9.5 GiB, with
+   metrics unchanged to about 5e-7 dB (job 4559014). Default: keep it on, for comparability with 1R.
+
+## Changes after launch
+
+(None; not launched.)
