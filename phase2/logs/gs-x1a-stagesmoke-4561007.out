@@ -1,0 +1,205 @@
+node=c80 job=4561007 gpu=NVIDIA H100 stages=exp1a repo=6b67dbe
+base=FasterGSPlusDS (abcds, patches: phase2/deferred_reduce_v2.patch phase2/sh_coalesce.patch)
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSUp/Trainer.py
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSUp/Trainer.py
+########## exp1a (scene garden scale 0.25, seeds 0 1, branch at 2000, end 3000, arms ctl mcmc mrep mreloc mnoise mreg mlr creset)
+EXP1R_ORDER garden s0 up pfx ctl mcmc mrep mreloc mnoise mreg mlr creset
+##### b_garden_up_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 03:42:33
+SEGCLOCK step=1000 seg_s=2.131 cum_s=2.131 sparse=0 N=268710 peak_alloc_gib=2.38
+SEGCLOCK step=2000 seg_s=3.059 cum_s=5.191 sparse=0 N=1041924 peak_alloc_gib=3.20
+FGS_WALL from=0 to=3000 s=10.213 views=99cf65e63fa1ce0
+SEGCLOCK step=3000 seg_s=4.534 cum_s=9.725 sparse=0 N=1934470 peak_alloc_gib=4.13
+FGS_TRAIN_END N=1934470 peak_alloc_gib=4.13 peak_reserved_gib=4.92
+RUNDIR b_garden_up_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2b_garden_up_s0_2026-11-10-03-42-45
+PERIMG b_garden_up_s0 n_images=24 min_image=4 min_psnr=20.74
+RESULT b_garden_up_s0 PSNR:25.01065476735433 SSIM:0.7568074688315392 LPIPS:0.28976913417379063 N_Gaussians:1934470 ms_it=3.28  allocated: 4.13 GiB
+##### x_garden_pfx_s0: method=FasterGSUp seed=0 iters=2000 flags= blend=taming 03:43:46
+SEGCLOCK step=1000 seg_s=2.127 cum_s=2.127 sparse=0 N=268958 peak_alloc_gib=2.38
+SEGCLOCK step=2000 seg_s=3.048 cum_s=5.175 sparse=0 N=1044077 peak_alloc_gib=3.20
+FGS_TRAIN_END N=1044077 peak_alloc_gib=3.20 peak_reserved_gib=3.51
+FGS_SAVE_STATE step=2000 N=1044077 cum_s=5.175 param_sha=4b499003ba6b31f7 optim_sha=73d2127b63174746 dinfo_sha=f3b24945d4c2043b path=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2x_garden_pfx_s0_2026-11-10-03-43-53/checkpoints/state_0002000.pt
+RUNDIR x_garden_pfx_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2x_garden_pfx_s0_2026-11-10-03-43-53
+PERIMG x_garden_pfx_s0 n_images=24 min_image=4 min_psnr=19.87
+RESULT x_garden_pfx_s0 PSNR:23.97336967786153 SSIM:0.6907953023910522 LPIPS:0.3650279752910137 N_Gaussians:1044076 ms_it=3.20  allocated: 3.20 GiB
+EXP1_BRANCH garden s0 step=2000 N=1044077 state=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2x_garden_pfx_s0_2026-11-10-03-43-53/checkpoints/state_0002000.pt
+##### x_garden_ctl_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 03:44:50
+FGS_RESUME step=2000 N=1044077 cum_s=5.175 sh_degree=1 param_sha=4b499003ba6b31f7 optim_sha=73d2127b63174746 dinfo_sha=f3b24945d4c2043b densification_info=(2, 1044077) use_mcmc=False max_primitives=1000000 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2x_garden_pfx_s0_2026-11-10-03-43-53/checkpoints/state_0002000.pt
+FGS_EVALCHECK step=2000 guard=1 rng_before=cpu:1ccf17250133,cuda:87d5c0f54539,py:46f264538534,np:78f7efcf3466 rng_after_render=cpu:1ccf17250133,cuda:983155d9f13b,py:46f264538534,np:78f7efcf3466 rng_after_restore=cpu:1ccf17250133,cuda:87d5c0f54539,py:46f264538534,np:78f7efcf3466 state_before=4b499003ba6b31f7,73d2127b63174746,f3b24945d4c2043b state_after=4b499003ba6b31f7,73d2127b63174746,f3b24945d4c2043b training_before=True training_after_render=False training_after_restore=True mode_before=train mode_after_render=test mode_after_restore=train
+FGS_WALL from=2000 to=3000 s=4.597 views=2d871c146921ae6
+SEGCLOCK step=3000 seg_s=4.449 cum_s=9.624 sparse=0 N=1944569 peak_alloc_gib=67.97
+FGS_TRAIN_END N=1944569 peak_alloc_gib=67.97 peak_reserved_gib=68.07
+FGS_ABL relocate=1 noise=1 reset=1 use_mcmc=False relocation_events=0 relocated=0 dead_left=0 noise_steps=0 resets=none
+RUNDIR x_garden_ctl_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2x_garden_ctl_s0_2026-11-10-03-44-57
+PERIMG x_garden_ctl_s0 n_images=24 min_image=4 min_psnr=20.61
+RESULT x_garden_ctl_s0 PSNR:25.038936535517376 SSIM:0.7573956102132797 LPIPS:0.28889726971586543 N_Gaussians:1944569 ms_it=4.49  allocated: 67.97 GiB
+##### x_garden_mcmc_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 03:46:19
+FGS_RESUME step=2000 N=1044077 cum_s=5.175 sh_degree=1 param_sha=4b499003ba6b31f7 optim_sha=73d2127b63174746 dinfo_sha=none densification_info=none use_mcmc=True max_primitives=1044077 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.05,scales:0.005,rotations:0.001 lambda_opacity=0.01 lambda_scale=0.01 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2x_garden_pfx_s0_2026-11-10-03-43-53/checkpoints/state_0002000.pt
+FGS_EVALCHECK step=2000 guard=1 rng_before=cpu:1ccf17250133,cuda:87d5c0f54539,py:46f264538534,np:78f7efcf3466 rng_after_render=cpu:1ccf17250133,cuda:983155d9f13b,py:46f264538534,np:78f7efcf3466 rng_after_restore=cpu:1ccf17250133,cuda:87d5c0f54539,py:46f264538534,np:78f7efcf3466 state_before=4b499003ba6b31f7,73d2127b63174746,none state_after=4b499003ba6b31f7,73d2127b63174746,none training_before=True training_after_render=False training_after_restore=True mode_before=train mode_after_render=test mode_after_restore=train
+FGS_WALL from=2000 to=3000 s=3.737 views=2fe09ddb85487c6
+SEGCLOCK step=3000 seg_s=3.646 cum_s=8.821 sparse=0 N=1044077 peak_alloc_gib=67.97
+FGS_TRAIN_END N=1044077 peak_alloc_gib=67.97 peak_reserved_gib=68.01
+FGS_ABL relocate=1 noise=1 reset=1 use_mcmc=True relocation_events=10 relocated=130592 dead_left=0 noise_steps=1000 resets=none
+RUNDIR x_garden_mcmc_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2x_garden_mcmc_s0_2026-11-10-03-46-26
+PERIMG x_garden_mcmc_s0 n_images=24 min_image=4 min_psnr=20.66
+RESULT x_garden_mcmc_s0 PSNR:24.76551127433777 SSIM:0.7414761185646057 LPIPS:0.31258950630823773 N_Gaussians:1038207 ms_it=3.69  allocated: 67.97 GiB
+##### x_garden_mrep_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 03:47:47
+FGS_RESUME step=2000 N=1044077 cum_s=5.175 sh_degree=1 param_sha=4b499003ba6b31f7 optim_sha=73d2127b63174746 dinfo_sha=none densification_info=none use_mcmc=True max_primitives=1044077 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.05,scales:0.005,rotations:0.001 lambda_opacity=0.01 lambda_scale=0.01 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2x_garden_pfx_s0_2026-11-10-03-43-53/checkpoints/state_0002000.pt
+FGS_EVALCHECK step=2000 guard=1 rng_before=cpu:1ccf17250133,cuda:87d5c0f54539,py:46f264538534,np:78f7efcf3466 rng_after_render=cpu:1ccf17250133,cuda:983155d9f13b,py:46f264538534,np:78f7efcf3466 rng_after_restore=cpu:1ccf17250133,cuda:87d5c0f54539,py:46f264538534,np:78f7efcf3466 state_before=4b499003ba6b31f7,73d2127b63174746,none state_after=4b499003ba6b31f7,73d2127b63174746,none training_before=True training_after_render=False training_after_restore=True mode_before=train mode_after_render=test mode_after_restore=train
+FGS_WALL from=2000 to=3000 s=3.770 views=2fe09ddb85487c6
+SEGCLOCK step=3000 seg_s=3.678 cum_s=8.854 sparse=0 N=1044077 peak_alloc_gib=67.97
+FGS_TRAIN_END N=1044077 peak_alloc_gib=67.97 peak_reserved_gib=68.01
+FGS_ABL relocate=1 noise=1 reset=1 use_mcmc=True relocation_events=10 relocated=130969 dead_left=0 noise_steps=1000 resets=none
+RUNDIR x_garden_mrep_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2x_garden_mrep_s0_2026-11-10-03-47-56
+PERIMG x_garden_mrep_s0 n_images=24 min_image=4 min_psnr=20.66
+RESULT x_garden_mrep_s0 PSNR:24.762757619222004 SSIM:0.7414604127407074 LPIPS:0.3126399964094162 N_Gaussians:1038251 ms_it=3.72  allocated: 67.97 GiB
+##### x_garden_mreloc_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 03:49:17
+FGS_RESUME step=2000 N=1044077 cum_s=5.175 sh_degree=1 param_sha=4b499003ba6b31f7 optim_sha=73d2127b63174746 dinfo_sha=none densification_info=none use_mcmc=True max_primitives=1044077 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.05,scales:0.005,rotations:0.001 lambda_opacity=0.01 lambda_scale=0.01 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2x_garden_pfx_s0_2026-11-10-03-43-53/checkpoints/state_0002000.pt
+FGS_EVALCHECK step=2000 guard=1 rng_before=cpu:1ccf17250133,cuda:87d5c0f54539,py:46f264538534,np:78f7efcf3466 rng_after_render=cpu:1ccf17250133,cuda:983155d9f13b,py:46f264538534,np:78f7efcf3466 rng_after_restore=cpu:1ccf17250133,cuda:87d5c0f54539,py:46f264538534,np:78f7efcf3466 state_before=4b499003ba6b31f7,73d2127b63174746,none state_after=4b499003ba6b31f7,73d2127b63174746,none training_before=True training_after_render=False training_after_restore=True mode_before=train mode_after_render=test mode_after_restore=train
+FGS_WALL from=2000 to=3000 s=3.737 views=38aecb6180aebbf
+SEGCLOCK step=3000 seg_s=3.649 cum_s=8.824 sparse=0 N=1044077 peak_alloc_gib=67.97
+FGS_TRAIN_END N=1044077 peak_alloc_gib=67.97 peak_reserved_gib=68.05
+FGS_ABL relocate=0 noise=1 reset=1 use_mcmc=True relocation_events=0 relocated=0 dead_left=77273 noise_steps=1000 resets=none
+RUNDIR x_garden_mreloc_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2x_garden_mreloc_s0_2026-11-10-03-49-25
+PERIMG x_garden_mreloc_s0 n_images=24 min_image=4 min_psnr=20.47
+RESULT x_garden_mreloc_s0 PSNR:24.94510269165039 SSIM:0.7484969745079676 LPIPS:0.3077383463581403 N_Gaussians:977197 ms_it=3.70  allocated: 67.97 GiB
+##### x_garden_mnoise_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 03:50:49
+FGS_RESUME step=2000 N=1044077 cum_s=5.175 sh_degree=1 param_sha=4b499003ba6b31f7 optim_sha=73d2127b63174746 dinfo_sha=none densification_info=none use_mcmc=True max_primitives=1044077 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.05,scales:0.005,rotations:0.001 lambda_opacity=0.01 lambda_scale=0.01 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2x_garden_pfx_s0_2026-11-10-03-43-53/checkpoints/state_0002000.pt
+FGS_EVALCHECK step=2000 guard=1 rng_before=cpu:1ccf17250133,cuda:87d5c0f54539,py:46f264538534,np:78f7efcf3466 rng_after_render=cpu:1ccf17250133,cuda:983155d9f13b,py:46f264538534,np:78f7efcf3466 rng_after_restore=cpu:1ccf17250133,cuda:87d5c0f54539,py:46f264538534,np:78f7efcf3466 state_before=4b499003ba6b31f7,73d2127b63174746,none state_after=4b499003ba6b31f7,73d2127b63174746,none training_before=True training_after_render=False training_after_restore=True mode_before=train mode_after_render=test mode_after_restore=train
+FGS_WALL from=2000 to=3000 s=3.819 views=2d871c146921ae6
+SEGCLOCK step=3000 seg_s=3.725 cum_s=8.900 sparse=0 N=1044077 peak_alloc_gib=67.97
+FGS_TRAIN_END N=1044077 peak_alloc_gib=67.97 peak_reserved_gib=68.01
+FGS_ABL relocate=1 noise=0 reset=1 use_mcmc=True relocation_events=10 relocated=77322 dead_left=0 noise_steps=0 resets=none
+RUNDIR x_garden_mnoise_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2x_garden_mnoise_s0_2026-11-10-03-50-57
+PERIMG x_garden_mnoise_s0 n_images=24 min_image=4 min_psnr=20.68
+RESULT x_garden_mnoise_s0 PSNR:24.931895176569622 SSIM:0.7446592996517817 LPIPS:0.3096138338247935 N_Gaussians:1042752 ms_it=3.77  allocated: 67.97 GiB
+##### x_garden_mreg_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 03:52:20
+FGS_RESUME step=2000 N=1044077 cum_s=5.175 sh_degree=1 param_sha=4b499003ba6b31f7 optim_sha=73d2127b63174746 dinfo_sha=none densification_info=none use_mcmc=True max_primitives=1044077 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.05,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2x_garden_pfx_s0_2026-11-10-03-43-53/checkpoints/state_0002000.pt
+FGS_EVALCHECK step=2000 guard=1 rng_before=cpu:1ccf17250133,cuda:87d5c0f54539,py:46f264538534,np:78f7efcf3466 rng_after_render=cpu:1ccf17250133,cuda:983155d9f13b,py:46f264538534,np:78f7efcf3466 rng_after_restore=cpu:1ccf17250133,cuda:87d5c0f54539,py:46f264538534,np:78f7efcf3466 state_before=4b499003ba6b31f7,73d2127b63174746,none state_after=4b499003ba6b31f7,73d2127b63174746,none training_before=True training_after_render=False training_after_restore=True mode_before=train mode_after_render=test mode_after_restore=train
+FGS_WALL from=2000 to=3000 s=3.715 views=2fe09ddb85487c6
+SEGCLOCK step=3000 seg_s=3.630 cum_s=8.805 sparse=0 N=1044077 peak_alloc_gib=67.97
+FGS_TRAIN_END N=1044077 peak_alloc_gib=67.97 peak_reserved_gib=68.05
+FGS_ABL relocate=1 noise=1 reset=1 use_mcmc=True relocation_events=10 relocated=9449 dead_left=0 noise_steps=1000 resets=none
+RUNDIR x_garden_mreg_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2x_garden_mreg_s0_2026-11-10-03-52-27
+PERIMG x_garden_mreg_s0 n_images=24 min_image=4 min_psnr=20.66
+RESULT x_garden_mreg_s0 PSNR:24.853420575459797 SSIM:0.7459651877482733 LPIPS:0.3080500227709611 N_Gaussians:1043881 ms_it=3.67  allocated: 67.97 GiB
+##### x_garden_mlr_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 03:53:49
+FGS_RESUME step=2000 N=1044077 cum_s=5.175 sh_degree=1 param_sha=4b499003ba6b31f7 optim_sha=73d2127b63174746 dinfo_sha=none densification_info=none use_mcmc=True max_primitives=1044077 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.01 lambda_scale=0.01 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2x_garden_pfx_s0_2026-11-10-03-43-53/checkpoints/state_0002000.pt
+FGS_EVALCHECK step=2000 guard=1 rng_before=cpu:1ccf17250133,cuda:87d5c0f54539,py:46f264538534,np:78f7efcf3466 rng_after_render=cpu:1ccf17250133,cuda:983155d9f13b,py:46f264538534,np:78f7efcf3466 rng_after_restore=cpu:1ccf17250133,cuda:87d5c0f54539,py:46f264538534,np:78f7efcf3466 state_before=4b499003ba6b31f7,73d2127b63174746,none state_after=4b499003ba6b31f7,73d2127b63174746,none training_before=True training_after_render=False training_after_restore=True mode_before=train mode_after_render=test mode_after_restore=train
+FGS_WALL from=2000 to=3000 s=3.942 views=2fe09ddb85487c6
+SEGCLOCK step=3000 seg_s=3.855 cum_s=9.030 sparse=0 N=1044077 peak_alloc_gib=67.97
+FGS_TRAIN_END N=1044077 peak_alloc_gib=67.97 peak_reserved_gib=68.01
+FGS_ABL relocate=1 noise=1 reset=1 use_mcmc=True relocation_events=10 relocated=31603 dead_left=0 noise_steps=1000 resets=none
+RUNDIR x_garden_mlr_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2x_garden_mlr_s0_2026-11-10-03-53-56
+PERIMG x_garden_mlr_s0 n_images=24 min_image=4 min_psnr=20.76
+RESULT x_garden_mlr_s0 PSNR:24.916475296020508 SSIM:0.7460787842671076 LPIPS:0.3082723406453927 N_Gaussians:1043591 ms_it=3.90  allocated: 67.97 GiB
+##### x_garden_creset_s0: method=FasterGSUp seed=0 iters=3000 flags= blend=taming 03:55:19
+FGS_RESUME step=2000 N=1044077 cum_s=5.175 sh_degree=1 param_sha=4b499003ba6b31f7 optim_sha=73d2127b63174746 dinfo_sha=f3b24945d4c2043b densification_info=(2, 1044077) use_mcmc=False max_primitives=1000000 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s0p2x_garden_pfx_s0_2026-11-10-03-43-53/checkpoints/state_0002000.pt
+FGS_EVALCHECK step=2000 guard=1 rng_before=cpu:1ccf17250133,cuda:87d5c0f54539,py:46f264538534,np:78f7efcf3466 rng_after_render=cpu:1ccf17250133,cuda:983155d9f13b,py:46f264538534,np:78f7efcf3466 rng_after_restore=cpu:1ccf17250133,cuda:87d5c0f54539,py:46f264538534,np:78f7efcf3466 state_before=4b499003ba6b31f7,73d2127b63174746,f3b24945d4c2043b state_after=4b499003ba6b31f7,73d2127b63174746,f3b24945d4c2043b training_before=True training_after_render=False training_after_restore=True mode_before=train mode_after_render=test mode_after_restore=train
+FGS_WALL from=2000 to=3000 s=4.716 views=2d871c146921ae6
+SEGCLOCK step=3000 seg_s=4.565 cum_s=9.740 sparse=0 N=1945082 peak_alloc_gib=67.97
+FGS_TRAIN_END N=1945082 peak_alloc_gib=67.97 peak_reserved_gib=68.07
+FGS_ABL relocate=1 noise=1 reset=0 use_mcmc=False relocation_events=0 relocated=0 dead_left=0 noise_steps=0 resets=none
+RUNDIR x_garden_creset_s0 output/FasterGSUp/fastergsup_garden_de6da4d_s0p2x_garden_creset_s0_2026-11-10-03-55-26
+PERIMG x_garden_creset_s0 n_images=24 min_image=4 min_psnr=20.54
+RESULT x_garden_creset_s0 PSNR:25.030766248703003 SSIM:0.7574120039741198 LPIPS:0.28885767236351967 N_Gaussians:1945081 ms_it=4.61  allocated: 67.97 GiB
+EXP1R_ORDER garden s1 pfx mcmc mrep mreloc mnoise mreg mlr creset ctl up
+##### x_garden_pfx_s1: method=FasterGSUp seed=1 iters=2000 flags= blend=taming 03:56:49
+SEGCLOCK step=1000 seg_s=2.072 cum_s=2.072 sparse=0 N=269805 peak_alloc_gib=2.38
+SEGCLOCK step=2000 seg_s=3.021 cum_s=5.093 sparse=0 N=1050333 peak_alloc_gib=3.21
+FGS_TRAIN_END N=1050333 peak_alloc_gib=3.21 peak_reserved_gib=3.63
+FGS_SAVE_STATE step=2000 N=1050333 cum_s=5.093 param_sha=b2aa0aca0a90154f optim_sha=84ed3eb8dce56c79 dinfo_sha=778da4f7b612a474 path=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s1p2x_garden_pfx_s1_2026-11-10-03-56-57/checkpoints/state_0002000.pt
+RUNDIR x_garden_pfx_s1 output/FasterGSUp/fastergsup_garden_de6da4d_s1p2x_garden_pfx_s1_2026-11-10-03-56-57
+PERIMG x_garden_pfx_s1 n_images=24 min_image=4 min_psnr=19.63
+RESULT x_garden_pfx_s1 PSNR:24.060534874598186 SSIM:0.6920699998736382 LPIPS:0.363016693542401 N_Gaussians:1050332 ms_it=3.29  allocated: 3.21 GiB
+EXP1_BRANCH garden s1 step=2000 N=1050333 state=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s1p2x_garden_pfx_s1_2026-11-10-03-56-57/checkpoints/state_0002000.pt
+##### x_garden_mcmc_s1: method=FasterGSUp seed=1 iters=3000 flags= blend=taming 03:57:54
+FGS_RESUME step=2000 N=1050333 cum_s=5.093 sh_degree=1 param_sha=b2aa0aca0a90154f optim_sha=84ed3eb8dce56c79 dinfo_sha=none densification_info=none use_mcmc=True max_primitives=1050333 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.05,scales:0.005,rotations:0.001 lambda_opacity=0.01 lambda_scale=0.01 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s1p2x_garden_pfx_s1_2026-11-10-03-56-57/checkpoints/state_0002000.pt
+FGS_EVALCHECK step=2000 guard=1 rng_before=cpu:f5defda135ec,cuda:0d0628bcc743,py:b55f01246d45,np:feaadd3061df rng_after_render=cpu:f5defda135ec,cuda:23f5931fc830,py:b55f01246d45,np:feaadd3061df rng_after_restore=cpu:f5defda135ec,cuda:0d0628bcc743,py:b55f01246d45,np:feaadd3061df state_before=b2aa0aca0a90154f,84ed3eb8dce56c79,none state_after=b2aa0aca0a90154f,84ed3eb8dce56c79,none training_before=True training_after_render=False training_after_restore=True mode_before=train mode_after_render=test mode_after_restore=train
+FGS_WALL from=2000 to=3000 s=3.849 views=1740f664e09fb3bb
+SEGCLOCK step=3000 seg_s=3.750 cum_s=8.844 sparse=0 N=1050333 peak_alloc_gib=67.97
+FGS_TRAIN_END N=1050333 peak_alloc_gib=67.97 peak_reserved_gib=68.05
+FGS_ABL relocate=1 noise=1 reset=1 use_mcmc=True relocation_events=10 relocated=128657 dead_left=0 noise_steps=1000 resets=none
+RUNDIR x_garden_mcmc_s1 output/FasterGSUp/fastergsup_garden_de6da4d_s1p2x_garden_mcmc_s1_2026-11-10-03-58-01
+PERIMG x_garden_mcmc_s1 n_images=24 min_image=4 min_psnr=20.83
+RESULT x_garden_mcmc_s1 PSNR:24.75094485282898 SSIM:0.7390093505382538 LPIPS:0.3122948631644249 N_Gaussians:1045953 ms_it=3.80  allocated: 67.97 GiB
+##### x_garden_mrep_s1: method=FasterGSUp seed=1 iters=3000 flags= blend=taming 03:59:24
+FGS_RESUME step=2000 N=1050333 cum_s=5.093 sh_degree=1 param_sha=b2aa0aca0a90154f optim_sha=84ed3eb8dce56c79 dinfo_sha=none densification_info=none use_mcmc=True max_primitives=1050333 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.05,scales:0.005,rotations:0.001 lambda_opacity=0.01 lambda_scale=0.01 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s1p2x_garden_pfx_s1_2026-11-10-03-56-57/checkpoints/state_0002000.pt
+FGS_EVALCHECK step=2000 guard=1 rng_before=cpu:f5defda135ec,cuda:0d0628bcc743,py:b55f01246d45,np:feaadd3061df rng_after_render=cpu:f5defda135ec,cuda:23f5931fc830,py:b55f01246d45,np:feaadd3061df rng_after_restore=cpu:f5defda135ec,cuda:0d0628bcc743,py:b55f01246d45,np:feaadd3061df state_before=b2aa0aca0a90154f,84ed3eb8dce56c79,none state_after=b2aa0aca0a90154f,84ed3eb8dce56c79,none training_before=True training_after_render=False training_after_restore=True mode_before=train mode_after_render=test mode_after_restore=train
+FGS_WALL from=2000 to=3000 s=3.928 views=1740f664e09fb3bb
+SEGCLOCK step=3000 seg_s=3.838 cum_s=8.932 sparse=0 N=1050333 peak_alloc_gib=67.97
+FGS_TRAIN_END N=1050333 peak_alloc_gib=67.97 peak_reserved_gib=68.05
+FGS_ABL relocate=1 noise=1 reset=1 use_mcmc=True relocation_events=10 relocated=128419 dead_left=0 noise_steps=1000 resets=none
+RUNDIR x_garden_mrep_s1 output/FasterGSUp/fastergsup_garden_de6da4d_s1p2x_garden_mrep_s1_2026-11-10-03-59-32
+PERIMG x_garden_mrep_s1 n_images=24 min_image=4 min_psnr=20.92
+RESULT x_garden_mrep_s1 PSNR:24.763100624084473 SSIM:0.739218552907308 LPIPS:0.311468289544185 N_Gaussians:1045951 ms_it=3.88  allocated: 67.97 GiB
+##### x_garden_mreloc_s1: method=FasterGSUp seed=1 iters=3000 flags= blend=taming 04:00:53
+FGS_RESUME step=2000 N=1050333 cum_s=5.093 sh_degree=1 param_sha=b2aa0aca0a90154f optim_sha=84ed3eb8dce56c79 dinfo_sha=none densification_info=none use_mcmc=True max_primitives=1050333 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.05,scales:0.005,rotations:0.001 lambda_opacity=0.01 lambda_scale=0.01 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s1p2x_garden_pfx_s1_2026-11-10-03-56-57/checkpoints/state_0002000.pt
+FGS_EVALCHECK step=2000 guard=1 rng_before=cpu:f5defda135ec,cuda:0d0628bcc743,py:b55f01246d45,np:feaadd3061df rng_after_render=cpu:f5defda135ec,cuda:23f5931fc830,py:b55f01246d45,np:feaadd3061df rng_after_restore=cpu:f5defda135ec,cuda:0d0628bcc743,py:b55f01246d45,np:feaadd3061df state_before=b2aa0aca0a90154f,84ed3eb8dce56c79,none state_after=b2aa0aca0a90154f,84ed3eb8dce56c79,none training_before=True training_after_render=False training_after_restore=True mode_before=train mode_after_render=test mode_after_restore=train
+FGS_WALL from=2000 to=3000 s=3.728 views=12e0952a0a3f010e
+SEGCLOCK step=3000 seg_s=3.646 cum_s=8.740 sparse=0 N=1050333 peak_alloc_gib=67.97
+FGS_TRAIN_END N=1050333 peak_alloc_gib=67.97 peak_reserved_gib=68.05
+FGS_ABL relocate=0 noise=1 reset=1 use_mcmc=True relocation_events=0 relocated=0 dead_left=77889 noise_steps=1000 resets=none
+RUNDIR x_garden_mreloc_s1 output/FasterGSUp/fastergsup_garden_de6da4d_s1p2x_garden_mreloc_s1_2026-11-10-04-01-01
+PERIMG x_garden_mreloc_s1 n_images=24 min_image=4 min_psnr=20.76
+RESULT x_garden_mreloc_s1 PSNR:24.891669352849323 SSIM:0.745677558084329 LPIPS:0.30907536049683887 N_Gaussians:983040 ms_it=3.69  allocated: 67.97 GiB
+##### x_garden_mnoise_s1: method=FasterGSUp seed=1 iters=3000 flags= blend=taming 04:02:23
+FGS_RESUME step=2000 N=1050333 cum_s=5.093 sh_degree=1 param_sha=b2aa0aca0a90154f optim_sha=84ed3eb8dce56c79 dinfo_sha=none densification_info=none use_mcmc=True max_primitives=1050333 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.05,scales:0.005,rotations:0.001 lambda_opacity=0.01 lambda_scale=0.01 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s1p2x_garden_pfx_s1_2026-11-10-03-56-57/checkpoints/state_0002000.pt
+FGS_EVALCHECK step=2000 guard=1 rng_before=cpu:f5defda135ec,cuda:0d0628bcc743,py:b55f01246d45,np:feaadd3061df rng_after_render=cpu:f5defda135ec,cuda:23f5931fc830,py:b55f01246d45,np:feaadd3061df rng_after_restore=cpu:f5defda135ec,cuda:0d0628bcc743,py:b55f01246d45,np:feaadd3061df state_before=b2aa0aca0a90154f,84ed3eb8dce56c79,none state_after=b2aa0aca0a90154f,84ed3eb8dce56c79,none training_before=True training_after_render=False training_after_restore=True mode_before=train mode_after_render=test mode_after_restore=train
+FGS_WALL from=2000 to=3000 s=3.913 views=bf99095f72e590a
+SEGCLOCK step=3000 seg_s=3.824 cum_s=8.918 sparse=0 N=1050333 peak_alloc_gib=67.97
+FGS_TRAIN_END N=1050333 peak_alloc_gib=67.97 peak_reserved_gib=68.05
+FGS_ABL relocate=1 noise=0 reset=1 use_mcmc=True relocation_events=10 relocated=81232 dead_left=0 noise_steps=0 resets=none
+RUNDIR x_garden_mnoise_s1 output/FasterGSUp/fastergsup_garden_de6da4d_s1p2x_garden_mnoise_s1_2026-11-10-04-02-30
+PERIMG x_garden_mnoise_s1 n_images=24 min_image=4 min_psnr=20.64
+RESULT x_garden_mnoise_s1 PSNR:24.83855152130127 SSIM:0.7390765969951948 LPIPS:0.3113778941333294 N_Gaussians:1048879 ms_it=3.87  allocated: 67.97 GiB
+##### x_garden_mreg_s1: method=FasterGSUp seed=1 iters=3000 flags= blend=taming 04:03:52
+FGS_RESUME step=2000 N=1050333 cum_s=5.093 sh_degree=1 param_sha=b2aa0aca0a90154f optim_sha=84ed3eb8dce56c79 dinfo_sha=none densification_info=none use_mcmc=True max_primitives=1050333 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.05,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s1p2x_garden_pfx_s1_2026-11-10-03-56-57/checkpoints/state_0002000.pt
+FGS_EVALCHECK step=2000 guard=1 rng_before=cpu:f5defda135ec,cuda:0d0628bcc743,py:b55f01246d45,np:feaadd3061df rng_after_render=cpu:f5defda135ec,cuda:23f5931fc830,py:b55f01246d45,np:feaadd3061df rng_after_restore=cpu:f5defda135ec,cuda:0d0628bcc743,py:b55f01246d45,np:feaadd3061df state_before=b2aa0aca0a90154f,84ed3eb8dce56c79,none state_after=b2aa0aca0a90154f,84ed3eb8dce56c79,none training_before=True training_after_render=False training_after_restore=True mode_before=train mode_after_render=test mode_after_restore=train
+FGS_WALL from=2000 to=3000 s=3.656 views=1740f664e09fb3bb
+SEGCLOCK step=3000 seg_s=3.564 cum_s=8.657 sparse=0 N=1050333 peak_alloc_gib=67.97
+FGS_TRAIN_END N=1050333 peak_alloc_gib=67.97 peak_reserved_gib=68.05
+FGS_ABL relocate=1 noise=1 reset=1 use_mcmc=True relocation_events=10 relocated=9727 dead_left=0 noise_steps=1000 resets=none
+RUNDIR x_garden_mreg_s1 output/FasterGSUp/fastergsup_garden_de6da4d_s1p2x_garden_mreg_s1_2026-11-10-04-04-00
+PERIMG x_garden_mreg_s1 n_images=24 min_image=4 min_psnr=20.84
+RESULT x_garden_mreg_s1 PSNR:24.84937310218811 SSIM:0.7439831246932348 LPIPS:0.3074357745548089 N_Gaussians:1050093 ms_it=3.61  allocated: 67.97 GiB
+##### x_garden_mlr_s1: method=FasterGSUp seed=1 iters=3000 flags= blend=taming 04:05:22
+FGS_RESUME step=2000 N=1050333 cum_s=5.093 sh_degree=1 param_sha=b2aa0aca0a90154f optim_sha=84ed3eb8dce56c79 dinfo_sha=none densification_info=none use_mcmc=True max_primitives=1050333 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.01 lambda_scale=0.01 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s1p2x_garden_pfx_s1_2026-11-10-03-56-57/checkpoints/state_0002000.pt
+FGS_EVALCHECK step=2000 guard=1 rng_before=cpu:f5defda135ec,cuda:0d0628bcc743,py:b55f01246d45,np:feaadd3061df rng_after_render=cpu:f5defda135ec,cuda:23f5931fc830,py:b55f01246d45,np:feaadd3061df rng_after_restore=cpu:f5defda135ec,cuda:0d0628bcc743,py:b55f01246d45,np:feaadd3061df state_before=b2aa0aca0a90154f,84ed3eb8dce56c79,none state_after=b2aa0aca0a90154f,84ed3eb8dce56c79,none training_before=True training_after_render=False training_after_restore=True mode_before=train mode_after_render=test mode_after_restore=train
+FGS_WALL from=2000 to=3000 s=3.786 views=1740f664e09fb3bb
+SEGCLOCK step=3000 seg_s=3.699 cum_s=8.793 sparse=0 N=1050333 peak_alloc_gib=67.97
+FGS_TRAIN_END N=1050333 peak_alloc_gib=67.97 peak_reserved_gib=68.05
+FGS_ABL relocate=1 noise=1 reset=1 use_mcmc=True relocation_events=10 relocated=30990 dead_left=0 noise_steps=1000 resets=none
+RUNDIR x_garden_mlr_s1 output/FasterGSUp/fastergsup_garden_de6da4d_s1p2x_garden_mlr_s1_2026-11-10-04-05-29
+PERIMG x_garden_mlr_s1 n_images=24 min_image=4 min_psnr=20.84
+RESULT x_garden_mlr_s1 PSNR:24.90065884590149 SSIM:0.743842288851738 LPIPS:0.30818087607622147 N_Gaussians:1049927 ms_it=3.74  allocated: 67.97 GiB
+##### x_garden_creset_s1: method=FasterGSUp seed=1 iters=3000 flags= blend=taming 04:06:51
+FGS_RESUME step=2000 N=1050333 cum_s=5.093 sh_degree=1 param_sha=b2aa0aca0a90154f optim_sha=84ed3eb8dce56c79 dinfo_sha=778da4f7b612a474 densification_info=(2, 1050333) use_mcmc=False max_primitives=1000000 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s1p2x_garden_pfx_s1_2026-11-10-03-56-57/checkpoints/state_0002000.pt
+FGS_EVALCHECK step=2000 guard=1 rng_before=cpu:f5defda135ec,cuda:0d0628bcc743,py:b55f01246d45,np:feaadd3061df rng_after_render=cpu:f5defda135ec,cuda:23f5931fc830,py:b55f01246d45,np:feaadd3061df rng_after_restore=cpu:f5defda135ec,cuda:0d0628bcc743,py:b55f01246d45,np:feaadd3061df state_before=b2aa0aca0a90154f,84ed3eb8dce56c79,778da4f7b612a474 state_after=b2aa0aca0a90154f,84ed3eb8dce56c79,778da4f7b612a474 training_before=True training_after_render=False training_after_restore=True mode_before=train mode_after_render=test mode_after_restore=train
+FGS_WALL from=2000 to=3000 s=4.643 views=bf99095f72e590a
+SEGCLOCK step=3000 seg_s=4.492 cum_s=9.585 sparse=0 N=1943345 peak_alloc_gib=67.98
+FGS_TRAIN_END N=1943345 peak_alloc_gib=67.98 peak_reserved_gib=68.07
+FGS_ABL relocate=1 noise=1 reset=0 use_mcmc=False relocation_events=0 relocated=0 dead_left=0 noise_steps=0 resets=none
+RUNDIR x_garden_creset_s1 output/FasterGSUp/fastergsup_garden_de6da4d_s1p2x_garden_creset_s1_2026-11-10-04-06-58
+PERIMG x_garden_creset_s1 n_images=24 min_image=4 min_psnr=20.12
+RESULT x_garden_creset_s1 PSNR:24.878730932871502 SSIM:0.7513014947374662 LPIPS:0.2913638899723689 N_Gaussians:1943345 ms_it=4.53  allocated: 67.98 GiB
+##### x_garden_ctl_s1: method=FasterGSUp seed=1 iters=3000 flags= blend=taming 04:08:22
+FGS_RESUME step=2000 N=1050333 cum_s=5.093 sh_degree=1 param_sha=b2aa0aca0a90154f optim_sha=84ed3eb8dce56c79 dinfo_sha=778da4f7b612a474 densification_info=(2, 1050333) use_mcmc=False max_primitives=1000000 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s1p2x_garden_pfx_s1_2026-11-10-03-56-57/checkpoints/state_0002000.pt
+FGS_EVALCHECK step=2000 guard=1 rng_before=cpu:f5defda135ec,cuda:0d0628bcc743,py:b55f01246d45,np:feaadd3061df rng_after_render=cpu:f5defda135ec,cuda:23f5931fc830,py:b55f01246d45,np:feaadd3061df rng_after_restore=cpu:f5defda135ec,cuda:0d0628bcc743,py:b55f01246d45,np:feaadd3061df state_before=b2aa0aca0a90154f,84ed3eb8dce56c79,778da4f7b612a474 state_after=b2aa0aca0a90154f,84ed3eb8dce56c79,778da4f7b612a474 training_before=True training_after_render=False training_after_restore=True mode_before=train mode_after_render=test mode_after_restore=train
+FGS_WALL from=2000 to=3000 s=4.656 views=bf99095f72e590a
+SEGCLOCK step=3000 seg_s=4.508 cum_s=9.601 sparse=0 N=1944483 peak_alloc_gib=67.98
+FGS_TRAIN_END N=1944483 peak_alloc_gib=67.98 peak_reserved_gib=68.07
+FGS_ABL relocate=1 noise=1 reset=1 use_mcmc=False relocation_events=0 relocated=0 dead_left=0 noise_steps=0 resets=none
+RUNDIR x_garden_ctl_s1 output/FasterGSUp/fastergsup_garden_de6da4d_s1p2x_garden_ctl_s1_2026-11-10-04-08-30
+PERIMG x_garden_ctl_s1 n_images=24 min_image=4 min_psnr=20.00
+RESULT x_garden_ctl_s1 PSNR:24.883506457010906 SSIM:0.7510918801029524 LPIPS:0.2912932224571705 N_Gaussians:1944483 ms_it=4.55  allocated: 67.98 GiB
+##### b_garden_up_s1: method=FasterGSUp seed=1 iters=3000 flags= blend=taming 04:09:52
+SEGCLOCK step=1000 seg_s=2.096 cum_s=2.096 sparse=0 N=269169 peak_alloc_gib=2.38
+SEGCLOCK step=2000 seg_s=2.976 cum_s=5.072 sparse=0 N=1047722 peak_alloc_gib=3.21
+FGS_WALL from=0 to=3000 s=9.957 views=e78847e1c132d31
+SEGCLOCK step=3000 seg_s=4.458 cum_s=9.530 sparse=0 N=1946748 peak_alloc_gib=4.14
+FGS_TRAIN_END N=1946748 peak_alloc_gib=4.14 peak_reserved_gib=4.92
+RUNDIR b_garden_up_s1 output/FasterGSUp/fastergsup_garden_de6da4d_s1p2b_garden_up_s1_2026-11-10-04-09-59
+PERIMG b_garden_up_s1 n_images=24 min_image=4 min_psnr=19.81
+RESULT b_garden_up_s1 PSNR:24.92852783203125 SSIM:0.7518403232097626 LPIPS:0.2905617840588093 N_Gaussians:1946746 ms_it=3.22  allocated: 4.14 GiB
+JOB OK

@@ -899,7 +899,7 @@ if has exp1a; then
     if [ $(( seed % 2 )) = 0 ]; then echo "EXP1R_ORDER $BSCENE s$seed up pfx ${order[*]}"; else echo "EXP1R_ORDER $BSCENE s$seed pfx ${order[*]} up"; fi
     [ $(( seed % 2 )) = 0 ] && x1a_up $seed
     pfx=x_${BSCENE}_pfx_s$seed
-    TRAIN_ENV="FGS_SAVE_STATE=$EXP1_AT FGS_VIEW_TRACE=$OUT/$pfx.views" train $pfx $M "$seed" $EXP1_AT "" taming 1000
+    TRAIN_ENV="FGS_SAVE_STATE=$EXP1_AT FGS_ABL=1 FGS_VIEW_TRACE=$OUT/$pfx.views" train $pfx $M "$seed" $EXP1_AT "" taming 1000
     ST=$DATA/nerficg/$(cat "$OUT/runs/$pfx/rundir.txt" 2>/dev/null)/checkpoints/state_$(printf %07d $EXP1_AT).pt
     NB=$(sed -n "s/^FGS_SAVE_STATE step=$EXP1_AT N=\([0-9]*\).*/\1/p" "$OUT/$pfx.seg")
     if [ ! -f "$ST" ] || [ -z "$NB" ]; then echo "FAILED exp1a $pfx: no state file / N"; FAILED+=("$pfx")

@@ -1,0 +1,5 @@
+SEGCLOCK step=1000 seg_s=2.096 cum_s=2.096 sparse=0 N=269169 peak_alloc_gib=2.38
+SEGCLOCK step=2000 seg_s=2.976 cum_s=5.072 sparse=0 N=1047722 peak_alloc_gib=3.21
+FGS_WALL from=0 to=3000 s=9.957 views=e78847e1c132d31
+SEGCLOCK step=3000 seg_s=4.458 cum_s=9.530 sparse=0 N=1946748 peak_alloc_gib=4.14
+FGS_TRAIN_END N=1946748 peak_alloc_gib=4.14 peak_reserved_gib=4.92

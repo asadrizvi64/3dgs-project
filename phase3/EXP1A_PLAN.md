@@ -227,6 +227,34 @@ from the environment. Their defaults reproduce the current behaviour:
 - `x1asmoke` uses Experiment 1R's saved garden seed-10 state. Gate "defaults unchanged": `ctl` with no switch set sees
   exactly 1R's `ctl` views over 5,000–12,999.
 
+**Smoke-test results (2026-11-10, patch v1, repo 6b67dbe):**
+- **Switch smoke, job 4561006** (`x1asmoke`, 25 min): all 74 checks pass.
+
+  | arm | relocations (Gaussians) | noise steps | resets | N at 7,000 / 13,000 |
+  |---|---|---|---|---|
+  | `ctl` | 0 | 0 | 6,000, 9,000, 12,000 | 4,089,627 |
+  | `creset` | 0 | 0 | none | 4,953,550 |
+  | `mcmc` | 20 events (680,932) | 2,000 | none | 3,080,861 (held) |
+  | `mrep` | 20 (680,180) | 2,000 | none | held |
+  | `mreloc` | 0 (307,656 dead left in place) | 2,000 | none | held |
+  | `mnoise` | 20 (115,086) | 0 | none | held |
+  | `mreg` | 20 (249,469) | 2,000 | none | held |
+  | `mlr` | 20 (194,396) | 2,000 | none | held |
+
+  - **Defaults unchanged:** `ctl` with no switch set saw exactly Experiment 1R's `ctl` views over 5,000–12,999. Every
+    arm loaded exactly the saved state. Every evaluation restored the random states, model and optimizer state, flag and
+    mode.
+  - Diagnostics: `mcmc`'s views equal 1R's `mcmc` over 5,000–6,999, and `mrep`'s equal `mcmc`'s. `creset`'s views equal
+    `ctl`'s over 5,000–12,999.
+  - Descriptive, not a finding: removing noise cuts relocations about sixfold (115 k against 681 k in 2,000 steps).
+    Noise and relocation interact.
+- **Stage smoke, job 4561007** (`exp1a`, garden, seeds 0 and 1, branch 2,000, end 3,000; 28 min): validation, check 2
+  (counters, N held, resets, noise) and checks 1a–1d pass on real output, in both run orders. 1e: `ctl` − reference
+  +0.028 and −0.045 dB.
+- **Found while deploying v2:** the `exp1a` stage did not set `FGS_ABL=1` on the prefix, so the callback clock would
+  have lacked the prefix's callback time. Fixed before any v2 run. The v2 stage smoke (job 4561029) was cancelled after
+  10 s and is resubmitted with the fix.
+
 ## Cost
 
 Estimates scaled from Experiment 1R (garden about 12 minutes per run, room about 18 minutes, mostly the 25
