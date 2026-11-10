@@ -287,6 +287,21 @@ time, which are reported separately and are not gated. It is the same in every M
   `mcmc`'s. Over 1R's longer runs the share would differ, since `ctl`'s densification runs until 14,900 with a growing
   N. The secondary clock measures it.
 
+**Stage smoke on v2, job 4561041** (`exp1a`, garden, seeds 0 and 1, branch 2,000, end 3,000; repo 5899801; 28 min):
+**PASS.**
+- 18 of 18 `FGS_ABL_CB` records, one per arm and per prefix: 8 arms + prefix × 2 seeds. All valid: non-negative,
+  non-decreasing, ending at the total.
+- Validation, including the callback-record check and check 2, passes. Checks 1a–1d pass.
+- The analysis runs end to end on both clocks. Output: [x1a-stagesmoke2-analysis.md](x1a-stagesmoke2-analysis.md),
+  with `--descriptive`. The decision lines there mean nothing at 1,000 steps after the branch; they only exercise the
+  code path.
+- Callback time over the 1,000 steps after the branch: `ctl` and `creset` 0.08–0.09 s; MCMC arms 0.01–0.03 s; `mreloc`
+  lowest, at 0.01 s.
+- Fix made with it: the callback-time table now shows two decimals instead of one.
+
+**All engineering gates pass (2026-11-10).** The plan is ready to freeze. It is frozen at launch, on the user's
+go-ahead, in the commit that changes the status line.
+
 ## Cost
 
 Estimates scaled from Experiment 1R (garden about 12 minutes per run, room about 18 minutes, mostly the 25

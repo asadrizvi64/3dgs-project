@@ -1,0 +1,7 @@
+FGS_RESUME step=2000 N=1048156 cum_s=5.173 sh_degree=1 param_sha=2193dd5be2789f54 optim_sha=bdac8e0fae75f980 dinfo_sha=c152253368574b19 densification_info=(2, 1048156) use_mcmc=False max_primitives=1000000 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s1p2x_garden_pfx_s1_2026-11-10-04-38-50/checkpoints/state_0002000.pt
+FGS_EVALCHECK step=2000 guard=1 rng_before=cpu:f5defda135ec,cuda:0d0628bcc743,py:b55f01246d45,np:feaadd3061df rng_after_render=cpu:f5defda135ec,cuda:23f5931fc830,py:b55f01246d45,np:feaadd3061df rng_after_restore=cpu:f5defda135ec,cuda:0d0628bcc743,py:b55f01246d45,np:feaadd3061df state_before=2193dd5be2789f54,bdac8e0fae75f980,c152253368574b19 state_after=2193dd5be2789f54,bdac8e0fae75f980,c152253368574b19 training_before=True training_after_render=False training_after_restore=True mode_before=train mode_after_render=test mode_after_restore=train
+FGS_WALL from=2000 to=3000 s=4.612 views=bf99095f72e590a
+SEGCLOCK step=3000 seg_s=4.458 cum_s=9.632 sparse=0 N=1944053 peak_alloc_gib=67.98
+FGS_TRAIN_END N=1944053 peak_alloc_gib=67.98 peak_reserved_gib=68.07
+FGS_ABL relocate=1 noise=1 reset=0 use_mcmc=False relocation_events=0 relocated=0 dead_left=0 noise_steps=0 resets=none
+FGS_ABL_CB total_s=0.0911 by=densify:0.0911 calls=10 cum=1000:0.0000,2000:0.0000,3000:0.0911

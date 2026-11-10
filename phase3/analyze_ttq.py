@@ -653,7 +653,7 @@ def abl_decision():
         cells = []
         for sc in scenes:
             v = [abl_cb(runs[(sc, a, s)]['lines']) for s in args.seeds if (sc, a, s) in runs]
-            cells.append('n/a' if not v or None in v else ' / '.join(f'{x[1]:.1f}' for x in v))
+            cells.append('n/a' if not v or None in v else ' / '.join(f'{x[1]:.2f}' for x in v))
         print(f'| {a} | ' + ' | '.join(cells) + ' |')
     fmt = lambda x: 'n/a' if x is None else ('not reached' if x in (float('inf'), float('-inf')) else f'{x:+.2f}')
     plain = lambda sc, a, s: runs.get((sc, a, s))
