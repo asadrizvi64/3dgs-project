@@ -369,4 +369,7 @@ These were made on the review of 6b67dbe, before any Experiment 1A arm ran:
 
 ## Changes after launch
 
-(None; not launched.)
+- 2026-11-10, after the freeze (026f6d1) and before any job was submitted: with `--rerun`, the analysis now takes the
+  uninterrupted reference runs from the rerun logs too, not only the arm and prefix blocks. Without this, a rerun
+  block would have been checked against its original reference. Only the rerun path changes, and no result had been
+  seen. Experiment 1R's analysis and the fixture outcomes are unchanged.

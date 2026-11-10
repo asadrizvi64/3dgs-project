@@ -263,7 +263,7 @@ def exp1r_views(arch_dir, name, lo, hi):
 
 def exp1r_check1():
     """Experiment 1R check 1 (phase3/EXP1R_PLAN.md): 1a-1d exact gates, 1e paired report against the noise pilot."""
-    ub, uarch = blocks_of(args.logs, r'##### b_([a-z]+)_(up)_s(\d+):')
+    ub, uarch = blocks_of(args.logs + args.rerun, r'##### b_([a-z]+)_(up)_s(\d+):')   # a rerun's reference (later) wins
     sd = {k: float(v) for k, v in (x.split('=') for x in args.pilot_sd.split(','))}
     order = {}
     for path in args.logs:
@@ -525,7 +525,7 @@ def abl_fails():
     """One-view failures with a fixed, control-based reference: image i of a run fails if its PSNR at the end is more
     than 3 dB below the median of image i over the scene's ctl runs and uninterrupted reference runs (all seeds),
     excluding the run itself. Independent of which ablation arms are present."""
-    ub, uarch = blocks_of(args.logs, r'##### b_([a-z]+)_(up)_s(\d+):')
+    ub, uarch = blocks_of(args.logs + args.rerun, r'##### b_([a-z]+)_(up)_s(\d+):')   # a rerun's reference (later) wins
     out, lines = defaultdict(int), []
     for sc in scenes:
         refs = {}
