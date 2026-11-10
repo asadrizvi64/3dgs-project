@@ -272,6 +272,21 @@ time, which are reported separately and are not gated. It is the same in every M
   have lacked the prefix's callback time. Fixed before any v2 run. The v2 stage smoke (job 4561029) was cancelled after
   10 s and is resubmitted with the fix.
 
+**Counting vs clock, job 4561028** (`x1atime`, patch v2, repo 9b69665, 11 min): **PASS.**
+- Garden seed 10, 5,000 → 8,000, from 1R's saved state. Training time is the training-step clock; wall time is
+  `FGS_WALL`, which includes callbacks.
+
+  | arm | training, counting off (2 runs) | training, counting on (2 runs) | change | wall, off / on | callbacks with counting on |
+  |---|---|---|---|---|---|
+  | `ctl` | 22.725, 22.700 s | 22.473, 22.751 s | −0.44% | 23.42, 23.38 / 23.18, 23.44 s | 0.54 s (densify 0.53, Morton 0.016) |
+  | `mcmc` | 21.205, 21.255 s | 21.133, 21.255 s | −0.17% | 21.51, 21.57 / 21.45, 21.57 s | 0.12 s (densify 0.10, Morton 0.019) |
+
+- The training-step clock is unchanged by counting, well within 2%.
+- Wall time does not increase measurably either. The two conditions overlap.
+- Descriptive: over these 3,000 steps the three callbacks cost about 2.4% of `ctl`'s training-step time and 0.6% of
+  `mcmc`'s. Over 1R's longer runs the share would differ, since `ctl`'s densification runs until 14,900 with a growing
+  N. The secondary clock measures it.
+
 ## Cost
 
 Estimates scaled from Experiment 1R (garden about 12 minutes per run, room about 18 minutes, mostly the 25

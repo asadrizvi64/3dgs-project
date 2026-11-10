@@ -1,0 +1,125 @@
+node=c155 job=4561028 gpu=NVIDIA H100 stages=x1atime repo=9b69665
+base=FasterGSPlusDS (abcds, patches: phase2/deferred_reduce_v2.patch phase2/sh_coalesce.patch)
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGS/Trainer.py
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSUp/Trainer.py
+already patched: /data/cat/ws/syas272h-3dgs-data/nerficg/src/Methods/FasterGSUp/Trainer.py
+########## x1atime (garden seed 10, Experiment 1R state at 5000: ctl / mcmc, FGS_ABL 1 vs 0, two each)
+##### ta_garden_ctl_c1r1_s10: method=FasterGSUp seed=10 iters=8000 flags= blend=taming 04:13:29
+FGS_RESUME step=5000 N=3080861 cum_s=21.733 sh_degree=3 param_sha=fd11da0dafd80f4d optim_sha=d1252920fb8eedbb dinfo_sha=dbd01896de5fde25 densification_info=(2, 3080861) use_mcmc=False max_primitives=1000000 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s10p2x_garden_pfx_s10_2026-11-09-17-30-52/checkpoints/state_0005000.pt
+SEGCLOCK step=6000 seg_s=7.036 cum_s=28.769 sparse=0 N=3557000 peak_alloc_gib=5.82
+SEGCLOCK step=7000 seg_s=7.574 cum_s=36.343 sparse=0 N=3635988 peak_alloc_gib=5.90
+FGS_WALL from=5000 to=8000 s=23.177 views=753d3271475b1ff
+SEGCLOCK step=8000 seg_s=7.863 cum_s=44.206 sparse=0 N=3848809 peak_alloc_gib=6.12
+FGS_TRAIN_END N=3848809 peak_alloc_gib=6.12 peak_reserved_gib=7.96
+FGS_ABL relocate=1 noise=1 reset=1 use_mcmc=False relocation_events=0 relocated=0 dead_left=0 noise_steps=0 resets=6000
+FGS_ABL_CB total_s=0.5417 by=densify:0.5256,morton_ordering:0.0159,reset_opacities:0.0001 calls=32 cum=1000:0.0000,2000:0.0000,3000:0.0000,4000:0.0000,5000:0.0000,6000:0.2322,7000:0.3836,8000:0.5417
+RUNDIR ta_garden_ctl_c1r1_s10 output/FasterGSUp/fastergsup_garden_de6da4d_s10p2ta_garden_ctl_c1r1_s10_2026-11-10-04-13-37
+PERIMG ta_garden_ctl_c1r1_s10 n_images=24 min_image=4 min_psnr=20.43
+RESULT ta_garden_ctl_c1r1_s10 PSNR:26.557247002919514 SSIM:0.8421474769711494 LPIPS:0.16277762626608214 N_Gaussians:3848809 ms_it=7.53  allocated: 6.12 GiB
+##### ta_garden_ctl_c0r1_s10: method=FasterGSUp seed=10 iters=8000 flags= blend=taming 04:14:49
+FGS_RESUME step=5000 N=3080861 cum_s=21.733 sh_degree=3 param_sha=fd11da0dafd80f4d optim_sha=d1252920fb8eedbb dinfo_sha=dbd01896de5fde25 densification_info=(2, 3080861) use_mcmc=False max_primitives=1000000 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s10p2x_garden_pfx_s10_2026-11-09-17-30-52/checkpoints/state_0005000.pt
+SEGCLOCK step=6000 seg_s=7.233 cum_s=28.966 sparse=0 N=3557088 peak_alloc_gib=5.82
+SEGCLOCK step=7000 seg_s=7.580 cum_s=36.546 sparse=0 N=3635716 peak_alloc_gib=5.90
+FGS_WALL from=5000 to=8000 s=23.416 views=753d3271475b1ff
+SEGCLOCK step=8000 seg_s=7.912 cum_s=44.458 sparse=0 N=3848989 peak_alloc_gib=6.12
+FGS_TRAIN_END N=3848989 peak_alloc_gib=6.12 peak_reserved_gib=8.58
+RUNDIR ta_garden_ctl_c0r1_s10 output/FasterGSUp/fastergsup_garden_de6da4d_s10p2ta_garden_ctl_c0r1_s10_2026-11-10-04-14-57
+PERIMG ta_garden_ctl_c0r1_s10 n_images=24 min_image=4 min_psnr=20.35
+RESULT ta_garden_ctl_c0r1_s10 PSNR:26.518288373947144 SSIM:0.8414805630842844 LPIPS:0.16306650762756666 N_Gaussians:3848989 ms_it=7.61  allocated: 6.12 GiB
+##### ta_garden_mcmc_c1r1_s10: method=FasterGSUp seed=10 iters=8000 flags= blend=taming 04:16:09
+FGS_RESUME step=5000 N=3080861 cum_s=21.733 sh_degree=3 param_sha=fd11da0dafd80f4d optim_sha=d1252920fb8eedbb dinfo_sha=none densification_info=none use_mcmc=True max_primitives=3080861 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.05,scales:0.005,rotations:0.001 lambda_opacity=0.01 lambda_scale=0.01 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s10p2x_garden_pfx_s10_2026-11-09-17-30-52/checkpoints/state_0005000.pt
+SEGCLOCK step=6000 seg_s=7.012 cum_s=28.745 sparse=0 N=3080861 peak_alloc_gib=5.31
+SEGCLOCK step=7000 seg_s=7.015 cum_s=35.760 sparse=0 N=3080861 peak_alloc_gib=5.31
+FGS_WALL from=5000 to=8000 s=21.448 views=cc1326f29a93dc3
+SEGCLOCK step=8000 seg_s=7.107 cum_s=42.866 sparse=0 N=3080861 peak_alloc_gib=5.31
+FGS_TRAIN_END N=3080861 peak_alloc_gib=5.31 peak_reserved_gib=5.73
+FGS_ABL relocate=1 noise=1 reset=1 use_mcmc=True relocation_events=30 relocated=1181429 dead_left=0 noise_steps=3000 resets=none
+FGS_ABL_CB total_s=0.1210 by=densify:0.1024,morton_ordering:0.0186,reset_opacities:0.0000 calls=32 cum=1000:0.0000,2000:0.0000,3000:0.0000,4000:0.0000,5000:0.0000,6000:0.0684,7000:0.0946,8000:0.1210
+RUNDIR ta_garden_mcmc_c1r1_s10 output/FasterGSUp/fastergsup_garden_de6da4d_s10p2ta_garden_mcmc_c1r1_s10_2026-11-10-04-16-17
+PERIMG ta_garden_mcmc_c1r1_s10 n_images=24 min_image=4 min_psnr=20.37
+RESULT ta_garden_mcmc_c1r1_s10 PSNR:26.530293067296345 SSIM:0.8365157221754392 LPIPS:0.171273830657204 N_Gaussians:3062831 ms_it=7.08  allocated: 5.31 GiB
+##### ta_garden_mcmc_c0r1_s10: method=FasterGSUp seed=10 iters=8000 flags= blend=taming 04:17:27
+FGS_RESUME step=5000 N=3080861 cum_s=21.733 sh_degree=3 param_sha=fd11da0dafd80f4d optim_sha=d1252920fb8eedbb dinfo_sha=none densification_info=none use_mcmc=True max_primitives=3080861 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.05,scales:0.005,rotations:0.001 lambda_opacity=0.01 lambda_scale=0.01 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s10p2x_garden_pfx_s10_2026-11-09-17-30-52/checkpoints/state_0005000.pt
+SEGCLOCK step=6000 seg_s=7.041 cum_s=28.774 sparse=0 N=3080861 peak_alloc_gib=5.31
+SEGCLOCK step=7000 seg_s=7.036 cum_s=35.810 sparse=0 N=3080861 peak_alloc_gib=5.31
+FGS_WALL from=5000 to=8000 s=21.512 views=cc1326f29a93dc3
+SEGCLOCK step=8000 seg_s=7.128 cum_s=42.938 sparse=0 N=3080861 peak_alloc_gib=5.31
+FGS_TRAIN_END N=3080861 peak_alloc_gib=5.31 peak_reserved_gib=5.73
+RUNDIR ta_garden_mcmc_c0r1_s10 output/FasterGSUp/fastergsup_garden_de6da4d_s10p2ta_garden_mcmc_c0r1_s10_2026-11-10-04-17-35
+PERIMG ta_garden_mcmc_c0r1_s10 n_images=24 min_image=4 min_psnr=20.41
+RESULT ta_garden_mcmc_c0r1_s10 PSNR:26.544774452845257 SSIM:0.8367312848567963 LPIPS:0.17069151438772678 N_Gaussians:3062779 ms_it=7.11  allocated: 5.31 GiB
+##### ta_garden_ctl_c1r2_s10: method=FasterGSUp seed=10 iters=8000 flags= blend=taming 04:18:45
+FGS_RESUME step=5000 N=3080861 cum_s=21.733 sh_degree=3 param_sha=fd11da0dafd80f4d optim_sha=d1252920fb8eedbb dinfo_sha=dbd01896de5fde25 densification_info=(2, 3080861) use_mcmc=False max_primitives=1000000 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s10p2x_garden_pfx_s10_2026-11-09-17-30-52/checkpoints/state_0005000.pt
+SEGCLOCK step=6000 seg_s=7.247 cum_s=28.980 sparse=0 N=3556792 peak_alloc_gib=5.82
+SEGCLOCK step=7000 seg_s=7.590 cum_s=36.571 sparse=0 N=3635571 peak_alloc_gib=5.90
+FGS_WALL from=5000 to=8000 s=23.442 views=753d3271475b1ff
+SEGCLOCK step=8000 seg_s=7.913 cum_s=44.484 sparse=0 N=3849682 peak_alloc_gib=6.12
+FGS_TRAIN_END N=3849682 peak_alloc_gib=6.12 peak_reserved_gib=7.96
+FGS_ABL relocate=1 noise=1 reset=1 use_mcmc=False relocation_events=0 relocated=0 dead_left=0 noise_steps=0 resets=6000
+FGS_ABL_CB total_s=0.5439 by=densify:0.5277,morton_ordering:0.0161,reset_opacities:0.0001 calls=32 cum=1000:0.0000,2000:0.0000,3000:0.0000,4000:0.0000,5000:0.0000,6000:0.2337,7000:0.3854,8000:0.5439
+RUNDIR ta_garden_ctl_c1r2_s10 output/FasterGSUp/fastergsup_garden_de6da4d_s10p2ta_garden_ctl_c1r2_s10_2026-11-10-04-18-53
+PERIMG ta_garden_ctl_c1r2_s10 n_images=24 min_image=4 min_psnr=20.35
+RESULT ta_garden_ctl_c1r2_s10 PSNR:26.582541465759277 SSIM:0.8423007701834043 LPIPS:0.16252964238325754 N_Gaussians:3849682 ms_it=7.62  allocated: 6.12 GiB
+##### ta_garden_ctl_c0r2_s10: method=FasterGSUp seed=10 iters=8000 flags= blend=taming 04:20:05
+FGS_RESUME step=5000 N=3080861 cum_s=21.733 sh_degree=3 param_sha=fd11da0dafd80f4d optim_sha=d1252920fb8eedbb dinfo_sha=dbd01896de5fde25 densification_info=(2, 3080861) use_mcmc=False max_primitives=1000000 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.025,scales:0.005,rotations:0.001 lambda_opacity=0.0 lambda_scale=0.0 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s10p2x_garden_pfx_s10_2026-11-09-17-30-52/checkpoints/state_0005000.pt
+SEGCLOCK step=6000 seg_s=7.232 cum_s=28.965 sparse=0 N=3557317 peak_alloc_gib=5.82
+SEGCLOCK step=7000 seg_s=7.575 cum_s=36.540 sparse=0 N=3636552 peak_alloc_gib=5.91
+FGS_WALL from=5000 to=8000 s=23.382 views=753d3271475b1ff
+SEGCLOCK step=8000 seg_s=7.893 cum_s=44.433 sparse=0 N=3850249 peak_alloc_gib=6.13
+FGS_TRAIN_END N=3850249 peak_alloc_gib=6.13 peak_reserved_gib=8.29
+RUNDIR ta_garden_ctl_c0r2_s10 output/FasterGSUp/fastergsup_garden_de6da4d_s10p2ta_garden_ctl_c0r2_s10_2026-11-10-04-20-13
+PERIMG ta_garden_ctl_c0r2_s10 n_images=24 min_image=4 min_psnr=20.37
+RESULT ta_garden_ctl_c0r2_s10 PSNR:26.49444031715393 SSIM:0.8415882165233294 LPIPS:0.16339788399636745 N_Gaussians:3850248 ms_it=7.60  allocated: 6.13 GiB
+##### ta_garden_mcmc_c1r2_s10: method=FasterGSUp seed=10 iters=8000 flags= blend=taming 04:21:26
+FGS_RESUME step=5000 N=3080861 cum_s=21.733 sh_degree=3 param_sha=fd11da0dafd80f4d optim_sha=d1252920fb8eedbb dinfo_sha=none densification_info=none use_mcmc=True max_primitives=3080861 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.05,scales:0.005,rotations:0.001 lambda_opacity=0.01 lambda_scale=0.01 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s10p2x_garden_pfx_s10_2026-11-09-17-30-52/checkpoints/state_0005000.pt
+SEGCLOCK step=6000 seg_s=7.059 cum_s=28.792 sparse=0 N=3080861 peak_alloc_gib=5.31
+SEGCLOCK step=7000 seg_s=7.055 cum_s=35.847 sparse=0 N=3080861 peak_alloc_gib=5.31
+FGS_WALL from=5000 to=8000 s=21.566 views=cc1326f29a93dc3
+SEGCLOCK step=8000 seg_s=7.141 cum_s=42.988 sparse=0 N=3080861 peak_alloc_gib=5.31
+FGS_TRAIN_END N=3080861 peak_alloc_gib=5.31 peak_reserved_gib=5.73
+FGS_ABL relocate=1 noise=1 reset=1 use_mcmc=True relocation_events=30 relocated=1184126 dead_left=0 noise_steps=3000 resets=none
+FGS_ABL_CB total_s=0.1237 by=densify:0.1051,morton_ordering:0.0186,reset_opacities:0.0000 calls=32 cum=1000:0.0000,2000:0.0000,3000:0.0000,4000:0.0000,5000:0.0000,6000:0.0713,7000:0.0975,8000:0.1237
+RUNDIR ta_garden_mcmc_c1r2_s10 output/FasterGSUp/fastergsup_garden_de6da4d_s10p2ta_garden_mcmc_c1r2_s10_2026-11-10-04-21-33
+PERIMG ta_garden_mcmc_c1r2_s10 n_images=24 min_image=4 min_psnr=20.44
+RESULT ta_garden_mcmc_c1r2_s10 PSNR:26.50177796681722 SSIM:0.8365339661637942 LPIPS:0.17131605061391988 N_Gaussians:3062697 ms_it=7.12  allocated: 5.31 GiB
+##### ta_garden_mcmc_c0r2_s10: method=FasterGSUp seed=10 iters=8000 flags= blend=taming 04:22:44
+FGS_RESUME step=5000 N=3080861 cum_s=21.733 sh_degree=3 param_sha=fd11da0dafd80f4d optim_sha=d1252920fb8eedbb dinfo_sha=none densification_info=none use_mcmc=True max_primitives=3080861 densification_end=14900 lr=means:0.000787669,sh_coefficients_0:0.0025,sh_coefficients_rest:0.000125,opacities:0.05,scales:0.005,rotations:0.001 lambda_opacity=0.01 lambda_scale=0.01 from=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_garden_de6da4d_s10p2x_garden_pfx_s10_2026-11-09-17-30-52/checkpoints/state_0005000.pt
+SEGCLOCK step=6000 seg_s=7.053 cum_s=28.786 sparse=0 N=3080861 peak_alloc_gib=5.31
+SEGCLOCK step=7000 seg_s=7.059 cum_s=35.844 sparse=0 N=3080861 peak_alloc_gib=5.31
+FGS_WALL from=5000 to=8000 s=21.569 views=cc1326f29a93dc3
+SEGCLOCK step=8000 seg_s=7.144 cum_s=42.988 sparse=0 N=3080861 peak_alloc_gib=5.31
+FGS_TRAIN_END N=3080861 peak_alloc_gib=5.31 peak_reserved_gib=5.73
+RUNDIR ta_garden_mcmc_c0r2_s10 output/FasterGSUp/fastergsup_garden_de6da4d_s10p2ta_garden_mcmc_c0r2_s10_2026-11-10-04-22-51
+PERIMG ta_garden_mcmc_c0r2_s10 n_images=24 min_image=4 min_psnr=20.42
+RESULT ta_garden_mcmc_c0r2_s10 PSNR:26.52488660812378 SSIM:0.8366345887382826 LPIPS:0.17061570286750793 N_Gaussians:3062746 ms_it=7.12  allocated: 5.31 GiB
+| run | training 5000->8000 (s) | wall 5000->8000 (s) | callbacks (s, by callback) |
+|---|---|---|---|
+| ctl counting=0 rep 1 | 22.725 | 23.416 | - |
+| ctl counting=0 rep 2 | 22.700 | 23.382 | - |
+| ctl counting=1 rep 1 | 22.473 | 23.177 | 0.5417 (densify:0.5256,morton_ordering:0.0159,reset_opacities:0.0001, 32 calls) |
+| ctl counting=1 rep 2 | 22.751 | 23.442 | 0.5439 (densify:0.5277,morton_ordering:0.0161,reset_opacities:0.0001, 32 calls) |
+| mcmc counting=0 rep 1 | 21.205 | 21.512 | - |
+| mcmc counting=0 rep 2 | 21.255 | 21.569 | - |
+| mcmc counting=1 rep 1 | 21.133 | 21.448 | 0.1210 (densify:0.1024,morton_ordering:0.0186,reset_opacities:0.0000, 32 calls) |
+| mcmc counting=1 rep 2 | 21.255 | 21.566 | 0.1237 (densify:0.1051,morton_ordering:0.0186,reset_opacities:0.0000, 32 calls) |
+ctl: training time with counting 22.612 s, without 22.712 s (-0.44%); spread within each condition 0.278 / 0.025 s
+mcmc: training time with counting 21.194 s, without 21.230 s (-0.17%); spread within each condition 0.122 / 0.050 s
+PASS ta_garden_ctl_c1r1_s10: training time and wall time present
+PASS ta_garden_ctl_c1r1_s10: FGS_ABL_CB present, callback time > 0 and below the wall time
+PASS ta_garden_ctl_c1r2_s10: training time and wall time present
+PASS ta_garden_ctl_c1r2_s10: FGS_ABL_CB present, callback time > 0 and below the wall time
+PASS ta_garden_ctl_c0r1_s10: training time and wall time present
+PASS ta_garden_ctl_c0r1_s10: no FGS_ABL_CB line without counting
+PASS ta_garden_ctl_c0r2_s10: training time and wall time present
+PASS ta_garden_ctl_c0r2_s10: no FGS_ABL_CB line without counting
+PASS ta_garden_mcmc_c1r1_s10: training time and wall time present
+PASS ta_garden_mcmc_c1r1_s10: FGS_ABL_CB present, callback time > 0 and below the wall time
+PASS ta_garden_mcmc_c1r2_s10: training time and wall time present
+PASS ta_garden_mcmc_c1r2_s10: FGS_ABL_CB present, callback time > 0 and below the wall time
+PASS ta_garden_mcmc_c0r1_s10: training time and wall time present
+PASS ta_garden_mcmc_c0r1_s10: no FGS_ABL_CB line without counting
+PASS ta_garden_mcmc_c0r2_s10: training time and wall time present
+PASS ta_garden_mcmc_c0r2_s10: no FGS_ABL_CB line without counting
+PASS ctl: training time with counting within 2% of without (-0.44%)
+PASS mcmc: training time with counting within 2% of without (-0.17%)
+JOB OK
