@@ -76,6 +76,9 @@
 #   STAGES=x1ra sbatch --job-name=gs-x1ra --time=00:45:00 phase2/build_plus.sbatch   (Exp 1R smoke test A, repeated)
 #   STAGES=exp1r SCENE=garden SEEDS="0 1" EXP1_AT=2000 X_ITERS=3000 sbatch --job-name=gs-x1r-stagesmoke --time=00:45:00 phase2/build_plus.sbatch
 #   STAGES=exp1r SCENE=garden sbatch --job-name=gs-x1r-garden --time=04:00:00 phase2/build_plus.sbatch   (Exp 1R; room: one job per seed)
+#   STAGES=x1asmoke sbatch --job-name=gs-x1a-smoke --time=01:00:00 phase2/build_plus.sbatch   (Exp 1A switch smoke test)
+#   STAGES=exp1a SCENE=garden SEEDS="0 1" EXP1_AT=2000 X_ITERS=3000 sbatch --job-name=gs-x1a-stagesmoke --time=01:00:00 phase2/build_plus.sbatch
+#   STAGES=exp1a SCENE=room SEEDS=30 sbatch --job-name=gs-x1a-room-s30 --time=04:30:00 phase2/build_plus.sbatch   (Exp 1A: one job per scene and seed)
 #   STAGES="upbuild upequiv" sbatch --job-name=gs-up-build --time=01:00:00 phase2/build_plus.sbatch   (upstream/README.md)
 #   STAGES=upbench SCENE=garden sbatch --job-name=gs-up-garden --time=01:30:00 phase2/build_plus.sbatch
 #   STAGES=upncu sbatch --job-name=gs-up-ncu --time=00:40:00 phase2/build_plus.sbatch
@@ -534,9 +537,10 @@ x_arm_cfg() {  # arm N_at_branch N_oracle -> CFG_SET value
     oracle) echo "USE_MCMC=true,MAX_PRIMITIVES=$3,LAMBDA_OPACITY_REGULARIZATION=0.01,LAMBDA_SCALE_REGULARIZATION=0.01,LEARNING_RATE_OPACITIES=0.05" ;;
   esac
 }
-if has exp1smoke || has exp1 || has x1adj || has x1rsmoke || has noisepilot || has x1ra || has exp1r; then
+if has exp1smoke || has exp1 || has x1adj || has x1rsmoke || has noisepilot || has x1ra || has exp1r || has x1asmoke || has exp1a; then
   M=${EXP1_METHOD:-FasterGSUp}
   python "$REPO/cluster/patches/fastergs_resume.py" "$DATA/nerficg/src/Methods/$M/Trainer.py"
+  if has x1asmoke || has exp1a; then python "$REPO/cluster/patches/fastergs_ablate.py" "$DATA/nerficg/src/Methods/$M/Trainer.py"; fi
 fi
 if has exp1smoke; then
   BSCENE=garden; BSCALE=0.25; EXP1_AT=2000
@@ -820,6 +824,73 @@ if has exp1r; then
       x_clean $pfx keepstate
     fi
     [ $(( seed % 2 )) = 1 ] && x1r_up $seed
+    x_clean b_${BSCENE}_up_s$seed
+  done
+fi
+# Experiment 1A (phase3/EXP1A_PLAN.md): which parts of the MCMC policy make it faster. Needs the ablation switches
+# (cluster/patches/fastergs_ablate.py), applied with the resume patch above.
+#   x1asmoke  every switch on Experiment 1R's saved garden seed-10 state at 5000 (job 4559237), with FGS_ABL counters,
+#             evaluation checks and view traces: ctl and creset 5000 -> 13000 (the three resets), the six MCMC arms
+#             5000 -> 7000; phase3/check_x1a.py.
+#   exp1a     SCENE, SEEDS (default 30 31 32): as exp1r (reference b_<scene>_up first for even seeds, last for odd; prefix;
+#             FGS_EVAL_CHECK and view traces in every branched run) with the arms ctl mcmc mrep mreloc mnoise mreg mlr
+#             creset, rotated by seed, all with FGS_ABL=1. X_ITERS / EXP1_AT only change for the stage's smoke test.
+x_abl_env() {  # arm N_at_branch -> extra env and CFG_SET for an Experiment 1A arm
+  local m="USE_MCMC=true,MAX_PRIMITIVES=$2"
+  case $1 in
+    ctl)    echo "CFG_SET=" ;;
+    creset) echo "FGS_OPACITY_RESET=0 CFG_SET=" ;;
+    mcmc|mrep) echo "CFG_SET=$m,LAMBDA_OPACITY_REGULARIZATION=0.01,LAMBDA_SCALE_REGULARIZATION=0.01,LEARNING_RATE_OPACITIES=0.05" ;;
+    mreloc) echo "FGS_MCMC_RELOCATE=0 CFG_SET=$m,LAMBDA_OPACITY_REGULARIZATION=0.01,LAMBDA_SCALE_REGULARIZATION=0.01,LEARNING_RATE_OPACITIES=0.05" ;;
+    mnoise) echo "FGS_MCMC_NOISE=0 CFG_SET=$m,LAMBDA_OPACITY_REGULARIZATION=0.01,LAMBDA_SCALE_REGULARIZATION=0.01,LEARNING_RATE_OPACITIES=0.05" ;;
+    mreg)   echo "CFG_SET=$m,LAMBDA_OPACITY_REGULARIZATION=0.0,LAMBDA_SCALE_REGULARIZATION=0.0,LEARNING_RATE_OPACITIES=0.05" ;;
+    mlr)    echo "CFG_SET=$m,LAMBDA_OPACITY_REGULARIZATION=0.01,LAMBDA_SCALE_REGULARIZATION=0.01,LEARNING_RATE_OPACITIES=0.025" ;;
+  esac
+}
+if has x1asmoke; then
+  BSCENE=garden; BSCALE=0.25
+  echo "########## x1asmoke (garden seed 10, Experiment 1R state at 5000: ctl / creset to 13000, MCMC arms to 7000)"
+  R1=$REPO/phase2/logs/run_4559237
+  ST=$DATA/nerficg/$(cat "$R1/runs/x_garden_pfx_s10/rundir.txt" 2>/dev/null)/checkpoints/state_0005000.pt
+  NB=$(sed -n 's/^FGS_SAVE_STATE step=5000 N=\([0-9]*\).*/\1/p' "$R1/x_garden_pfx_s10.seg" 2>/dev/null)
+  if [ ! -f "$ST" ] || [ -z "$NB" ]; then echo "FAILED x1asmoke: no state $ST / N"; FAILED+=(x1asmoke_state); else
+    for arm in ctl creset mcmc mrep mreloc mnoise mreg mlr; do
+      it=7000; case $arm in ctl|creset) it=13000 ;; esac
+      TRAIN_ENV="FGS_RESUME=$ST FGS_EVAL_EVERY=1000 FGS_EVAL_FROM=5000 FGS_EVAL_CHECK=1 FGS_ABL=1 FGS_VIEW_TRACE=$OUT/sa_garden_${arm}_s10.views $(x_abl_env $arm $NB)" \
+        train sa_garden_${arm}_s10 $M 10 $it "" taming 1000
+      x_clean sa_garden_${arm}_s10
+    done
+    python3 "$REPO/phase3/check_x1a.py" "$OUT" "$R1" || FAILED+=(x1asmoke_check)
+  fi
+fi
+if has exp1a; then
+  BSCENE=${SCENE:?set SCENE for the exp1a stage}
+  case $BSCENE in room|counter|kitchen|bonsai) BSCALE=0.5 ;; *) BSCALE=0.25 ;; esac
+  EXP1_AT=${EXP1_AT:-5000}; XI=${X_ITERS:-30000}
+  AARMS=(ctl mcmc mrep mreloc mnoise mreg mlr creset); NA=${#AARMS[@]}
+  echo "########## exp1a (scene $BSCENE scale $BSCALE, seeds ${SEEDS:-30 31 32}, branch at $EXP1_AT, end $XI, arms ${AARMS[*]})"
+  x1a_up() {
+    TRAIN_ENV="FGS_WALL=0,$XI FGS_VIEW_TRACE=$OUT/b_${BSCENE}_up_s$1.views" train b_${BSCENE}_up_s$1 $M "$1" $XI "" taming 1000
+  }
+  for seed in ${SEEDS:-30 31 32}; do
+    order=(); for (( k = 0; k < NA; k++ )); do order+=(${AARMS[$(( (k + seed) % NA ))]}); done
+    if [ $(( seed % 2 )) = 0 ]; then echo "EXP1R_ORDER $BSCENE s$seed up pfx ${order[*]}"; else echo "EXP1R_ORDER $BSCENE s$seed pfx ${order[*]} up"; fi
+    [ $(( seed % 2 )) = 0 ] && x1a_up $seed
+    pfx=x_${BSCENE}_pfx_s$seed
+    TRAIN_ENV="FGS_SAVE_STATE=$EXP1_AT FGS_VIEW_TRACE=$OUT/$pfx.views" train $pfx $M "$seed" $EXP1_AT "" taming 1000
+    ST=$DATA/nerficg/$(cat "$OUT/runs/$pfx/rundir.txt" 2>/dev/null)/checkpoints/state_$(printf %07d $EXP1_AT).pt
+    NB=$(sed -n "s/^FGS_SAVE_STATE step=$EXP1_AT N=\([0-9]*\).*/\1/p" "$OUT/$pfx.seg")
+    if [ ! -f "$ST" ] || [ -z "$NB" ]; then echo "FAILED exp1a $pfx: no state file / N"; FAILED+=("$pfx")
+    else
+      echo "EXP1_BRANCH $BSCENE s$seed step=$EXP1_AT N=$NB state=$ST"
+      for arm in "${order[@]}"; do
+        TRAIN_ENV="FGS_RESUME=$ST FGS_EVAL_EVERY=1000 FGS_EVAL_FROM=$EXP1_AT FGS_EVAL_CHECK=1 FGS_ABL=1 FGS_WALL=$EXP1_AT,$XI FGS_VIEW_TRACE=$OUT/x_${BSCENE}_${arm}_s$seed.views $(x_abl_env $arm $NB)" \
+          train x_${BSCENE}_${arm}_s$seed $M "$seed" $XI "" taming 1000
+        x_clean x_${BSCENE}_${arm}_s$seed
+      done
+      x_clean $pfx keepstate
+    fi
+    [ $(( seed % 2 )) = 1 ] && x1a_up $seed
     x_clean b_${BSCENE}_up_s$seed
   done
 fi

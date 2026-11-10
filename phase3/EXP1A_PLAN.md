@@ -23,7 +23,7 @@ That arm changed five things at once. **Which of them are needed for the speed-u
 | G | regularisation | opacity 0, scale 0 | opacity 0.01, scale 0.01 | config |
 | L | opacity learning rate | 0.025 | 0.05 | config |
 
-(Read from `Methods/FasterGSUp/Trainer.py` and `Model.py`, 2026-11-10. With `MAX_PRIMITIVES` = N at the branch,
+Arm names contain only lower-case letters, to fit the analysis's log pattern. (Read from `Methods/FasterGSUp/Trainer.py` and `Model.py`, 2026-11-10. With `MAX_PRIMITIVES` = N at the branch,
 `mcmc_densification` adds no Gaussians, so R is relocation only.)
 
 **Not part of the question:**
@@ -56,18 +56,18 @@ That arm changed five things at once. **Which of them are needed for the speed-u
 |---|---|---|---|---|---|---|
 | `ctl` | standard Faster-GS | grow / prune | – | resets | 0 | 0.025 |
 | `mcmc` | 1R's MCMC arm, unchanged | relocate | on | none | 0.01 | 0.05 |
-| `mcmc2` | an identical second `mcmc` run, same seed | relocate | on | none | 0.01 | 0.05 |
-| `m-reloc` | `mcmc` without relocation: fixed N, dead Gaussians stay | **none** | on | none | 0.01 | 0.05 |
-| `m-noise` | `mcmc` without noise injection | relocate | **–** | none | 0.01 | 0.05 |
-| `m-reg` | `mcmc` without regularisation | relocate | on | none | **0** | 0.05 |
-| `m-lr` | `mcmc` with `ctl`'s opacity learning rate | relocate | on | none | 0.01 | **0.025** |
-| `c-reset` | `ctl` without opacity resets after the branch | grow / prune | – | **none** | 0 | 0.025 |
+| `mrep` | an identical second `mcmc` run, same seed | relocate | on | none | 0.01 | 0.05 |
+| `mreloc` | `mcmc` without relocation: fixed N, dead Gaussians stay | **none** | on | none | 0.01 | 0.05 |
+| `mnoise` | `mcmc` without noise injection | relocate | **–** | none | 0.01 | 0.05 |
+| `mreg` | `mcmc` without regularisation | relocate | on | none | **0** | 0.05 |
+| `mlr` | `mcmc` with `ctl`'s opacity learning rate | relocate | on | none | 0.01 | **0.025** |
+| `creset` | `ctl` without opacity resets after the branch | grow / prune | – | **none** | 0 | 0.025 |
 
-- **Leave-one-out arms** (`m-*`): each removes one component from the full policy. They test whether a component is
+- **Leave-one-out arms** (`m*`): each removes one component from the full policy. They test whether a component is
   **needed** given the others. They do not test whether a component is enough on its own.
-- **`c-reset`** asks one specific question. `ctl`'s curve drops at each opacity reset, which could by itself explain
+- **`creset`** asks one specific question. `ctl`'s curve drops at each opacity reset, which could by itself explain
   part of the gap. This arm removes only the resets from `ctl`.
-- **`mcmc2`** measures the same-seed noise of T in this experiment. The noise pilot measured final PSNR, not T.
+- **`mrep`** measures the same-seed noise of T in this experiment. The noise pilot measured final PSNR, not T.
 - **Order:** the arms run in an order rotated by seed. The reference `up` runs first for even seeds and last for odd
   seeds, as in 1R.
 - **Runs:** 2 scenes × 3 seeds × (prefix + 8 arms + reference) = 60.
@@ -77,11 +77,11 @@ That arm changed five things at once. **Which of them are needed for the speed-u
 Per pair (scene, seed), with T from the primary target:
 
 - **Advantage:** A = T(`ctl`) − T(`mcmc`).
-- **Fraction lost when component k is removed:** f_k = (T(`m-k`) − T(`mcmc`)) / A. An arm that never reaches the target
+- **Fraction lost when component k is removed:** f_k = (T(`m<k>`) − T(`mcmc`)) / A. An arm that never reaches the target
   counts as f = +∞, which is at least 1.
-- **Fraction recovered by removing the resets:** g = (T(`ctl`) − T(`c-reset`)) / A.
-- **Noise reference:** f_rep = (T(`mcmc2`) − T(`mcmc`)) / A. It is 0 in expectation.
-- **Quality:** each `m-*` arm's final PSNR and LPIPS minus `mcmc`'s, and `c-reset`'s minus `ctl`'s.
+- **Fraction recovered by removing the resets:** g = (T(`ctl`) − T(`creset`)) / A.
+- **Noise reference:** f_rep = (T(`mrep`) − T(`mcmc`)) / A. It is 0 in expectation.
+- **Quality:** each `m*` arm's final PSNR and LPIPS minus `mcmc`'s, and `creset`'s minus `ctl`'s.
 
 The pooled statistics use all six pairs (two scenes × three seeds). Per-scene values are always reported alongside.
 
@@ -124,19 +124,19 @@ reason.
 ## Checks before the decision
 
 - **Validation and check 1 (1a–1d), as in 1R.** Check 1d now also covers the new switches:
-  - each arm's switch values, printed on its `FGS_RESUME` line, must be the ones in the table above;
+  - each arm's switch values, printed on its `FGS_ABL` line at the end of training, must be the ones in the table above;
   - each arm's configuration may differ from `ctl`'s only in its own keys.
 - **Check 2: each arm did what it says.** Read from new counters, printed once at the end of training:
 
 | arm | requirement |
 |---|---|
-| `mcmc`, `mcmc2`, `m-noise`, `m-reg`, `m-lr` | relocations > 0; N held at N at the branch |
-| `m-reloc` | relocations = 0; N held |
-| `m-noise` | noise steps = 0 |
+| `mcmc`, `mrep`, `mnoise`, `mreg`, `mlr` | relocations > 0; N held at N at the branch |
+| `mreloc` | relocations = 0; N held |
+| `mnoise` | noise steps = 0 |
 | every other MCMC arm | noise steps = 25,000 |
 | `ctl` | 3 opacity resets after the branch (6,000, 9,000, 12,000) |
-| `c-reset` and all MCMC arms | 0 opacity resets |
-| `ctl` and `c-reset` | N grows after the branch (as `ctl` in 1R) |
+| `creset` and all MCMC arms | 0 opacity resets |
+| `ctl` and `creset` | N grows after the branch (as `ctl` in 1R) |
 
 ## Before launch: engineering and smoke tests
 
@@ -149,8 +149,11 @@ from the environment. Their defaults reproduce the current behaviour:
 | `FGS_MCMC_NOISE` | 1 | `post_optimizer_step` gets `inject_noise=False` |
 | `FGS_OPACITY_RESET` | 1 | `reset_opacities` does nothing; the extra reset at 500 is untouched, as it is before the branch |
 
-- It also adds counters, printed on an `FGS_ABL` line at the end of training: relocation events, Gaussians relocated,
-  noise steps, opacity resets after the branch. The switch values are added to the `FGS_RESUME` line.
+- It also adds counters, printed with `FGS_ABL=1` on one `FGS_ABL` line at the end of training: the switch values,
+  relocation events, Gaussians relocated, dead Gaussians left in place, noise steps, and the iterations of the opacity
+  resets. The v7 resume patch is left unchanged.
+- Counting dead Gaussians costs one device sync per densification step. It is done in every MCMC arm alike, and it is
+  timed as training.
 - The regularisation and opacity learning rate need no patch: they are set through `CFG_SET`, as in 1R.
 
 **Smoke tests** (garden, short: branch at 2,000, end at 3,000, plus one long-enough check for the resets):
@@ -159,9 +162,25 @@ from the environment. Their defaults reproduce the current behaviour:
 |---|---|---|
 | Defaults unchanged | With all switches unset, `ctl` and `mcmc` pass 1R's checks 1a–1d and their counters match the table above, on the same saved state | gate |
 | Each switch does only its own thing | With one switch at 0, only that counter changes (relocations, noise steps or resets), and 1b–1c still pass | gate |
-| Resets | A `ctl` and a `c-reset` run from 5,000 to 13,000: `ctl` logs resets at 6,000, 9,000 and 12,000, `c-reset` none | gate |
-| Analysis | `analyze_ttq.py` (or a new `analyze_abl.py`) computes f_k, g and f_rep and the classifications. Fixture tests with known answers for each class, a non-replicating `mcmc`, an unresolvable `mcmc2`, and a "not reached" arm | gate |
+| Resets | A `ctl` and a `creset` run from 5,000 to 13,000: `ctl` logs resets at 6,000, 9,000 and 12,000, `creset` none | gate |
+| Analysis | `analyze_ttq.py` (or a new `analyze_abl.py`) computes f_k, g and f_rep and the classifications. Fixture tests with known answers for each class, a non-replicating `mcmc`, an unresolvable `mrep`, and a "not reached" arm | gate |
 | Stage smoke | The new stage end to end on a short garden run, both run orders, through the analysis's checks | gate |
+
+**Built 2026-11-10:**
+- `cluster/patches/fastergs_ablate.py`: tested on a copy of the deployed trainer. It is idempotent and changes only
+  the four places above.
+- Stages `x1asmoke` and `exp1a` in `phase2/build_plus.sbatch`, and `phase3/check_x1a.py`.
+- `analyze_ttq.py --abl` and `phase3/tests/exp1a_fixture.py`. Seven scenarios each give their intended answer:
+  - the classes needed, not needed and not resolved;
+  - resets explaining little and resets explaining a major part;
+  - a non-replicating `mcmc`;
+  - an unresolvable `mrep`;
+  - an arm that never reaches the target (counted as f = ∞);
+  - a wrong noise count, and a wrong switch: both stop the decision.
+
+  The Experiment 1 and 1R analyses give byte-identical output before and after the change.
+- `x1asmoke` uses Experiment 1R's saved garden seed-10 state. Gate "defaults unchanged": `ctl` with no switch set sees
+  exactly 1R's `ctl` views over 5,000–12,999.
 
 ## Cost
 
@@ -195,13 +214,13 @@ not done here, so the measurements stay comparable with 1R.
 ## Open questions for review
 
 1. **The reset component inside MCMC.** `mcmc` + resets would complete the leave-one-out set. It is left out because a
-   reset clamps every opacity to 0.01, just above the 0.005 relocation threshold (`Model.reset_opacities`), which would mix two components in one arm. `c-reset` asks the
+   reset clamps every opacity to 0.01, just above the 0.005 relocation threshold (`Model.reset_opacities`), which would mix two components in one arm. `creset` asks the
    reset question from the `ctl` side instead. Default: not included.
 2. **Add-one arms for G and L.** These are cheap: `ctl` with MCMC's regularisation, and `ctl` with opacity learning rate
    0.05, both through `CFG_SET`. They would show whether either alone speeds up `ctl`. Default: not included, to keep
    the question to necessity; about 2.4 GPU-hours if added.
 3. **Thresholds.** 0.5 for "needed", 0.2 for "not needed" and for the noise check. Set from what would count as a large
-   or small share of the effect, before any run. `mcmc2` decides whether they can be resolved.
+   or small share of the effect, before any run. `mrep` decides whether they can be resolved.
 4. **Three seeds.** Same as 1R. With the noise check in step 2, too few seeds shows up as "not resolved", not as a
    false classification.
 5. **`cudnn.benchmark` during evaluation.** Turning it off would cut evaluation memory from about 71 to 9.5 GiB, with

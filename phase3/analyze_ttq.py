@@ -34,12 +34,19 @@ ap.add_argument('--exp1r', action='store_true', help='Experiment 1R: check 1 = e
 ap.add_argument('--end', type=int, default=30000, help='last step (only changed for the exp1r stage smoke test)')
 ap.add_argument('--pilot-sd', default='garden=0.0504,room=0.0664',
                 help='same-seed PSNR SD of the difference from the noise pilot (phase3/noise-pilot-analysis.md), for 1e')
+ap.add_argument('--abl', action='store_true', help='Experiment 1A (phase3/EXP1A_PLAN.md): the ablation arms, their '
+                'check 2 from the FGS_ABL lines, and the ablation decision rule; implies --exp1r')
 ap.add_argument('--checks-only', action='store_true', help='stop after validation and check 1 (stage smoke test)')
 args = ap.parse_args()
 sys.stdout.reconfigure(encoding="utf-8")
 END = args.end
 MID = 15000 if END == 30000 else END   # check 2's mid-run point
 ARMS = ('ctl', 'stop', 'mcmc', 'oracle')
+MCMC_ARMS = {'mcmc', 'oracle', 'mrep', 'mreloc', 'mnoise', 'mreg', 'mlr'}
+SWITCHES = {'mreloc': (0, 1, 1), 'mnoise': (1, 0, 1), 'creset': (1, 1, 0)}   # FGS_ABL relocate, noise, reset; default 1 1 1
+if args.abl:
+    ARMS = ('ctl', 'mcmc', 'mrep', 'mreloc', 'mnoise', 'mreg', 'mlr', 'creset')
+    args.exp1r = True
 CAND = ('stop', 'mcmc')
 DELTA, SENS = 0.05, (0.10, 0.20)
 SEVERE = 3.0
@@ -148,6 +155,39 @@ for sc in scenes:
             n0 = g('mcmc')['clk'][args.branch][1]
             if any(v[1] != n0 for k, v in g('mcmc')['clk'].items() if k >= args.branch):
                 errors[sc].append(f's{s} mcmc: N not held at {n0}')
+        if args.abl:
+            for a in ARMS:
+                r = g(a)
+                if not r:
+                    continue
+                ab = [re.match(r'FGS_ABL relocate=(\d) noise=(\d) reset=(\d) use_mcmc=(\S+) relocation_events=(\d+) relocated=(\d+) '
+                               r'dead_left=(\d+) noise_steps=(\d+) resets=(\S+)', l) for l in r['lines']]
+                ab = [x for x in ab if x]
+                if len(ab) != 1:
+                    errors[sc].append(f's{s} {a}: expected one FGS_ABL line, got {len(ab)}'); continue
+                ab = ab[0]
+                resets = [] if ab.group(9) == 'none' else [int(x) for x in ab.group(9).split(',')]
+                if a in MCMC_ARMS:
+                    n0 = r['clk'][args.branch][1]
+                    if any(v[1] != n0 for k, v in r['clk'].items() if k >= args.branch):
+                        errors[sc].append(f's{s} {a}: N not held at {n0}')
+                    if a == 'mreloc' and int(ab.group(5)) != 0:
+                        errors[sc].append(f's{s} {a}: {ab.group(5)} relocation events, expected 0')
+                    if a != 'mreloc' and int(ab.group(5)) == 0:
+                        errors[sc].append(f's{s} {a}: no relocation event')
+                    want_noise = 0 if a == 'mnoise' else END - args.branch
+                    if int(ab.group(8)) != want_noise:
+                        errors[sc].append(f's{s} {a}: {ab.group(8)} noise steps, expected {want_noise}')
+                    if resets:
+                        errors[sc].append(f's{s} {a}: opacity resets {resets} in an MCMC arm')
+                else:
+                    if not r['clk'][MID][1] > r['clk'][args.branch][1]:
+                        errors[sc].append(f's{s} {a}: no growth after the branch')
+                    want = [] if a == 'creset' else [i for i in range(3000, 14900, 3000) if args.branch <= i < END]
+                    if resets != want:
+                        errors[sc].append(f's{s} {a}: opacity resets at {resets}, expected {want or "none"}')
+                    if int(ab.group(8)) != 0:
+                        errors[sc].append(f's{s} {a}: {ab.group(8)} noise steps in a non-MCMC arm')
         if g('oracle') and g('ctl') and END == 30000:   # a short smoke run need not reach the cap
             cap = runs[(sc, 'ctl', s)]['n_end']
             if g('oracle')['clk'][15000][1] != cap:
@@ -186,6 +226,9 @@ ALLOWED = {'ctl': {'MODEL_NAME'}, 'stop': {'MODEL_NAME', 'DENSIFICATION_END_ITER
            'mcmc': {'MODEL_NAME', 'USE_MCMC', 'MAX_PRIMITIVES', 'LAMBDA_OPACITY_REGULARIZATION', 'LAMBDA_SCALE_REGULARIZATION',
                     'LEARNING_RATE_OPACITIES'}}
 ALLOWED['oracle'] = ALLOWED['mcmc']
+for _a in ('mrep', 'mreloc', 'mnoise', 'mreg', 'mlr'):
+    ALLOWED[_a] = ALLOWED['mcmc']
+ALLOWED['creset'] = ALLOWED['ctl']
 EVALCHECK = re.compile(r'^FGS_EVALCHECK step=(\d+) guard=1 rng_before=(\S+) rng_after_render=(\S+) rng_after_restore=(\S+) '
                        r'state_before=(\S+) state_after=(\S+) training_before=(\S+) training_after_render=(\S+) '
                        r'training_after_restore=(\S+) mode_before=(\S+) mode_after_render=(\S+) mode_after_restore=(\S+)')
@@ -242,7 +285,7 @@ def exp1r_check1():
                     bad.append(f's{s} 1b: {a}: no single matching FGS_SAVE_STATE / FGS_RESUME at {args.branch}')
                     continue
                 m = m[0]
-                want = sv[0].group(2, 3, 4) + (('none',) if a in ('mcmc', 'oracle') else (sv[0].group(5),))
+                want = sv[0].group(2, 3, 4) + (('none',) if a in MCMC_ARMS else (sv[0].group(5),))
                 if m.group(2, 3, 4, 5) != want:
                     bad.append(f's{s} 1b: {a}: loaded state differs from the saved one ({m.group(2, 3, 4, 5)} vs {want})')
                 # 1c: every in-training evaluation left random states, model / optimizer state, flag and mode as they were
@@ -256,6 +299,11 @@ def exp1r_check1():
                 try:
                     ca, cc = cfg(arch[(sc, a, str(s))], f'x_{sc}_{a}_s{s}'), cfg(xa, f'x_{sc}_ctl_s{s}')
                     d = ydiff(ca, cfg(ra, f'b_{sc}_up_s{s}') if a == 'ctl' else cc)
+                    if args.abl:
+                        sw = [re.match(r'FGS_ABL relocate=(\d) noise=(\d) reset=(\d)', l) for l in r['lines']]
+                        sw = [tuple(int(v) for v in x.groups()) for x in sw if x]
+                        if sw != [SWITCHES.get(a, (1, 1, 1))]:
+                            bad.append(f's{s} 1d: {a}: switches (relocate, noise, reset) {sw}, expected {SWITCHES.get(a, (1, 1, 1))}')
                     if not d <= ALLOWED[a]:
                         bad.append(f's{s} 1d: {a}: configuration differs in {sorted(d - ALLOWED[a])}')
                     get = lambda k: next(v for kk, v in ca.items() if kk.endswith('.' + k))
@@ -263,7 +311,7 @@ def exp1r_check1():
                     eff = {'USE_MCMC': str(m.group(6) == 'True').lower(), 'DENSIFICATION_END_ITERATION': repr(float(m.group(8))),
                            'LEARNING_RATE_OPACITIES': repr(float(lr['opacities'])),
                            'LAMBDA_OPACITY_REGULARIZATION': repr(float(m.group(10))), 'LAMBDA_SCALE_REGULARIZATION': repr(float(m.group(11)))}
-                    if a in ('mcmc', 'oracle'):
+                    if a in MCMC_ARMS:
                         eff['MAX_PRIMITIVES'] = repr(float(m.group(7)))
                     wrong = {k: (v, get(k)) for k, v in eff.items() if v != get(k)}
                     if wrong:
@@ -429,6 +477,123 @@ for sc in scenes:
                 fails[(sc, k[1])] += 1
                 print(f'- {sc} {k[1]} s{k[2]}: image {i} {v - st.median(others):+.1f} dB')
 print('\n' + '; '.join(f'{sc} {a}: {fails[(sc, a)]}' for sc in scenes for a in ARMS) + '\n')
+
+# ---------------------------------------------------------------- Experiment 1A decision (phase3/EXP1A_PLAN.md)
+COMPONENTS = (('R', 'mreloc', 'relocation'), ('Z', 'mnoise', 'noise injection'), ('G', 'mreg', 'regularisation'),
+              ('L', 'mlr', 'opacity learning rate 0.05'))
+
+
+def abl_fractions(delta, stay=False):
+    """Per pair (scene, seed): A = T(ctl) - T(mcmc); f for every arm; g for creset. None where A <= 0 or T(ctl) / T(mcmc)
+    is missing (undefined); +inf where the arm never reaches the target (for g: -inf)."""
+    out = {}
+    for sc in scenes:
+        for s in args.seeds:
+            c, m = runs.get((sc, 'ctl', s)), runs.get((sc, 'mcmc', s))
+            if not c or not m:
+                continue
+            tgt = c['curve'][END]['PSNR'] - delta
+            tc, tm = ttq(c, tgt, stay), ttq(m, tgt, stay)
+            A = None if tc is None or tm is None else tc - tm
+            row = {'A': A, 'T_ctl': tc, 'T_mcmc': tm}
+            for a in ('mrep', 'mreloc', 'mnoise', 'mreg', 'mlr'):
+                r = runs.get((sc, a, s))
+                t = ttq(r, tgt, stay) if r else None
+                row[a] = None if not A or A <= 0 or not r else (float('inf') if t is None else (t - tm) / A)
+            r = runs.get((sc, 'creset', s))
+            t = ttq(r, tgt, stay) if r else None
+            row['creset'] = None if not A or A <= 0 or not r else (float('-inf') if t is None else (tc - t) / A)
+            out[(sc, s)] = row
+    return out
+
+
+def abl_classify(fr):
+    pairs = [fr[k] for k in sorted(fr)]
+    med = lambda xs: st.median(xs) if xs else None
+    rep = [abs(p['mrep']) for p in pairs if p['mrep'] is not None]
+    resolved = len(rep) == 6 and med(rep) <= 0.2
+    cls = {}
+    for code, arm, _ in COMPONENTS:
+        v = [p[arm] for p in pairs if p[arm] is not None]
+        pos = sum(x > 0 for x in v)
+        dq = {sc: st.mean(runs[(sc, arm, s)]['curve'][END]['PSNR'] - runs[(sc, 'mcmc', s)]['curve'][END]['PSNR']
+                          for s in args.seeds if (sc, arm, s) in runs and (sc, 'mcmc', s) in runs) for sc in scenes}
+        if med(v) is not None and med(v) >= 0.5 and pos >= 5:
+            cls[code] = 'needed'
+        elif med(v) is not None and med(v) <= 0.2 and all(x >= -0.10 for x in dq.values()):
+            cls[code] = 'not needed'
+        else:
+            cls[code] = 'not resolved'
+    v = [p['creset'] for p in pairs if p['creset'] is not None]
+    if med(v) is not None and med(v) >= 0.5 and sum(x > 0 for x in v) >= 5:
+        cls['O'] = 'resets explain a major part of the gap'
+    elif med(v) is not None and med(v) <= 0.2:
+        cls['O'] = 'resets explain little'
+    else:
+        cls['O'] = 'not resolved'
+    return resolved, med(rep), cls
+
+
+def abl_decision():
+    print('## Decision (phase3/EXP1A_PLAN.md)\n')
+    valid = all(not errors[sc] for sc in scenes) and all(check1.get(sc) for sc in scenes) and len(scenes) == 2
+    if not valid:
+        print('NOT EVALUATED: validation or check 1 failed (see above). Fix the cause before reading the arms.')
+        if not args.descriptive:
+            sys.exit(2)
+        print('\n**Descriptive only (--descriptive): the rule applied anyway. This is NOT the pre-registered decision.**\n')
+    # step 1: replication of Experiment 1R's mcmc result, by 1R's rule
+    crit = {}
+    for sc in scenes:
+        d = summary[(sc, 'mcmc')]
+        crit[f'{sc}: median T reduction >= 10%'] = None not in d['dts'] and st.median(d['dts']) >= 10
+        crit[f'{sc}: mean ΔPSNR >= -0.10 dB'] = st.mean(d['dps']) >= -0.10
+        crit[f'{sc}: mean ΔLPIPS <= +0.002'] = st.mean(d['dls']) <= 0.002
+    faster = sum(x is not None and x > 0 for sc in scenes for x in summary[(sc, 'mcmc')]['dts'])
+    crit[f'T lower than ctl in >= 5 of 6 pairs ({faster})'] = faster >= 5
+    crit['one-view failures not above ctl'] = sum(fails[(sc, 'mcmc')] for sc in scenes) <= sum(fails[(sc, 'ctl')] for sc in scenes)
+    rep_ok = all(crit.values())
+    print(f'**Step 1, replication: mcmc vs ctl by Experiment 1R\'s rule: {"PASS" if rep_ok else "FAIL"}**')
+    for k, v in crit.items():
+        print(f'  - {"meets" if v else "misses"} {k}')
+    fmt = lambda x: 'n/a' if x is None else ('not reached' if x in (float('inf'), float('-inf')) else f'{x:+.2f}')
+    tables = {}
+    for label, delta, stay in (('−0.05 dB (primary)', DELTA, False), ('−0.10 dB', 0.10, False), ('−0.20 dB', 0.20, False),
+                               ('−0.05 dB and stays', DELTA, True)):
+        fr = abl_fractions(delta, stay)
+        tables[label] = (fr, abl_classify(fr))
+        print(f'\n### Fractions at target {label}\n')
+        print('| scene | seed | A = T(ctl) − T(mcmc) (s) | f mrep | f mreloc (R) | f mnoise (Z) | f mreg (G) | f mlr (L) | g creset (O) |')
+        print('|---|---|---|---|---|---|---|---|---|')
+        for (sc, s), p in sorted(fr.items()):
+            a = 'n/a' if p['A'] is None else f'{p["A"]:.1f}'
+            print(f'| {sc} | {s} | {a} | ' + ' | '.join(fmt(p[k]) for k in ('mrep', 'mreloc', 'mnoise', 'mreg', 'mlr', 'creset')) + ' |')
+    if not rep_ok:
+        print('\nOUTCOME: mcmc does not replicate Experiment 1R here. No component is classified (plan, step 1).')
+        return
+    fr, (resolved, mrep_med, cls) = tables['−0.05 dB (primary)']
+    print(f'\n**Step 2, resolution: median |f mrep| = {"n/a" if mrep_med is None else f"{mrep_med:.2f}"} '
+          f'(must be <= 0.20): {"PASS" if resolved else "FAIL"}**')
+    if not resolved:
+        print('\nOUTCOME: the experiment cannot resolve fractions of this size (same-seed mcmc runs disagree too much). '
+              'Steps 3 and 4 are descriptive only; the fractions above are reported without classification.')
+        return
+    print('\n**Steps 3 and 4, classification at the primary target:**\n')
+    for code, arm, name in COMPONENTS:
+        others = {lab: t[1][2][code] for lab, t in tables.items() if lab != '−0.05 dB (primary)'}
+        sens = '' if all(v == cls[code] for v in others.values()) else ' — **sensitive to target selection** (' + '; '.join(f'{k}: {v}' for k, v in others.items()) + ')'
+        print(f'- {code} ({name}, arm {arm}): **{cls[code]}**{sens}')
+    others = {lab: t[1][2]['O'] for lab, t in tables.items() if lab != '−0.05 dB (primary)'}
+    sens = '' if all(v == cls['O'] for v in others.values()) else ' — **sensitive to target selection** (' + '; '.join(f'{k}: {v}' for k, v in others.items()) + ')'
+    print(f'- O (opacity resets, arm creset): **{cls["O"]}**{sens}')
+    print('\nReading: "needed" means needed given the other components of this policy, on these scenes; leave-one-out '
+          'fractions need not add up to 1.')
+
+
+if args.abl:
+    abl_decision()
+    sys.exit(0)
+
 
 # ---------------------------------------------------------------- decision (pre-registered)
 print('## Decision (phase3/PLAN.md)\n')
