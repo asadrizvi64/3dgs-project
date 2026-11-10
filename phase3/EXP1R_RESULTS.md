@@ -19,7 +19,9 @@ All four completed with no failed run, so no reruns. The runs are in `experiment
 **`mcmc` passes the pre-registered decision rule on both scenes. `stop` fails. The oracle reference passes.**
 
 Pre-registered reading: the combined MCMC policy reached the target quality sooner than standard Faster-GS on garden
-and room, seeds 10–12, on an H100. The policy combines a fixed population with relocation, noise injection, opacity
+and room, seeds 10–12, on an H100. *(Clock, stated 2026-11-10: "sooner" is on the training-step clock, which excludes the
+densify, relocation, Morton-ordering and opacity-reset callbacks. The 31% and 36% are therefore reductions in
+training-step time to matched quality, not in complete training time. See "Disclosed after results".)* The policy combines a fixed population with relocation, noise injection, opacity
 and scale regularisation, and opacity learning rate 0.05. The result does not say which part is responsible.
 
 ## Validity

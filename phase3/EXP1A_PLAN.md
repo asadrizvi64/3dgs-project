@@ -90,9 +90,16 @@ Per pair (scene, seed), with T from the primary target:
 - **The training clock (`SEGCLOCK`)** covers only the training step itself. The densify, Morton-ordering and
   opacity-reset callbacks run between steps, outside it. This was true for Experiment 1R too
   ([EXP1R_RESULTS.md](EXP1R_RESULTS.md), disclosed there). The primary T stays on this clock, for comparability with 1R.
-- **Secondary clock:** the training clock plus the measured time of those three callbacks, from patch v2's
-  `FGS_ABL_CB` (CUDA events, cumulative before each evaluation point, the prefix's included). Every fraction and
-  classification is also computed on this clock.
+- **Secondary clock, "training step + three instrumented callbacks":** the training clock plus the measured time of
+  the densify, Morton-ordering and opacity-reset callbacks. It comes from patch v2's `FGS_ABL_CB`: CUDA events,
+  cumulative before each evaluation point, with the prefix's included.
+  - Every fraction and classification is also computed on this clock.
+  - It is not a complete training-time clock. Other work between steps (SH-degree increase, loop and callback
+    dispatch overhead) is outside both clocks.
+- **Callback records are an instrumentation requirement** (added 2026-11-10). Every arm and every prefix must have
+  exactly one valid `FGS_ABL_CB` record: cumulative times non-negative and non-decreasing, ending at the total.
+  A missing or inconsistent record is a validation failure, so the decision is not evaluated. The secondary clock is
+  never dropped silently.
 
 ## Decision rule (fixed before launch)
 
@@ -123,6 +130,10 @@ component is **not resolved**, and the fractions are reported descriptively with
 - **needed:** median f_k ≥ 0.5, and f_k > 0 in at least n − 1 pairs;
 - **not needed:** median f_k ≤ 0.2, and on both scenes the arm's mean final ΔPSNR against `mcmc` ≥ −0.10 dB and mean
   ΔLPIPS ≤ +0.002;
+- **which pairs each part uses** (stated 2026-11-10, as implemented):
+  - the time-to-quality part (f_k, g and their pair counts) uses only the n used pairs;
+  - the quality part uses all three seeds of each scene, including any pair excluded from the time part. That is the
+    more conservative choice.
 - **not resolved:** anything else.
 
 **Step 4. Opacity resets**, over the same pairs:
@@ -202,7 +213,11 @@ from the environment. Their defaults reproduce the current behaviour:
 | Analysis | `analyze_ttq.py` (or a new `analyze_abl.py`) computes f_k, g and f_rep and the classifications. Fixture tests with known answers for each class, a non-replicating `mcmc`, an unresolvable `mrep`, and a "not reached" arm | gate |
 | Stage smoke | The new stage end to end on a short garden run, both run orders, through the analysis's checks | gate |
 | Counting vs clock (`x1atime`, added 2026-11-10) | `ctl` and `mcmc` from the same state, 5,000 → 8,000, no evaluation, counting on and off, two runs each. Per arm, the mean training time with counting is within 2% of the mean without. Wall time and callback time reported. | gate |
-| Stage smoke on v2 | The stage smoke repeated with patch v2, so the analysis reads real `FGS_ABL_CB` lines | gate |
+| Stage smoke on v2 | The stage smoke repeated with patch v2. Every arm and both prefixes produce valid `FGS_ABL_CB` records (the validation check above), and the analysis runs end to end on both clocks | gate |
+
+**How to read `x1atime`.** The counting sync runs inside the densify callback, outside the training clock. So the 2% gate
+shows only that the training-step clock is unchanged. Any extra cost of counting shows up in wall time and callback
+time, which are reported separately and are not gated. It is the same in every MCMC arm.
 
 **Built 2026-11-10:**
 - `cluster/patches/fastergs_ablate.py`: tested on a copy of the deployed trainer. It is idempotent and changes only
@@ -223,7 +238,9 @@ from the environment. Their defaults reproduce the current behaviour:
   - an arm with worse LPIPS, which is then not classified as "not needed";
   - a one-view failure on the control-based reference, which fails replication;
   - a component whose class changes with the clock, which is flagged;
-  - logs without callback timing, where the second clock is reported as not available.
+  - logs without callback timing: *revised the same day after the second review*. This is now a validation failure
+    (instrumentation), not a dropped clock;
+  - a callback record whose cumulative time decreases, which is also a validation failure (14 scenarios in all).
 - `x1asmoke` uses Experiment 1R's saved garden seed-10 state. Gate "defaults unchanged": `ctl` with no switch set sees
   exactly 1R's `ctl` views over 5,000–12,999.
 

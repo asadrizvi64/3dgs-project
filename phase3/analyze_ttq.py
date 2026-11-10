@@ -188,6 +188,23 @@ for sc in scenes:
                         errors[sc].append(f's{s} {a}: opacity resets at {resets}, expected {want or "none"}')
                     if int(ab.group(8)) != 0:
                         errors[sc].append(f's{s} {a}: {ab.group(8)} noise steps in a non-MCMC arm')
+            # callback timing (patch v2) is an instrumentation requirement: every arm and the prefix need one valid
+            # FGS_ABL_CB record, with cumulative times that never decrease and end at the total
+            pb = blocks.get((sc, 'pfx', str(s)))
+            for who, lines_, last in [(a, g(a)['lines'], END) for a in ARMS if g(a)] + ([('prefix', pb[-1], args.branch)] if pb else []):
+                cb = [re.match(r'FGS_ABL_CB total_s=(\S+) by=(\S+) calls=(\d+) cum=(\S+)', l) for l in lines_]
+                cb = [x for x in cb if x]
+                if len(cb) != 1:
+                    errors[sc].append(f's{s} {who}: {len(cb)} FGS_ABL_CB records, expected 1 (callback timing missing: instrumentation failure)')
+                    continue
+                cum = sorted((int(k), float(v)) for k, v in (x.split(':') for x in cb[0].group(4).split(',')))
+                vals = [v for k, v in cum if k <= last]
+                tot = float(cb[0].group(1))
+                if (not vals or any(v < 0 for v in vals) or any(b_ < a_ for a_, b_ in zip(vals, vals[1:]))
+                        or abs(vals[-1] - tot) > 0.01 + 1e-4 * tot or int(cb[0].group(3)) == 0):
+                    errors[sc].append(f's{s} {who}: FGS_ABL_CB record inconsistent (total {tot}, calls {cb[0].group(3)}, '
+                                      f'cumulative at {last}: {vals[-1] if vals else None}, non-decreasing: '
+                                      f'{all(b_ >= a_ for a_, b_ in zip(vals, vals[1:]))})')
         if g('oracle') and g('ctl') and END == 30000:   # a short smoke run need not reach the cap
             cap = runs[(sc, 'ctl', s)]['n_end']
             if g('oracle')['clk'][15000][1] != cap:

@@ -20,7 +20,8 @@
 #               replication fails
 #   clock       mreloc has no callback time, the others 0.002 s per step -> R needed on the training clock, not needed
 #               with callbacks included: flagged as sensitive to the clock boundary
-#   nocb        no FGS_ABL_CB lines (patch v1 logs)           -> classes as good; callback clock reported as not available
+#   badcb       mreg's cumulative callback time decreases at one point (garden seed 31) -> validation error, not evaluated
+#   nocb        no FGS_ABL_CB lines (patch v1 logs)           -> instrumentation failure: validation error, not evaluated
 # Callback time (FGS_ABL_CB) is otherwise 0.001 s per step in every arm, so the two clocks agree.
 import math
 import os
@@ -81,8 +82,10 @@ def metrics(d, p, lp=0.12, low=None):
 def cbline(r_, lo, hi):
     if scen == 'nocb':
         return 'no callback timing in patch v1'
+    bad = scen == 'badcb' and r_ < 0
+    r_ = abs(r_)
     return (f'FGS_ABL_CB total_s={r_ * (hi - lo):.4f} by=densify:{r_ * (hi - lo):.4f} calls=100 cum='
-            + ','.join(f'{s_}:{r_ * max(0, min(s_, hi) - lo):.4f}' for s_ in range(1000, hi + 1, 1000)))
+            + ','.join(f'{s_}:{(0.0 if bad and s_ == 20000 else r_ * max(0, min(s_, hi) - lo)):.4f}' for s_ in range(1000, hi + 1, 1000)))
 
 
 def views(path, seed, lo, hi):
@@ -147,7 +150,7 @@ for sc, base, job in (('garden', 27.5, 'j1'), ('room', 31.0, 'j2')):
             L += [f'FGS_TRAIN_END N={nend} peak_alloc_gib=5.00 peak_reserved_gib=6.00',
                   f'FGS_ABL relocate={sw[0]} noise={sw[1]} reset={sw[2]} use_mcmc={mc} relocation_events={events} '
                   f'relocated={events * 1000} dead_left={0 if events else 5000} noise_steps={noise} resets={resets}',
-                  cbline(CB[a], BR, END),
+                  cbline(-CB[a] if (a == 'mreg' and fault('badcb')) else CB[a], BR, END),
                   f'FGS_WALL from=5000 to=30000 s={cum(a, END) - 40.0 + 130:.3f} views=0',
                   f'RESULT {name} PSNR:{psnr(a, END, b):.10f} SSIM:0.8 LPIPS:{LP[a]} N_Gaussians:{nend} ms_it=6']
             for st in range(BR, END + 1, 1000):
