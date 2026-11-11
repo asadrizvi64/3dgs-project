@@ -1,0 +1,9 @@
+SEGCLOCK step=1000 seg_s=3.227 cum_s=3.227 sparse=0 N=174547 peak_alloc_gib=5.37
+SEGCLOCK step=2000 seg_s=3.335 cum_s=6.562 sparse=0 N=426249 peak_alloc_gib=5.61
+SEGCLOCK step=3000 seg_s=3.925 cum_s=10.487 sparse=0 N=665934 peak_alloc_gib=5.89
+SEGCLOCK step=4000 seg_s=3.740 cum_s=14.227 sparse=0 N=757232 peak_alloc_gib=5.96
+SEGCLOCK step=5000 seg_s=4.110 cum_s=18.338 sparse=0 N=951212 peak_alloc_gib=6.18
+FGS_TRAIN_END N=951212 peak_alloc_gib=6.18 peak_reserved_gib=6.28
+FGS_ABL relocate=1 noise=1 reset=1 use_mcmc=False relocation_events=0 relocated=0 dead_left=0 noise_steps=0 resets=3000
+FGS_ABL_CB total_s=0.2652 by=densify:0.2564,morton_ordering:0.0086,reset_opacities:0.0002 calls=46 cum=1000:0.0847,2000:0.1197,3000:0.1632,4000:0.2120,5000:0.2652
+FGS_SAVE_STATE step=5000 N=951212 cum_s=18.338 param_sha=a2dd3cbc81d092ac optim_sha=159aa0087c44313e dinfo_sha=c6cd113e7db2eb83 path=/data/cat/ws/syas272h-3dgs-data/nerficg/output/FasterGSUp/fastergsup_room_de6da4d_s30p2x_room_pfx_s30_2026-11-10-10-08-07/checkpoints/state_0005000.pt

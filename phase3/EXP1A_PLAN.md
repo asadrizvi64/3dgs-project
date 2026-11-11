@@ -381,6 +381,10 @@ jobs run.
 | 4561626 | room | 31 | 4:30 |
 | 4561628 | room | 32 | 4:30 |
 
+**Result (2026-11-11):** checks pass; `mcmc` replicates; resolved. Relocation, noise injection and regularisation are
+needed (regularisation sensitive to target selection); opacity learning rate 0.05 is not needed; `ctl`'s resets explain
+little. See [EXP1A_RESULTS.md](EXP1A_RESULTS.md).
+
 ## Changes after launch
 
 - 2026-11-10, after the freeze (026f6d1) and before any job was submitted: with `--rerun`, the analysis now takes the
