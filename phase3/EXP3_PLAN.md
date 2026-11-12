@@ -2,7 +2,16 @@
 
 "E1" in [LIT_REVIEW.md](LIT_REVIEW.md).
 
-**Status: DRAFT. Not pre-registered, and nothing in it has run.**
+**Status: SHELVED (2026-11-12, after review). Not to be run as drafted.** Review reasons:
+1. About 50 GPU-hours to refine a direction the literature already reports.
+2. The T′ = S′ × c split is an accounting identity. It cannot by itself show why steps are fewer or cheaper.
+3. `mcmc0` was measured only from step 5,000. A switch-vs-from-start comparison needs time to quality from step 0.
+4. Even a clean result analyses an existing method; it does not introduce one.
+
+The split was instead computed, at no GPU cost, from the completed 1R and 1A runs:
+[DECOMP_EXISTING.md](DECOMP_EXISTING.md). The draft below is kept unchanged as a record.
+
+**Former status: DRAFT. Not pre-registered, and nothing in it has run.**
 - It becomes final (this line changed, committed) only after:
   - the engineering in "Before launch" passes its smoke tests;
   - the open questions are settled by review;
