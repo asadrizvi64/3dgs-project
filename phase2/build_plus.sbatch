@@ -78,6 +78,7 @@
 #   STAGES=exp1r SCENE=garden sbatch --job-name=gs-x1r-garden --time=04:00:00 phase2/build_plus.sbatch   (Exp 1R; room: one job per seed)
 #   STAGES=x1asmoke sbatch --job-name=gs-x1a-smoke --time=01:00:00 phase2/build_plus.sbatch   (Exp 1A switch smoke test)
 #   STAGES=x1atime sbatch --job-name=gs-x1a-time --time=00:45:00 phase2/build_plus.sbatch   (Exp 1A: counting vs training clock)
+#   cd ~/3dgs-project && STAGES=x1rrender sbatch --job-name=gs-x1r-render --time=02:00:00 ~/render-job/build_plus.sbatch   (article renders; copy of this file, checkout untouched)
 #   STAGES=exp1a SCENE=garden SEEDS="0 1" EXP1_AT=2000 X_ITERS=3000 sbatch --job-name=gs-x1a-stagesmoke --time=01:00:00 phase2/build_plus.sbatch
 #   STAGES=exp1a SCENE=room SEEDS=30 sbatch --job-name=gs-x1a-room-s30 --time=04:30:00 phase2/build_plus.sbatch   (Exp 1A: one job per scene and seed)
 #   STAGES="upbuild upequiv" sbatch --job-name=gs-up-build --time=01:00:00 phase2/build_plus.sbatch   (upstream/README.md)
@@ -538,7 +539,7 @@ x_arm_cfg() {  # arm N_at_branch N_oracle -> CFG_SET value
     oracle) echo "USE_MCMC=true,MAX_PRIMITIVES=$3,LAMBDA_OPACITY_REGULARIZATION=0.01,LAMBDA_SCALE_REGULARIZATION=0.01,LEARNING_RATE_OPACITIES=0.05" ;;
   esac
 }
-if has exp1smoke || has exp1 || has x1adj || has x1rsmoke || has noisepilot || has x1ra || has exp1r || has x1asmoke || has exp1a || has x1atime; then
+if has exp1smoke || has exp1 || has x1adj || has x1rsmoke || has noisepilot || has x1ra || has exp1r || has x1asmoke || has exp1a || has x1atime || has x1rrender; then
   M=${EXP1_METHOD:-FasterGSUp}
   python "$REPO/cluster/patches/fastergs_resume.py" "$DATA/nerficg/src/Methods/$M/Trainer.py"
   if has x1asmoke || has exp1a || has x1atime; then python "$REPO/cluster/patches/fastergs_ablate.py" "$DATA/nerficg/src/Methods/$M/Trainer.py"; fi
@@ -826,6 +827,24 @@ if has exp1r; then
     fi
     [ $(( seed % 2 )) = 1 ] && x1r_up $seed
     x_clean b_${BSCENE}_up_s$seed
+  done
+fi
+# x1rrender (article figures, not an experiment): ctl and mcmc resumed again from Experiment 1R's saved seed-11 states
+#   at 5000 (garden job 4559237, room job 4559239), exactly as exp1r ran them, but keeping the per-step test renders
+#   (no x_clean). Renders stay in the run directories on the workspace; RUNDIR lines name them. Seed via X1R_SEED.
+if has x1rrender; then
+  RS=${X1R_SEED:-11}
+  for BSCENE in garden room; do
+    case $BSCENE in garden) BSCALE=0.25; R1=$REPO/phase2/logs/run_4559237 ;; room) BSCALE=0.5; R1=$REPO/phase2/logs/run_4559239 ;; esac
+    echo "########## x1rrender ($BSCENE seed $RS, Experiment 1R state at 5000: ctl / mcmc with renders kept)"
+    ST=$DATA/nerficg/$(cat "$R1/runs/x_${BSCENE}_pfx_s$RS/rundir.txt" 2>/dev/null)/checkpoints/state_0005000.pt
+    NB=$(sed -n 's/^FGS_SAVE_STATE step=5000 N=\([0-9]*\).*/\1/p' "$R1/x_${BSCENE}_pfx_s$RS.seg" 2>/dev/null)
+    if [ ! -f "$ST" ] || [ -z "$NB" ]; then echo "FAILED x1rrender $BSCENE: no state $ST / N"; FAILED+=("x1rrender_$BSCENE"); continue; fi
+    echo "EXP1_BRANCH $BSCENE s$RS step=5000 N=$NB state=$ST"
+    for arm in ctl mcmc; do
+      TRAIN_ENV="FGS_RESUME=$ST FGS_EVAL_EVERY=1000 FGS_EVAL_FROM=5000 FGS_EVAL_CHECK=1 FGS_WALL=5000,30000 CFG_SET=$(x_arm_cfg $arm $NB 0)" \
+        train xr_${BSCENE}_${arm}_s$RS $M "$RS" 30000 "" taming 1000
+    done
   done
 fi
 # Experiment 1A (phase3/EXP1A_PLAN.md): which parts of the MCMC policy make it faster. Needs the ablation switches
