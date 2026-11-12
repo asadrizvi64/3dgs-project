@@ -1,4 +1,7 @@
-# Literature and novelty audit for Experiments 1R and 1A (2026-11-12)
+# Literature and novelty audit for Experiments 1R and 1A (2026-11-12; second pass the same day)
+
+**The second pass changes four rows of the matrix (2, 3, 10, 11) and weakens one candidate question. The verdicts
+are unchanged.** See "Second pass" below. Rows it changed are marked "†".
 
 **Purpose.** To decide whether the results of Experiments 1R ([EXP1R_RESULTS.md](EXP1R_RESULTS.md)) and 1A
 ([EXP1A_RESULTS.md](EXP1A_RESULTS.md)) are a new scientific contribution, and what would be needed to make one. No GPU
@@ -104,16 +107,16 @@ Status, judged against what this search found:
 | # | question | literature | our evidence | status |
 |---|---|---|---|---|
 | 1 | MCMC (relocation + noise + regularisation) gives higher final quality than ADC | 3DGS-MCMC; Faster-GS C.3; gsplat; many follow-ups | +0.19 to +0.44 dB, lower LPIPS, about 27% fewer Gaussians (1R, 1A; 2 scenes) | **reproduced** |
-| 2 | MCMC reaches a given quality sooner than ADC | 3DGS-MCMC: one scene, one run, wall-clock minutes, its own statement; gsplat at unequal counts | 12 of 12 paired comparisons, 29–42% less training-step time to `ctl`'s final PSNR − 0.05 dB, robust to the target, and callback time measured (under 1%) | **strengthened**: the claim is known; rigorous evidence for it is not |
-| 3 | Switching from ADC growth to fixed-population MCMC mid-training | not found. MCMC is always used from the start; neighbours: phased densification (Decomposing), budgeted growth (Taming), early densification (SAD-GS) | the switch at step 5,000 works and replicates | **apparently new**, as a configuration. Conceptually close to MCMC's own grow-then-relocate schedule, so incremental |
+| 2† | MCMC reaches a given quality sooner than ADC | 3DGS-MCMC: one scene, one run, wall-clock minutes, its own statement; gsplat at unequal counts | 12 of 12 paired comparisons, 29–42% less training-step time to `ctl`'s final PSNR − 0.05 dB, robust to the target, and callback time measured (under 1%) | **strengthened**: the claim is known; rigorous evidence for it is not |
+| 3† | Switching from ADC growth to fixed-population MCMC mid-training | not found. MCMC is always used from the start; neighbours: phased densification (Decomposing), budgeted growth (Taming), early densification (SAD-GS) | the switch at step 5,000 works and replicates | **apparently new**, as a configuration. Conceptually close to MCMC's own grow-then-relocate schedule, so incremental |
 | 4 | Noise injection matters | 3DGS-MCMC: for quality, random initialisation | needed for time to matched quality: in 3 of 6 pairs the target is never reached | **reproduced** (quality); the speed framing is new but follows from the quality result |
 | 5 | Regularisation matters | 3DGS-MCMC: for quality, random initialisation | needed, but sensitive to the target choice | **reproduced** (quality); speed framing new and weak |
 | 6 | Relocation matters, quantitatively | **not found**: 3DGS-MCMC has no quantitative relocation ablation | needed: the arm ends 0.34 / 0.73 dB lower and never reaches the target in 4 of 6 pairs | **apparently new** as a measurement. Small |
 | 7 | Opacity learning rate 0.05 is needed with MCMC | used by convention (MCMC code; Faster-GS's note) | not needed for speed; small LPIPS cost on garden, at the limit | **apparently new**, minor |
 | 8 | ADC is slow because of opacity resets | resets criticised qualitatively | no: removing them does not speed `ctl` | **apparently new**, a small negative result |
 | 9 | Advantage comes from population size or from the policy | not separated in the literature found | 1R's oracle, MCMC at `ctl`'s final count, ends higher still; 1A shows the gain mostly lets MCMC reach the quality at all | **partly new**, a hint only (oracle untested in 1A) |
-| 10 | In-training evaluation silently changes training (shared RNG: the LPIPS construction and the view sampler) | not found as a reported pitfall | found, fixed and verified (Experiment 1, v7) | **apparently new**, methodological; may be NeRFICG-specific |
-| 11 | Same-seed GPU non-determinism: final PSNR SD 0.05–0.07 dB; single views up to −8 dB on identical runs | not found reported | measured (noise pilot, `mrep`) | **apparently new**, methodological; bears on how 0.1-dB claims are read |
+| 10† | In-training evaluation silently changes training (shared RNG: the LPIPS construction and the view sampler) | not found as a reported pitfall | found, fixed and verified (Experiment 1, v7) | **apparently new**, methodological; may be NeRFICG-specific |
+| 11† | Same-seed GPU non-determinism: final PSNR SD 0.05–0.07 dB; single views up to −8 dB on identical runs | not found reported | measured (noise pilot, `mrep`) | **apparently new**, methodological; bears on how 0.1-dB claims are read |
 | 12 | Adaptive control of growth and budget | crowded: Turbo-GS, GS², STPC, SPARE-GS, LeGS, DP-Splat, Taming | none | **known area**. A growth-to-relocation switch controller specifically was not found |
 
 ## Judgments
@@ -196,6 +199,73 @@ Faster-GS. One scene in gsplat's MCMC and default modes would show whether row 2
 - Relocation, noise and regularisation are **not** new (3DGS-MCMC). That MCMC improves quality is **not** new.
 - Branching does **not** give final quality identical to uninterrupted training. Check 1 established implementation
   fidelity only.
+
+## Second pass (2026-11-12)
+
+**What was added:**
+- **Searches:** benchmarks and surveys of densification strategies at equal budget; reproducibility and run-to-run
+  variance in 3DGS; time-to-quality and fair training-speed protocols; two-phase or hybrid ADC-then-MCMC schedules;
+  evaluation side-effects on the training random state.
+- **Citation scan:** papers citing Faster-GS (22 in Semantic Scholar's index).
+- **Read in part:** ImprovedGS+ (arXiv 2603.08661), EntON (arXiv 2603.06216), Metropolis-Hastings sampling
+  (arXiv 2506.12945).
+
+**Limit that remains:** the proceedings were covered through citation scans and keyword searches, not by browsing each
+venue's accepted-paper list. That is still worth doing before a submission, but it is now less likely to change the
+verdicts.
+
+**New evidence, by row:**
+
+| row | second-pass findings | revised status |
+|---|---|---|
+| 1 | More equal- or lower-count comparisons favour MCMC on quality:<br>- Compact Neural Appearance Models (arXiv 2609.05255): MCMC beats ADC at equal model size for every appearance model;<br>- the Metropolis-Hastings paper's tables: Mip-NeRF 360, ADC 27.44 dB with 3.18 M Gaussians in 34:34, MCMC 27.69 dB with 0.72 M in 29:42;<br>- ImprovedGS+: MCMC with a 1 M cap 28.64 dB, unbudgeted ADC 28.10 dB. | reproduced, now widely supported |
+| 2† | MCMC finishing in less total time than ADC, at higher quality, is reported more often than the first pass found:<br>- Metropolis-Hastings tables: less total time on all three datasets, but with about 4× fewer Gaussians;<br>- gsplat: 15.4 against 19.4 min;<br>- ImprovedGS+: mixed by scene (garden MCMC faster, room slower; its ADC is unbudgeted).<br>The Metropolis-Hastings paper also plots PSNR against iterations, with "98% of final PSNR" markers, for itself against MCMC, but not against ADC.<br>Still not found: paired seeds, a matched-quality target, or a separation of fewer Gaussians from the policy. | **strengthened**, but the *direction* is now well known. What we add is rigour and attribution, not the observation |
+| 3† | EntON (arXiv 2603.06216) runs standard gradient densification alone to step 3,000, then alternates it every 100 steps with its own criterion. That is a phased schedule, but with no MCMC, relocation or fixed budget. The Metropolis-Hastings method changes its proposals continuously over training, with no switch. Still not found: ADC growth followed by fixed-population MCMC. | apparently new as a configuration; phased schedules exist; incremental |
+| 10† | Saving and restoring the full training state, random generators included, around instrumentation is established ML practice (e.g. "OPEN-1B: A Fully Auditable Training Run"; "Reproducible AI Requires Reproducible Randomness"). A report of this specific case was not found: a 3DGS framework whose metric construction perturbs the sampler's generator. | **known in general**; our case is an instance worth a footnote, not a finding |
+| 11† | Run-to-run variance is reported:<br>- DART-3DGS: per-scene seed SD at most 0.019 dB PSNR, against 0.3 dB gains;<br>- a sparse-view Gaussian tomography paper: under 0.05 dB same-seed fluctuation, from non-deterministic CUDA rasterizer operations;<br>- a Bayesian 3DGS paper: paired bootstrap intervals over 39 scene-seed runs.<br>Our same-seed SD of the difference, 0.05–0.07 dB, is about 0.035–0.05 dB per run, comparable or slightly larger. Not found: single views differing by up to 8 dB between identical runs. | **partly known**; the per-view instability is the only unreported part |
+| 12 | Unchanged. Also: Learnable Density Control (LeGS, ICML 2026) confirmed; CAdam uses a learned gate for soft termination of densification. | known area |
+
+**Time-to-quality protocols in use:**
+- curves of quality against time (SAD-GS; Laplacian Frequency Hierarchies, arXiv 2609.03334);
+- "98% of final PSNR" markers (Metropolis-Hastings);
+- wall-clock budgets in place of iteration counts (non-exponential GS, arXiv 2603.02887);
+- matched Gaussian counts (SAD-GS);
+- comparisons only under a shared kernel (Improving Densification in 3DGS, CVPR 2026 Findings).
+
+There is no common standard. But the practice of time-based comparison is widespread, so a protocol paper would have to
+argue for one specific standard and show that it changes conclusions.
+
+**Revised judgments:**
+1. **Paper now?** Unchanged: no.
+2. **Open question:**
+   - **Candidate 1 is unchanged and remains the strongest.** Where does MCMC's time-to-quality advantage come from:
+     fewer Gaussians, the relocation and noise policy, or the time of the switch? The literature now plainly shows
+     MCMC being faster *and* using far fewer Gaussians, which is exactly the confound it never separates.
+   - **Candidate 2 is weaker.** Benchmarking methodology: noise floors and time-based comparisons are already
+     reported. What remains is narrower:
+     - the paired matched-quality protocol;
+     - per-view instability between identical runs;
+     - the separation of count from policy.
+
+     Better as a section of the candidate-1 paper than a paper of its own.
+   - **Candidate 3 is unchanged:** the switch alone is incremental.
+3. **Experiments:**
+   - E1 and E2 as proposed. E1's count-matched arms (MCMC capped at `ctl`'s count, and `ctl` against MCMC at MCMC's
+     count) are now the central comparison, not an option.
+   - Report total wall time as well as the two clocks, because the literature compares on wall time.
+4. **Adaptive controller:** unchanged, not justified yet.
+
+**Sources added in the second pass** (read in part unless marked):
+- [ImprovedGS+: A High-Performance C++/CUDA Re-Implementation Strategy for 3D Gaussian Splatting](https://arxiv.org/html/2603.08661v1)
+- [EntON: Eigenentropy-Optimized Neighborhood Densification in 3D Gaussian Splatting](https://arxiv.org/html/2603.06216)
+- [Metropolis-Hastings Sampling for 3D Gaussian Reconstruction](https://arxiv.org/html/2506.12945v1)
+- [Compact Neural Appearance Models for Efficient Gaussian Splatting](https://arxiv.org/pdf/2609.05255) (search summary)
+- [Improving Densification in 3D Gaussian Splatting for High-Fidelity Rendering (CVPR 2026 Findings)](https://arxiv.org/pdf/2508.12313) (search summary)
+- [From Splats to Silicon: Rethinking Computational Efficiency of 3DGS](https://arxiv.org/pdf/2609.06157) (search summary; about rendering-system efficiency, not training)
+- [DART-3DGS](https://pmc.ncbi.nlm.nih.gov/articles/PMC13705904), [Rendering-Aware Bayesian 3DGS](https://arxiv.org/html/2607.05522), [Projection-Volume Fidelity Divergence](https://arxiv.org/pdf/2606.22525) (search summaries; variance reporting)
+- [Laplacian Frequency Hierarchies for Efficient 3DGS Training](https://arxiv.org/pdf/2609.03334), [Generalized non-exponential Gaussian splatting](https://arxiv.org/pdf/2603.02887) (search summaries; time-based comparisons)
+- [OPEN-1B: A Fully Auditable Training Run](https://arxiv.org/pdf/2609.17380), [Reproducible AI Requires Reproducible Randomness](https://arxiv.org/pdf/2609.26461) (search summaries; random-state practice)
+- Semantic Scholar list of papers citing Faster-GS: https://api.semanticscholar.org/graph/v1/paper/arXiv:2602.09999/citations
 
 ## Sources
 
