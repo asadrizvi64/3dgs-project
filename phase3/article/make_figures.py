@@ -126,7 +126,7 @@ for ax, sc, sd in [(axes[0], 'garden', 10), (axes[1], 'room', 10)]:
 axes[0].set_ylabel('Number of Gaussians (millions)')
 h, l = axes[0].get_legend_handles_labels()
 fig.legend(h, l, loc='upper center', ncol=5, bbox_to_anchor=(0.5, 1.07), fontsize=9.5)
-note(fig, 'Experiment 1R, one seed shown. Standard Faster-GS keeps growing until step 15,000; the MCMC switch freezes the '
+note(fig, 'Switch Test, one seed shown. Standard Faster-GS keeps growing until step 15,000; the MCMC switch freezes the '
           'count at step 5,000 and recycles Gaussians instead.')
 fig.savefig(f'{OUT}/fig1_population.png')
 plt.close(fig)
@@ -158,7 +158,7 @@ for ax, sc, sd in [(axes[0], 'garden', 11), (axes[1], 'room', 11)]:
 axes[0].set_ylabel('Test PSNR (dB, higher is better)')
 h, l = axes[0].get_legend_handles_labels()
 fig.legend(h, l, loc='upper center', ncol=3, bbox_to_anchor=(0.5, 1.06))
-note(fig, 'Experiment 1R, the seed with the median saving on each scene. Points are test evaluations every 1,000 steps '
+note(fig, 'Switch Test, the seed with the median saving on each scene. Points are test evaluations every 1,000 steps '
           'from the switch at step 5,000; time counts from step 0.')
 fig.savefig(f'{OUT}/fig2_quality_vs_time.png')
 plt.close(fig)
@@ -178,7 +178,8 @@ for i, (exp, sc, sd, tc, tm) in enumerate(rows):
     ax.plot(tc, y, 'o', ms=9, mfc=C['ctl'], mec=SURF, mew=2, zorder=3)
     ax.plot(tm, y, 'o', ms=9, mfc=C['mcmc'], mec=SURF, mew=2, zorder=3)
     ax.text(tc + 4, y, f'−{100 * (1 - tm / tc):.0f}%', va='center', fontsize=9.5, color=INK)
-ax.set_yticks(range(len(rows)), [f'{sc.capitalize()} · seed {sd} ({exp})' for exp, sc, sd, _, _ in reversed(rows)])
+TEST = {'1R': 'Switch Test', '1A': 'Ingredient Test'}
+ax.set_yticks(range(len(rows)), [f'{sc.capitalize()} · seed {sd} ({TEST[exp]})' for exp, sc, sd, _, _ in reversed(rows)])
 ax.grid(axis='y', visible=False)
 ax.set_xlabel('Training time to reach the target quality (seconds)')
 ax.set_xlim(60, 205)
@@ -186,7 +187,7 @@ ax.plot([], [], 'o', ms=9, mfc=C['ctl'], mec=SURF, label=LABEL['ctl'])
 ax.plot([], [], 'o', ms=9, mfc=C['mcmc'], mec=SURF, label=LABEL['mcmc'])
 ax.legend(loc='upper center', ncol=2, bbox_to_anchor=(0.45, 1.08))
 ax.axhline(5.5, color=MUTED, lw=0.8)
-note(fig, 'Every paired comparison from Experiments 1R (seeds 10–12) and 1A (fresh seeds 30–32). In each pair both '
+note(fig, 'Every paired comparison from the Switch Test (seeds 10–12) and the Ingredient Test (fresh seeds 30–32). In each pair both '
           'runs start from the same saved model at step 5,000.')
 fig.savefig(f'{OUT}/fig3_twelve_pairs.png')
 plt.close(fig)
@@ -247,7 +248,7 @@ ax.set_xlabel('Time to reach the target, relative to standard Faster-GS on the s
 for sc in ('garden', 'room'):
     ax.plot([], [], SCENE[sc][1], ms=8.5, mfc=SCENE[sc][0], mec=SURF, label=sc.capitalize())
 ax.legend(loc='lower left')
-note(fig, 'Experiment 1A, seeds 30–32. One dot per run; each is compared with standard Faster-GS on the same scene and '
+note(fig, 'Ingredient Test, seeds 30–32. One dot per run; each is compared with standard Faster-GS on the same scene and '
           'seed, branched from the same saved model.')
 fig.savefig(f'{OUT}/fig5_ablation.png')
 plt.close(fig)
@@ -283,8 +284,8 @@ for ax, idx, title in ((axes[0], 2, 'Steps needed to reach the target'), (axes[1
     ax.set_xlabel('relative to standard Faster-GS (= 1×)')
     ax.grid(axis='y', visible=False)
 axes[0].set_yticks(range(len(groups)), list(reversed(names)))
-note(fig, 'Measured from the switch at step 5,000 to the target. Bars: median; dots: individual pairs (MCMC switch: 1R and '
-          '1A, 6 per scene; MCMC at standard\'s size: 1R only, 3 per scene).', y=-0.07)
+note(fig, 'Measured from the switch at step 5,000 to the target. Bars: median; dots: individual pairs (MCMC switch: both tests, '
+          '6 per scene; MCMC at standard\'s size: Switch Test only, 3 per scene).', y=-0.07)
 fig.savefig(f'{OUT}/fig6_steps_vs_cost.png')
 plt.close(fig)
 print('written', sorted(f for f in os.listdir(OUT) if f.endswith('.png')))
